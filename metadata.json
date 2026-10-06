@@ -1,0 +1,6 @@
+{
+  "name": "MADEN FAF — Maden Football Academy Foundation",
+  "description": "Official website of MADEN FAF (Maden Football Academy Foundation). Professional youth football development, structured training methodology, campus network, and digital player assessment.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
