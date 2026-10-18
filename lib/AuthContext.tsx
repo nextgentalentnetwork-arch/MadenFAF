@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { AcademyDataManager } from '@/lib/academyDataManager';
 
 export interface UserProfile {
   id: string;
@@ -75,12 +76,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isSupabaseActive) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user && isMounted) {
+            const userEmail = session.user.email || '';
+            const isDev = userEmail.toLowerCase() === 'pravakarghosh.2025@gmail.com';
+            AcademyDataManager.setDeveloperAuthenticated(isDev);
             setUser(session.user);
             setProfile({
               id: session.user.id,
-              email: session.user.email || '',
-              fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-              role: (session.user.user_metadata?.role as any) || 'player',
+              email: userEmail,
+              fullName: session.user.user_metadata?.full_name || userEmail.split('@')[0] || 'User',
+              role: (session.user.user_metadata?.role as any) || (isDev ? 'admin' : 'player'),
               campus: session.user.user_metadata?.campus || 'Gayeshpur',
             });
           }
@@ -89,15 +93,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           supabase.auth.onAuthStateChange((_event, session) => {
             if (!isMounted) return;
             if (session?.user) {
+              const userEmail = session.user.email || '';
+              const isDev = userEmail.toLowerCase() === 'pravakarghosh.2025@gmail.com';
+              AcademyDataManager.setDeveloperAuthenticated(isDev);
               setUser(session.user);
               setProfile({
                 id: session.user.id,
-                email: session.user.email || '',
-                fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-                role: (session.user.user_metadata?.role as any) || 'player',
+                email: userEmail,
+                fullName: session.user.user_metadata?.full_name || userEmail.split('@')[0] || 'User',
+                role: (session.user.user_metadata?.role as any) || (isDev ? 'admin' : 'player'),
                 campus: session.user.user_metadata?.campus || 'Gayeshpur',
               });
             } else {
+              AcademyDataManager.setDeveloperAuthenticated(false);
               setUser(null);
               setProfile(null);
             }
@@ -108,6 +116,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const saved = localStorage.getItem('maden_faf_active_user');
             if (saved && isMounted) {
               const parsed = JSON.parse(saved);
+              const isDev = parsed.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com';
+              AcademyDataManager.setDeveloperAuthenticated(isDev);
               setUser({ id: parsed.id, email: parsed.email });
               setProfile(parsed);
             }
@@ -130,6 +140,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const isDevCredential =
+        normalizedEmail === 'pravakarghosh.2025@gmail.com' &&
+        password === 'maden-dev-2026';
+
+      // 1. Check if user is attempting to sign in as the Master Developer
+      if (normalizedEmail === 'pravakarghosh.2025@gmail.com') {
+        if (!isDevCredential) {
+          setIsLoading(false);
+          AcademyDataManager.setDeveloperAuthenticated(false);
+          return { success: false, error: 'Invalid password for Master Developer account.' };
+        }
+
+        // Grant exclusive backend developer authentication
+        AcademyDataManager.setDeveloperAuthenticated(true);
+
+        const devProf: UserProfile = {
+          id: 'master-dev-pravakarghosh',
+          email: 'pravakarghosh.2025@gmail.com',
+          fullName: 'Pravakar Ghosh (Master Developer)',
+          role: 'admin',
+          campus: 'Headquarters & Command Center',
+          avatarUrl: '/images/maden-faf-official-logo.png',
+        };
+
+        setUser({ id: devProf.id, email: devProf.email });
+        setProfile(devProf);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('maden_faf_active_user', JSON.stringify(devProf));
+        }
+
+        // Background sync with Supabase Auth if available
+        if (isSupabaseActive) {
+          supabase.auth.signInWithPassword({ email: devProf.email, password }).catch(() => {
+            supabase.auth.signUp({
+              email: devProf.email,
+              password,
+              options: { data: { full_name: devProf.fullName, role: 'admin' } },
+            }).catch(() => {});
+          });
+        }
+
+        setIsLoading(false);
+        return { success: true };
+      }
+
+      // 2. For ANY other credential: strictly ensure backend developer access is revoked
+      AcademyDataManager.setDeveloperAuthenticated(false);
+
       if (isSupabaseActive) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -249,6 +308,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    AcademyDataManager.setDeveloperAuthenticated(false);
     if (isSupabaseActive) {
       try {
         await supabase.auth.signOut();
@@ -260,15 +320,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(null);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('maden_faf_active_user');
+      localStorage.removeItem('maden_dev_auth_session');
     }
   };
 
   const loginWithDemo = (role: 'player' | 'parent' | 'coach' | 'admin') => {
+    AcademyDataManager.setDeveloperAuthenticated(false);
     const demo = DEMO_PROFILES[role];
     setUser({ id: demo.id, email: demo.email });
     setProfile(demo);
     if (typeof window !== 'undefined') {
       localStorage.setItem('maden_faf_active_user', JSON.stringify(demo));
+      localStorage.removeItem('maden_dev_auth_session');
     }
   };
 

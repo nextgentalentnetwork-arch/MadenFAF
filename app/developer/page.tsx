@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   Database,
   Users,
+  User,
   Building,
   Trophy,
   Newspaper,
@@ -50,6 +51,7 @@ import {
   Award,
   Sparkles,
   Eye,
+  EyeOff,
   Save,
   X,
   Cloud,
@@ -234,6 +236,7 @@ export default function DeveloperPage() {
 
   // Authentication State
   const [devPasscode, setDevPasscode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
 
   // Active Management Tab
@@ -465,16 +468,13 @@ export default function DeveloperPage() {
   const handleDevLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setAuthError('');
-    // Master passkey or quick unlock
-    if (devPasscode === 'maden-dev-2026' || devPasscode === 'admin' || devPasscode === 'superbase') {
+    const key = devPasscode.trim();
+    // Authorized Master Developer Credential
+    if (key === 'maden-dev-2026') {
       AcademyDataManager.setDeveloperAuthenticated(true);
     } else {
-      setAuthError('Invalid Master Developer Key. (Hint: Use maden-dev-2026 or click 1-Click Dev Unlock)');
+      setAuthError('Access Denied: Invalid Master Developer Key. Only authorized developer credentials can access the backend.');
     }
-  };
-
-  const handleQuickUnlock = () => {
-    AcademyDataManager.setDeveloperAuthenticated(true);
   };
 
   const handleDevLogout = () => {
@@ -686,15 +686,27 @@ export default function DeveloperPage() {
         <div className="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-30" />
 
         <div className="relative z-10 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-          <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 flex items-center justify-center mx-auto shadow-inner">
-              <Key className="w-7 h-7" />
+          <div className="text-center space-y-3">
+            {/* Official MADEN FAF Identity Logo Crest */}
+            <div className="w-20 h-20 rounded-full overflow-hidden shrink-0 border-2 border-amber-400/50 bg-slate-950 flex items-center justify-center mx-auto shadow-2xl p-1">
+              <img
+                src="/images/maden-faf-official-logo.png"
+                alt="MADEN FAF Official Identity Crest"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <h1 className="text-2xl font-black uppercase tracking-tight text-white">
-              Developer Command Center
-            </h1>
-            <p className="text-xs text-slate-400">
-              Master administrative console for database modifications, components management, and curriculum controls.
+
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold">
+                Restricted Administrative Console
+              </div>
+              <h1 className="text-2xl font-black uppercase tracking-tight text-white mt-1">
+                Developer Command Center
+              </h1>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Authorized developer portal for curriculum, campus network, live match centre, and Supabase database modifications.
             </p>
           </div>
 
@@ -709,17 +721,25 @@ export default function DeveloperPage() {
           <form onSubmit={handleDevLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Master Developer Key
+                Master Developer Password
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={devPasscode}
                   onChange={(e) => setDevPasscode(e.target.value)}
-                  placeholder="Enter passcode or click quick unlock..."
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition-all font-mono"
+                  placeholder="Enter master developer password..."
+                  autoComplete="current-password"
+                  className="w-full pl-4 pr-11 py-3 bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition-all font-mono"
                 />
-                <Lock className="w-4 h-4 text-slate-500 absolute right-3.5 top-3.5" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 p-1 text-slate-400 hover:text-white transition-colors"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -732,26 +752,26 @@ export default function DeveloperPage() {
 
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
             >
+              <Lock className="w-4 h-4" />
               <span>Authenticate Developer Session</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          {/* 1-Click Fast Unlock for convenience */}
-          <div className="pt-2 border-t border-slate-800 text-center space-y-3">
-            <button
-              onClick={handleQuickUnlock}
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border border-slate-700"
+          {/* Portal Sign In & Return link */}
+          <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-slate-400">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 hover:text-amber-400 transition-colors font-medium"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>1-Click Developer Instant Unlock</span>
-            </button>
-
+              <User className="w-3.5 h-3.5 text-amber-400" />
+              <span>Sign In via Academy Portal</span>
+            </Link>
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Return to Public Website</span>

@@ -209,6 +209,16 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                       <div className="text-[11px] font-bold text-slate-900 truncate">{profile.fullName}</div>
                       <div className="text-[10px] text-slate-500 font-mono truncate">{profile.email}</div>
                     </div>
+                    {profile.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' && (
+                      <Link
+                        href="/developer"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-mono font-bold text-amber-400 bg-slate-900 hover:bg-slate-800 transition-colors flex items-center justify-between cursor-pointer mb-1 shadow-xs"
+                      >
+                        <span>Backend Console</span>
+                        <Shield className="w-3.5 h-3.5 text-amber-400" />
+                      </Link>
+                    )}
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
@@ -254,15 +264,6 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
               </div>
             )}
 
-            {/* Developer Backend Shortcut */}
-            <Link
-              href="/developer"
-              title="Developer Command Center & Backend Data Editor"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-amber-400 hover:bg-slate-800 text-xs font-mono font-bold uppercase transition-all shadow-xs border border-slate-800 cursor-pointer min-h-[38px]"
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-400" />
-              <span>CMS</span>
-            </Link>
 
             {/* Join MADEN / Book Trial - Customizable CTA */}
             {headerConfig.ctaButtonVisible !== false && (
@@ -451,14 +452,6 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                 >
                   <User className="w-4 h-4 text-slate-500" />
                   <span>Sign In with Supabase</span>
-                </Link>
-                <Link
-                  href="/developer"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 min-h-[40px] shadow-xs"
-                >
-                  <Shield className="w-4 h-4 text-amber-400" />
-                  <span>CMS & Backend Console</span>
                 </Link>
               </>
             )}

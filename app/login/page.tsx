@@ -53,10 +53,18 @@ export default function LoginPage() {
       const res = await login(email, password);
       setIsSubmitting(false);
       if (res.success) {
-        setSuccessMsg('Logged in successfully! Redirecting...');
-        setTimeout(() => {
-          router.push('/');
-        }, 800);
+        const isDev = email.trim().toLowerCase() === 'pravakarghosh.2025@gmail.com';
+        if (isDev) {
+          setSuccessMsg('Master Developer Authenticated! Redirecting to Backend Command Center...');
+          setTimeout(() => {
+            router.push('/developer');
+          }, 600);
+        } else {
+          setSuccessMsg('Logged in successfully! Redirecting...');
+          setTimeout(() => {
+            router.push('/');
+          }, 800);
+        }
       } else {
         setErrorMsg(res.error || 'Invalid credentials. Please try again.');
       }
@@ -348,15 +356,6 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <div className="pt-2">
-            <Link
-              href="/developer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-mono font-bold transition-colors shadow-xs"
-            >
-              <Lock className="w-3 h-3" />
-              <span>Developer & Superuser Backend Command Center →</span>
-            </Link>
-          </div>
         </div>
       </div>
     </div>

@@ -853,6 +853,7 @@ export const AcademyDataManager = {
     } else {
       localStorage.removeItem(STORAGE_KEYS.DEV_SESSION);
     }
+    AcademyDataManager.dispatchDataChange();
   },
 
   // Bulk push everything to Supabase

@@ -426,13 +426,6 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="mt-6 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-500 text-[11px] text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <span>{footerConfig.copyrightText || `© ${new Date().getFullYear()} MADEN FAF. All Rights Reserved.`}</span>
-            <span aria-hidden="true" className="hidden sm:inline">·</span>
-            <Link
-              href="/developer"
-              className="text-slate-500 hover:text-amber-700 font-mono font-bold transition-colors underline decoration-slate-300 hover:decoration-amber-500"
-            >
-              Developer & Backend Console
-            </Link>
           </div>
           {footerConfig.bottomNote && (
             <div className="text-slate-500">

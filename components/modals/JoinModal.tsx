@@ -112,8 +112,12 @@ export const JoinModal: React.FC<JoinModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 border-b border-slate-200">
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-black text-xs shrink-0 shadow-xs">
-              FAF
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-amber-400/40 bg-slate-950 flex items-center justify-center shadow-xs">
+              <img
+                src="/images/maden-faf-official-logo.png"
+                alt="MADEN FAF Official Crest"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">

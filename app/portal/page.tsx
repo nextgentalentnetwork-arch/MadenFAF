@@ -72,13 +72,16 @@ export default function PortalPage() {
               <LogOut className="w-3.5 h-3.5" />
               <span>Sign Out</span>
             </button>
-            <Link
-              href="/admin"
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Admin Console</span>
-            </Link>
+
+            {profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' && (
+              <Link
+                href="/developer"
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 text-xs font-mono font-bold flex items-center gap-1.5 shadow-sm"
+              >
+                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                <span>Backend Command Center</span>
+              </Link>
+            )}
           </div>
         </div>
 

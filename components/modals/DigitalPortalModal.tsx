@@ -170,8 +170,12 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
         {/* Top Bar with Role Switcher */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 border-b border-slate-200">
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-black text-xs shrink-0 shadow-xs">
-              FAF
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-amber-400/40 bg-slate-950 flex items-center justify-center shadow-xs">
+              <img
+                src="/images/maden-faf-official-logo.png"
+                alt="MADEN FAF Official Crest"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-amber-800 font-bold">
@@ -537,26 +541,6 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
                   </div>
                 </div>
 
-                {/* Direct Launch to Backend CMS Console */}
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-amber-600" />
-                      <span>Academy CMS & Backend Data Console</span>
-                    </div>
-                    <div className="text-[11px] text-slate-600">
-                      Add/edit/delete Coaches & photos, Fixtures & teams, News articles, Campuses & schedules.
-                    </div>
-                  </div>
-                  <Link
-                    href="/developer"
-                    onClick={onClose}
-                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 shrink-0"
-                  >
-                    <span>Launch CMS</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
 
                 {/* SQL Schema Script Helper */}
                 <div className="p-3 rounded-xl bg-slate-900 text-slate-100 text-xs space-y-2">

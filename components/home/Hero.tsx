@@ -176,6 +176,13 @@ export const Hero: React.FC<HeroProps> = ({
                 : `${pulseStyle.bg} border ${pulseStyle.border}`
             }`}
           >
+            <div className="w-4 h-4 rounded-full overflow-hidden shrink-0 border border-amber-400/50 bg-slate-950 flex items-center justify-center">
+              <img
+                src="/images/maden-faf-official-logo.png"
+                alt="MADEN FAF Official Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
             <span className={`w-1.5 h-1.5 rounded-full ${pulseStyle.dot} animate-pulse`} />
             <span
               className={`text-[11px] sm:text-xs font-bold uppercase tracking-widest ${
