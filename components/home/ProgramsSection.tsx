@@ -18,14 +18,18 @@ import {
   Info,
   Calendar,
   X,
-  ExternalLink
+  ExternalLink,
+  Play,
+  Film
 } from 'lucide-react';
+import { ActiveVideoData } from '@/components/modals/VideoModal';
 
 interface ProgramsSectionProps {
   onSelectProgram: (programId: string) => void;
+  onWatchVideo?: (video: ActiveVideoData) => void;
 }
 
-export const ProgramsSection: React.FC<ProgramsSectionProps> = ({ onSelectProgram }) => {
+export const ProgramsSection: React.FC<ProgramsSectionProps> = ({ onSelectProgram, onWatchVideo }) => {
   const programs = useSyncExternalStore(
     subscribeAcademyData,
     () => AcademyDataManager.getPrograms(),
@@ -275,14 +279,70 @@ export const ProgramsSection: React.FC<ProgramsSectionProps> = ({ onSelectProgra
                 `}
               >
                 <div>
+                  {/* Custom Program Photo Banner with Video Trigger */}
+                  {prog.image && (
+                    <div className="relative aspect-video rounded-xl overflow-hidden mb-3.5 border border-slate-200 bg-slate-100 group-hover:shadow-xs transition-all">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={prog.image}
+                        alt={prog.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {prog.videoUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onWatchVideo?.({
+                              title: prog.name,
+                              subtitle: `${prog.subtitle} · Training Drill`,
+                              videoUrl: prog.videoUrl!,
+                              posterImage: prog.image,
+                              description: prog.description,
+                              tag: `Program Drill Video (${prog.ageGroup})`,
+                              ctaText: `Register for ${prog.name}`,
+                            });
+                          }}
+                          className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/85 hover:bg-amber-500 hover:text-slate-950 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 backdrop-blur-xs transition-colors cursor-pointer shadow-md"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>Watch Drill</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Top Bar: Age Group & Ratio */}
                   <div className="flex items-center justify-between text-xs mb-3 gap-2">
                     <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md text-[11px]">
                       {prog.ageGroup}
                     </span>
-                    <span className="text-[11px] text-slate-600 font-mono bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                      {prog.coachRatio.split(' ')[0]} Ratio
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {!prog.image && prog.videoUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onWatchVideo?.({
+                              title: prog.name,
+                              subtitle: `${prog.subtitle} · Training Drill`,
+                              videoUrl: prog.videoUrl!,
+                              posterImage: prog.image,
+                              description: prog.description,
+                              tag: `Program Drill Video (${prog.ageGroup})`,
+                              ctaText: `Register for ${prog.name}`,
+                            });
+                          }}
+                          className="text-[10px] font-mono font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                          <span>Drill Video</span>
+                        </button>
+                      )}
+                      <span className="text-[11px] text-slate-600 font-mono bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                        {prog.coachRatio.split(' ')[0]} Ratio
+                      </span>
+                    </div>
                   </div>
 
                   {/* Title & Subtitle */}
@@ -449,6 +509,47 @@ export const ProgramsSection: React.FC<ProgramsSectionProps> = ({ onSelectProgra
                 {selectedModalProgram.subtitle}
               </p>
             </div>
+
+            {/* Custom Modal Photo Banner & Video Button */}
+            {(selectedModalProgram.image || selectedModalProgram.videoUrl) && (
+              <div className="mb-6 rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 relative group">
+                {selectedModalProgram.image ? (
+                  <div className="relative aspect-video w-full overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={selectedModalProgram.image}
+                      alt={selectedModalProgram.name}
+                      className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                  </div>
+                ) : null}
+
+                {selectedModalProgram.videoUrl && (
+                  <div className={selectedModalProgram.image ? "absolute inset-0 flex items-center justify-center p-4" : "p-6 flex flex-col items-center justify-center text-center bg-slate-900"}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const prog = selectedModalProgram;
+                        onWatchVideo?.({
+                          title: prog.name,
+                          subtitle: `${prog.subtitle} · Training Demonstration`,
+                          videoUrl: prog.videoUrl!,
+                          posterImage: prog.image,
+                          description: prog.description,
+                          tag: `Curriculum Video (${prog.ageGroup})`,
+                          ctaText: `Register for ${prog.name}`,
+                        });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-amber-900/40 cursor-pointer transition-all"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Watch Drill & Gameplay Video</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="mb-6 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
               <span className="font-bold text-slate-900 block mb-0.5">Target Player Profile:</span>

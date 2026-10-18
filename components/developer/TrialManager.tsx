@@ -97,19 +97,44 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   };
 
   useEffect(() => {
-    loadCandidates();
+    let isMounted = true;
+    getRegistrations()
+      .then((data) => {
+        if (isMounted) setCandidates(data);
+      })
+      .catch((e) => {
+        console.warn('Failed to load candidate registrations:', e);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const refreshSlots = () => {
     setTrialSlots(AcademyDataManager.getTrialSlots());
   };
 
-  // Status update handler
+  const [operatorRole, setOperatorRole] = useState<'admin' | 'coach' | 'staff1' | 'staff2'>('admin');
+  const isStaffRole = operatorRole === 'staff1' || operatorRole === 'staff2';
+
+  // Status update handler with Staff 1 & Staff 2 permissions enforcement
   const handleStatusChange = async (
     bookingRef: string,
     newStatus: 'pending_trial' | 'confirmed' | 'attended' | 'enrolled' | 'waitlist' | 'rejected',
     notes?: string
   ) => {
+    // Phase 7 Policy: Staff 1 & Staff 2 can only save candidates as Pending or Waitlisted
+    if (isStaffRole && !['pending_trial', 'waitlist'].includes(newStatus)) {
+      onNotify({
+        type: 'error',
+        text: `Staff Permission Restriction (${operatorRole.toUpperCase()}): Staff users may only save player profiles as Pending Trial or Waitlist. Approval and enrollment requires Admin, Coach, or Manager review.`,
+      });
+      return;
+    }
+
     try {
       await updateRegistrationStatus(bookingRef, newStatus, notes);
       setCandidates((prev) =>
@@ -403,6 +428,20 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                 <option value="ichapore">Ichapore Campus</option>
                 <option value="krishnanagar">Krishnanagar Football School</option>
               </select>
+              {/* Staff 1 / Staff 2 Permission Mode Selector */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+                <span className="text-[10px] font-bold uppercase text-amber-800 shrink-0">Operator:</span>
+                <select
+                  value={operatorRole}
+                  onChange={(e) => setOperatorRole(e.target.value as any)}
+                  className="bg-transparent font-bold text-amber-950 text-xs focus:outline-none cursor-pointer"
+                >
+                  <option value="admin">Technical Admin (Full Approvals)</option>
+                  <option value="coach">Head Coach (Full Approvals)</option>
+                  <option value="staff1">Staff 1 (Intake & Waitlist Only)</option>
+                  <option value="staff2">Staff 2 (Intake & Waitlist Only)</option>
+                </select>
+              </div>
             </div>
           </div>
 

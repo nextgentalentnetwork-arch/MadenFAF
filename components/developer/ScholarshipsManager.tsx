@@ -30,7 +30,7 @@ export const ScholarshipsManager: React.FC<ScholarshipsManagerProps> = ({ onNoti
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   // New Tier Form
-  const [newTier, setNewTier] = useState<ScholarshipTier>({
+  const [newTier, setNewTier] = useState<ScholarshipTier>(() => ({
     id: `tier-${Date.now()}`,
     tier: '',
     coverage: '100% Full Coaching & Kit Subsidy',
@@ -38,7 +38,7 @@ export const ScholarshipsManager: React.FC<ScholarshipsManagerProps> = ({ onNoti
     benefits: ['Full annual tuition grant', 'Official academy match kit & travel pack'],
     quota: '10 Dedicated Grants per Year',
     status: 'active',
-  });
+  }));
 
   const [newBenefitInput, setNewBenefitInput] = useState('');
   const [editBenefitInput, setEditBenefitInput] = useState('');

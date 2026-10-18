@@ -50,7 +50,7 @@ export const ParentReviewsManager: React.FC<ParentReviewsManagerProps> = ({ onNo
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'review' | 'deliverable'; id: string; name: string } | null>(null);
 
   // New Review Form
-  const [newReview, setNewReview] = useState<TestimonialItem>({
+  const [newReview, setNewReview] = useState<TestimonialItem>(() => ({
     id: `story-parent-${Date.now()}`,
     author: '',
     role: 'Parent of Youth Academy Player',
@@ -63,7 +63,7 @@ export const ParentReviewsManager: React.FC<ParentReviewsManagerProps> = ({ onNo
     rating: 5,
     highlightTag: 'Transparent Progression & Discipline',
     verifiedBadge: 'Verified Academy Parent',
-  });
+  }));
 
   const refreshData = () => {
     setAllTestimonials(AcademyDataManager.getTestimonials());

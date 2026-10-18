@@ -22,7 +22,7 @@ import { SponsorBrandsCarousel } from '@/components/home/SponsorBrandsCarousel';
 import { Footer } from '@/components/layout/Footer';
 import { DigitalPortalModal } from '@/components/modals/DigitalPortalModal';
 import { JoinModal } from '@/components/modals/JoinModal';
-import { VideoModal } from '@/components/modals/VideoModal';
+import { VideoModal, ActiveVideoData } from '@/components/modals/VideoModal';
 import { AcademyDataManager, DEFAULT_TOGGLES, subscribeAcademyData } from '@/lib/academyDataManager';
 import { ArrowRight, Sparkles, Shield, Trophy } from 'lucide-react';
 
@@ -38,6 +38,12 @@ export default function Home() {
   const [selectedCampusForTrial, setSelectedCampusForTrial] = useState<string>('gayeshpur');
   const [selectedProgramForTrial, setSelectedProgramForTrial] = useState<string>('development');
   const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [activeVideo, setActiveVideo] = useState<ActiveVideoData | null>(null);
+
+  const handlePlayVideo = (video?: ActiveVideoData) => {
+    setActiveVideo(video || null);
+    setVideoModalOpen(true);
+  };
 
   const handleOpenJoin = (campus = 'gayeshpur', program = 'development') => {
     setSelectedCampusForTrial(campus);
@@ -74,7 +80,7 @@ export default function Home() {
           <Hero
             onJoinClick={() => handleOpenJoin()}
             onExploreProgramsClick={() => scrollToSection('programs')}
-            onWatchFilmClick={() => setVideoModalOpen(true)}
+            onWatchFilmClick={() => handlePlayVideo()}
           />
         )}
 
@@ -85,6 +91,7 @@ export default function Home() {
               if (tab === 'pathway') scrollToSection('pathway');
               else scrollToSection('about');
             }}
+            onWatchVideo={handlePlayVideo}
           />
         )}
 
@@ -115,6 +122,7 @@ export default function Home() {
         {toggles.programs && (
           <ProgramsSection
             onSelectProgram={(programId) => handleOpenJoin('gayeshpur', programId)}
+            onWatchVideo={handlePlayVideo}
           />
         )}
 
@@ -151,12 +159,15 @@ export default function Home() {
         {toggles.campsAndEvents && (
           <CampsAndEvents
             onRegisterEvent={(title) => handleOpenJoin('gayeshpur', 'holiday-camps')}
+            onWatchVideo={handlePlayVideo}
           />
         )}
 
         {/* Section 16: News & Stories */}
         {toggles.newsAndStories && (
-          <NewsAndStories />
+          <NewsAndStories
+            onWatchVideo={handlePlayVideo}
+          />
         )}
 
         {/* Section 16: Scholarship Section */}
@@ -177,6 +188,7 @@ export default function Home() {
         {toggles.successStories && (
           <SuccessStories
             onJoinClick={() => handleOpenJoin()}
+            onWatchVideo={handlePlayVideo}
           />
         )}
 
@@ -275,9 +287,14 @@ export default function Home() {
 
       <VideoModal
         isOpen={videoModalOpen}
-        onClose={() => setVideoModalOpen(false)}
+        onClose={() => {
+          setVideoModalOpen(false);
+          setActiveVideo(null);
+        }}
+        customVideo={activeVideo || undefined}
         onBookTrialClick={() => {
           setVideoModalOpen(false);
+          setActiveVideo(null);
           handleOpenJoin();
         }}
       />

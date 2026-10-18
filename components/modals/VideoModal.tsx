@@ -9,10 +9,23 @@ import {
 } from '@/lib/academyDataManager';
 import { HeroShowcaseConfig } from '@/data/academyData';
 
+export interface ActiveVideoData {
+  title: string;
+  subtitle?: string;
+  videoUrl: string;
+  posterImage?: string;
+  duration?: string;
+  description?: string;
+  audioFeature?: string;
+  tag?: string;
+  ctaText?: string;
+}
+
 interface VideoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onBookTrialClick: () => void;
+  onBookTrialClick?: () => void;
+  customVideo?: ActiveVideoData | null;
 }
 
 function getYouTubeEmbedUrl(url: string): string | null {
@@ -25,6 +38,13 @@ function getYouTubeEmbedUrl(url: string): string | null {
     if (match && match[1]) {
       return `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0`;
     }
+    if (url.includes('player.vimeo.com/video/')) {
+      return url.includes('autoplay') ? url : `${url}?autoplay=1`;
+    }
+    const vimeoMatch = url.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)(?:$|\/|\?)/);
+    if (vimeoMatch && vimeoMatch[1]) {
+      return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
+    }
   } catch {}
   return null;
 }
@@ -33,6 +53,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
   isOpen,
   onClose,
   onBookTrialClick,
+  customVideo,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -44,14 +65,24 @@ export const VideoModal: React.FC<VideoModalProps> = ({
 
   if (!isOpen) return null;
 
-  const ytEmbed = heroConfig.videoEmbedUrl
-    ? getYouTubeEmbedUrl(heroConfig.videoEmbedUrl)
-    : null;
+  const effectiveVideoUrl = customVideo?.videoUrl || heroConfig.videoEmbedUrl || '';
+  const effectiveTitle = customVideo?.title || heroConfig.videoTitle || 'Where Passion Meets Excellence';
+  const effectiveSubtitle = customVideo?.subtitle || heroConfig.videoSubtitle || 'Academy Video Showcase';
+  const effectivePoster = customVideo?.posterImage || heroConfig.videoPosterImage || 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1600&q=80';
+  const effectiveDuration = customVideo?.duration || heroConfig.videoDuration || '3:45';
+  const effectiveDescription = customVideo?.description || heroConfig.videoDescription || 'Developing complete footballers through AFC-certified youth training in West Bengal.';
+  const effectiveAudioFeature = customVideo?.audioFeature || heroConfig.videoAudioFeature || 'Original Academy Score & Coach Interviews';
+  const effectiveTag = customVideo?.tag || heroConfig.videoTag || `Full-Length Showcase (${effectiveDuration})`;
+  const effectiveCta = customVideo?.ctaText || heroConfig.videoCtaText || 'Book a Trial Now';
+
+  const ytEmbed = effectiveVideoUrl ? getYouTubeEmbedUrl(effectiveVideoUrl) : null;
   const isDirectVideo =
-    heroConfig.videoEmbedUrl &&
-    (heroConfig.videoEmbedUrl.endsWith('.mp4') ||
-      heroConfig.videoEmbedUrl.endsWith('.webm') ||
-      heroConfig.videoEmbedUrl.endsWith('.ogg'));
+    effectiveVideoUrl &&
+    (effectiveVideoUrl.endsWith('.mp4') ||
+      effectiveVideoUrl.endsWith('.webm') ||
+      effectiveVideoUrl.endsWith('.ogg') ||
+      effectiveVideoUrl.endsWith('.mov') ||
+      effectiveVideoUrl.startsWith('data:video/'));
 
   const handleClose = () => {
     setIsPlaying(false);
@@ -75,10 +106,10 @@ export const VideoModal: React.FC<VideoModalProps> = ({
             </div>
             <div>
               <div className="text-[10px] uppercase font-bold tracking-widest text-amber-400">
-                {heroConfig.videoSubtitle || 'Academy Documentary'}
+                {effectiveSubtitle}
               </div>
               <h3 className="text-xs sm:text-base font-bold text-white leading-tight">
-                {heroConfig.videoTitle || 'Where Passion Meets Excellence'}
+                {effectiveTitle}
               </h3>
             </div>
           </div>
@@ -109,15 +140,15 @@ export const VideoModal: React.FC<VideoModalProps> = ({
           {isPlaying && ytEmbed ? (
             <iframe
               src={ytEmbed}
-              title={heroConfig.videoTitle}
+              title={effectiveTitle}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="w-full h-full border-0"
             />
           ) : isPlaying && isDirectVideo ? (
             <video
-              src={heroConfig.videoEmbedUrl}
-              poster={heroConfig.videoPosterImage}
+              src={effectiveVideoUrl}
+              poster={effectivePoster}
               controls
               autoPlay
               className="w-full h-full object-contain bg-black"
@@ -127,11 +158,8 @@ export const VideoModal: React.FC<VideoModalProps> = ({
               {/* Poster Backdrop */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={
-                  heroConfig.videoPosterImage ||
-                  'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1600&q=80'
-                }
-                alt={heroConfig.videoTitle || 'MADEN FAF Footballers Training'}
+                src={effectivePoster}
+                alt={effectiveTitle}
                 className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
               />
 
@@ -150,21 +178,21 @@ export const VideoModal: React.FC<VideoModalProps> = ({
 
                 <div>
                   <span className="text-[10px] sm:text-xs uppercase font-mono text-amber-400 font-semibold tracking-wider">
-                    {heroConfig.videoTag || `Full-Length Academy Showcase (${heroConfig.videoDuration || '3:45'})`}
+                    {effectiveTag}
                   </span>
                   <h4 className="text-base sm:text-xl font-black text-white uppercase tracking-tight mt-1 leading-tight">
-                    {heroConfig.videoTitle || 'The Journey of a MADEN FAF Footballer'}
+                    {effectiveTitle}
                   </h4>
                   <p className="text-[11px] sm:text-xs text-slate-300 mt-1 line-clamp-2 sm:line-clamp-none">
-                    {heroConfig.videoDescription}
+                    {effectiveDescription}
                   </p>
                 </div>
 
-                {heroConfig.videoAudioFeature && (
+                {effectiveAudioFeature && (
                   <div className="hidden sm:flex flex-wrap items-center justify-center gap-3 pt-1">
                     <span className="text-[11px] text-slate-300 bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700 flex items-center gap-1.5">
                       <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-                      {heroConfig.videoAudioFeature}
+                      {effectiveAudioFeature}
                     </span>
                   </div>
                 )}
@@ -185,11 +213,11 @@ export const VideoModal: React.FC<VideoModalProps> = ({
           <button
             onClick={() => {
               handleClose();
-              onBookTrialClick();
+              onBookTrialClick?.();
             }}
             className="w-full sm:w-auto px-5 py-3 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider transition-all min-h-[44px] cursor-pointer"
           >
-            {heroConfig.videoCtaText || 'Book a Trial Now'}
+            {effectiveCta}
           </button>
         </div>
       </div>

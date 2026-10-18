@@ -40,6 +40,8 @@ export const UnifiedApiService = {
   async persistChange(params: {
     section:
       | 'heroConfig'
+      | 'headerConfig'
+      | 'footerConfig'
       | 'coaches'
       | 'fixtures'
       | 'news'
@@ -52,7 +54,9 @@ export const UnifiedApiService = {
       | 'sponsors'
       | 'parentDeliverables'
       | 'portalConfig'
-      | 'toggles';
+      | 'toggles'
+      | 'mediaLibrary'
+      | 'storytelling';
     action: 'upsert' | 'delete' | 'syncAll';
     data?: any;
     id?: string;
@@ -120,6 +124,8 @@ export const UnifiedApiService = {
   // Bulk sync all local modules to Supabase
   async syncAllSections(sectionsData: {
     heroConfig?: any;
+    headerConfig?: any;
+    footerConfig?: any;
     coaches?: any[];
     fixtures?: any[];
     news?: any[];
@@ -133,6 +139,8 @@ export const UnifiedApiService = {
     parentDeliverables?: any[];
     portalConfig?: any;
     toggles?: any;
+    mediaLibrary?: any[];
+    storytelling?: any;
   }): Promise<{ success: boolean; results: Record<string, boolean> }> {
     currentSyncStatus = {
       ...currentSyncStatus,

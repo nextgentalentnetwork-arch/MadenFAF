@@ -10,7 +10,7 @@ import {
   AcademyDataManager,
   subscribeAcademyData,
 } from '@/lib/academyDataManager';
-import { ImageSelector } from './ImageSelector';
+import { MediaSelector } from './MediaSelector';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { VideoModal } from '@/components/modals/VideoModal';
 import {
@@ -721,23 +721,17 @@ export const HeroManager: React.FC<HeroManagerProps> = ({ onNotify }) => {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Optional Video Embed or Stream URL (YouTube or Direct MP4)
-                </label>
-                <input
-                  type="text"
-                  value={config.videoEmbedUrl || ''}
-                  onChange={(e) =>
-                    setConfig({ ...config, videoEmbedUrl: e.target.value })
-                  }
-                  placeholder="e.g. https://www.youtube.com/watch?v=... or https://.../showcase.mp4"
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl font-mono"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Paste any YouTube URL or leave blank to use the high-fidelity simulated academy video player with poster backdrop!
-                </p>
-              </div>
+              {/* MediaSelector for Video Showcase */}
+              <MediaSelector
+                label="Full-Length Documentary or Video Showcase (YouTube, Vimeo, MP4)"
+                mediaType="video"
+                section="hero"
+                value={config.videoEmbedUrl || ''}
+                onChange={(vid) => setConfig({ ...config, videoEmbedUrl: vid })}
+                durationValue={config.videoTag}
+                onDurationChange={(tag) => setConfig({ ...config, videoTag: tag })}
+                helperText="Upload a video from device, pick from the Media Hub, or paste any YouTube / MP4 stream link."
+              />
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -773,11 +767,14 @@ export const HeroManager: React.FC<HeroManagerProps> = ({ onNotify }) => {
 
           {/* Video Poster Selector */}
           <div>
-            <ImageSelector
-              label="Video Cinema Poster Backdrop"
+            <MediaSelector
+              label="Video Cinema Poster Backdrop Photo"
+              mediaType="image"
+              section="hero"
               value={config.videoPosterImage}
               onChange={(img) => setConfig({ ...config, videoPosterImage: img })}
-              presets={PRESET_VIDEO_POSTERS}
+              presets={PRESET_VIDEO_POSTERS.map((p) => ({ label: p.label, url: p.url, type: 'image' as const }))}
+              helperText="The still poster displayed before the video plays."
             />
           </div>
         </div>
@@ -786,51 +783,223 @@ export const HeroManager: React.FC<HeroManagerProps> = ({ onNotify }) => {
       {/* SUB-TAB 4: BACKGROUND ATMOSPHERE */}
       {activeSubTab === 'background' && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-6">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-amber-600" />
-              <span>Architectural Pitch Atmosphere & Backdrop</span>
-            </h3>
-            <p className="text-xs text-slate-500">
-              Select stadium visuals, overlay opacity intensity, and subtle pitch tactical grid pattern.
-            </p>
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-amber-600" />
+                <span>Architectural Pitch Atmosphere & Backdrop</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Configure full 100% clarity background visuals, overlay intensity, tactical grid, and contrast protection.
+              </p>
+            </div>
+            {config.enableBackground100Percent && (
+              <span className="self-start sm:self-auto text-[11px] font-mono font-bold uppercase bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>100% Full Clarity Active</span>
+              </span>
+            )}
+          </div>
+
+          {/* PRIMARY MASTER OPTION: 100% Background Visibility */}
+          <div
+            className={`p-5 rounded-2xl border transition-all ${
+              config.enableBackground100Percent
+                ? 'bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-50 border-amber-500 ring-2 ring-amber-500/20 shadow-sm'
+                : 'bg-slate-50/70 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-black uppercase tracking-wide text-slate-900">
+                    Enable Background Picture Clearly Visible at 100%
+                  </h4>
+                  <span
+                    className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${
+                      config.enableBackground100Percent
+                        ? 'bg-amber-500 text-slate-950 shadow-xs'
+                        : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {config.enableBackground100Percent ? 'Enabled (100% Clear)' : 'Standard Washout'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                  Removes the washed-out white overlay layer and renders your background pitch photograph completely visible at 100% natural opacity, vibrant saturation, and high definition.
+                </p>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={!!config.enableBackground100Percent}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setConfig({
+                      ...config,
+                      enableBackground100Percent: checked,
+                      backgroundOverlayOpacity: checked ? 100 : (config.backgroundOverlayOpacity || 10),
+                    });
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-14 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5.5 after:w-5.5 after:transition-all peer-checked:bg-amber-500 shadow-inner"></div>
+              </label>
+            </div>
+
+            {/* When 100% Background Visibility is Enabled: Contrast Protection Style */}
+            {config.enableBackground100Percent && (
+              <div className="mt-4 pt-4 border-t border-amber-500/20 space-y-2.5">
+                <div className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  Text Contrast & Scrim Atmosphere Style (When 100% Visible):
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, backgroundClarityTheme: 'dark-contrast' })}
+                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      config.backgroundClarityTheme === 'dark-contrast' || !config.backgroundClarityTheme
+                        ? 'bg-slate-900 text-white border-amber-500 ring-2 ring-amber-500/30 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                        <span>Cinema Dark Scrim</span>
+                      </span>
+                      {(config.backgroundClarityTheme === 'dark-contrast' || !config.backgroundClarityTheme) && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      Subtle stadium night scrim with crisp white typography, amber glow, and maximum cinematic stadium impact.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, backgroundClarityTheme: 'frosted-card' })}
+                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      config.backgroundClarityTheme === 'frosted-card'
+                        ? 'bg-slate-900 text-white border-amber-500 ring-2 ring-amber-500/30 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                        <span>Frosted Glass Panel</span>
+                      </span>
+                      {config.backgroundClarityTheme === 'frosted-card' && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      100% visible photograph edge-to-edge behind an architectural frosted-glass typography container.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, backgroundClarityTheme: 'clean-transparent' })}
+                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      config.backgroundClarityTheme === 'clean-transparent'
+                        ? 'bg-slate-900 text-white border-amber-500 ring-2 ring-amber-500/30 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span>Vivid Unfiltered</span>
+                      </span>
+                      {config.backgroundClarityTheme === 'clean-transparent' && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      Pure 100% raw photograph visibility with high-contrast text drop shadows and zero heavy overlay filters.
+                    </p>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
-              <label className="block text-xs font-bold text-slate-800">
-                Atmosphere Intensity & Overlay
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  Manual Opacity Intensity (0% to 100%)
+                </label>
+                <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-800 border border-amber-500/20">
+                  {config.backgroundOverlayOpacity}%
+                </span>
+              </div>
 
               <div>
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>Background Image Opacity</span>
-                  <span className="font-mono font-bold text-amber-700">
-                    {config.backgroundOverlayOpacity}%
-                  </span>
-                </div>
                 <input
                   type="range"
                   min="0"
-                  max="40"
-                  step="2"
+                  max="100"
+                  step="5"
                   value={config.backgroundOverlayOpacity}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
                     setConfig({
                       ...config,
-                      backgroundOverlayOpacity: parseInt(e.target.value, 10),
-                    })
-                  }
-                  className="w-full accent-amber-500 cursor-pointer"
+                      backgroundOverlayOpacity: val,
+                      enableBackground100Percent: val >= 95,
+                    });
+                  }}
+                  className="w-full accent-amber-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
                 />
-                <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-0.5">
-                  <span>0% (Ultra Subtle)</span>
-                  <span>10% (Default Clean)</span>
-                  <span>40% (Dramatic Stadium)</span>
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+                  <span>0% (Off)</span>
+                  <span>25%</span>
+                  <span>50%</span>
+                  <span>75%</span>
+                  <span className="font-bold text-amber-700">100% (Full Clarity)</span>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+              {/* Quick Opacity Presets */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+                  Quick Opacity Presets:
+                </span>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { label: '10% Subtle', val: 10, full: false },
+                    { label: '35% Medium', val: 35, full: false },
+                    { label: '70% Vivid', val: 70, full: false },
+                    { label: '100% Clear', val: 100, full: true },
+                  ].map((p) => (
+                    <button
+                      key={p.val}
+                      type="button"
+                      onClick={() =>
+                        setConfig({
+                          ...config,
+                          backgroundOverlayOpacity: p.val,
+                          enableBackground100Percent: p.full,
+                        })
+                      }
+                      className={`px-2 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase border transition-colors cursor-pointer text-center ${
+                        config.backgroundOverlayOpacity === p.val
+                          ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-slate-800">
                     Pitch Grid Blueprint Pattern
@@ -851,35 +1020,85 @@ export const HeroManager: React.FC<HeroManagerProps> = ({ onNotify }) => {
             </div>
 
             {/* Live Backdrop Preview Box */}
-            <div className="relative rounded-2xl overflow-hidden border border-slate-200 min-h-[160px] flex items-center justify-center text-center p-4">
+            <div className="relative rounded-2xl overflow-hidden border border-slate-200 min-h-[220px] flex flex-col items-center justify-center text-center p-5 shadow-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={config.backgroundImage}
                 alt="Backdrop preview"
-                style={{ opacity: (config.backgroundOverlayOpacity || 10) / 100 }}
-                className="absolute inset-0 w-full h-full object-cover"
+                style={{
+                  opacity: config.enableBackground100Percent
+                    ? 1
+                    : (config.backgroundOverlayOpacity || 10) / 100,
+                }}
+                className={`absolute inset-0 w-full h-full object-cover ${
+                  config.enableBackground100Percent
+                    ? 'saturate-100 brightness-95'
+                    : 'brightness-110 saturate-50'
+                }`}
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/80 to-white" />
-              {config.showPitchGridPattern && (
-                <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40" />
+
+              {config.enableBackground100Percent ? (
+                config.backgroundClarityTheme === 'dark-contrast' ? (
+                  <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-900/45 to-slate-950/85" />
+                ) : config.backgroundClarityTheme === 'frosted-card' ? (
+                  <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+                )
+              ) : (
+                <div
+                  className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/80 to-white"
+                  style={{
+                    opacity: Math.max(0.1, 1 - ((config.backgroundOverlayOpacity || 10) / 100) * 0.7),
+                  }}
+                />
               )}
-              <div className="relative z-10">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                  Live Backdrop Preview
+
+              {config.showPitchGridPattern && (
+                <div className={`absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] ${
+                  config.enableBackground100Percent ? 'opacity-20 invert' : 'opacity-40'
+                }`} />
+              )}
+
+              <div className={`relative z-10 max-w-sm ${
+                config.enableBackground100Percent && config.backgroundClarityTheme === 'frosted-card'
+                  ? 'backdrop-blur-md bg-white/90 border border-white/60 p-4 rounded-2xl shadow-lg'
+                  : ''
+              }`}>
+                <span className={`text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border shadow-xs ${
+                  config.enableBackground100Percent && config.backgroundClarityTheme !== 'frosted-card'
+                    ? 'text-amber-300 bg-black/60 border-amber-400/40 backdrop-blur-md'
+                    : 'text-amber-800 bg-amber-50 border-amber-200'
+                }`}>
+                  {config.enableBackground100Percent ? '100% Clear Backdrop Active' : 'Live Backdrop Preview'}
                 </span>
-                <h4 className="text-base font-black uppercase text-slate-900 mt-2">
+                <h4 className={`text-base sm:text-lg font-black uppercase mt-2 leading-tight ${
+                  config.enableBackground100Percent && config.backgroundClarityTheme !== 'frosted-card'
+                    ? 'text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]'
+                    : 'text-slate-900'
+                }`}>
                   {config.headlinePart1}
                 </h4>
+                <p className={`text-[11px] mt-1 line-clamp-1 ${
+                  config.enableBackground100Percent && config.backgroundClarityTheme !== 'frosted-card'
+                    ? 'text-slate-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]'
+                    : 'text-slate-500'
+                }`}>
+                  {config.subHeadline}
+                </p>
               </div>
             </div>
           </div>
 
           <div>
-            <ImageSelector
+            <MediaSelector
               label="Hero Pitch Background Image"
+              mediaType="image"
+              section="hero"
               value={config.backgroundImage}
               onChange={(img) => setConfig({ ...config, backgroundImage: img })}
-              presets={PRESET_HERO_BACKGROUNDS}
+              presets={PRESET_HERO_BACKGROUNDS.map((p) => ({ label: p.label, url: p.url, type: 'image' as const }))}
+              helperText="Upload a high-res pitch or stadium photo from your device, or choose an academy preset."
             />
           </div>
         </div>

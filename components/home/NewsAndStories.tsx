@@ -3,9 +3,14 @@
 import React, { useState, useSyncExternalStore } from 'react';
 import { NewsStory, NEWS_STORIES } from '@/data/academyData';
 import { AcademyDataManager, subscribeAcademyData } from '@/lib/academyDataManager';
-import { BookOpen, Clock, ArrowRight, X, User, Sparkles } from 'lucide-react';
+import { BookOpen, Clock, ArrowRight, X, User, Sparkles, Play, Film } from 'lucide-react';
+import { ActiveVideoData } from '@/components/modals/VideoModal';
 
-export const NewsAndStories: React.FC = () => {
+interface NewsAndStoriesProps {
+  onWatchVideo?: (video: ActiveVideoData) => void;
+}
+
+export const NewsAndStories: React.FC<NewsAndStoriesProps> = ({ onWatchVideo }) => {
   const news = useSyncExternalStore(
     subscribeAcademyData,
     () => AcademyDataManager.getNews(),
@@ -54,6 +59,27 @@ export const NewsAndStories: React.FC = () => {
                   FEATURE STORY
                 </span>
               </div>
+              {featuredStory.videoUrl && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onWatchVideo?.({
+                      title: featuredStory.title,
+                      subtitle: `${featuredStory.category} · ${featuredStory.date}`,
+                      videoUrl: featuredStory.videoUrl!,
+                      posterImage: featuredStory.image,
+                      description: featuredStory.summary,
+                      tag: `Video Story (${featuredStory.readTime})`,
+                      ctaText: 'Join MADEN FAF'
+                    });
+                  }}
+                  className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 px-3 py-1.5 rounded-xl bg-black/85 hover:bg-amber-500 hover:text-slate-950 text-white text-xs font-mono font-bold flex items-center gap-1.5 backdrop-blur-xs transition-colors cursor-pointer shadow-lg"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Watch Video Report</span>
+                </button>
+              )}
             </div>
 
             <div className="p-5 sm:p-8 space-y-3 sm:space-y-4">
@@ -98,6 +124,12 @@ export const NewsAndStories: React.FC = () => {
                     alt={story.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
+                  {story.videoUrl && (
+                    <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/85 text-amber-400 text-[9px] font-mono font-bold flex items-center gap-0.5 shadow-xs">
+                      <Play className="w-2.5 h-2.5 fill-current" />
+                      <span>Video</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 flex flex-col justify-between">
@@ -165,13 +197,36 @@ export const NewsAndStories: React.FC = () => {
                   <span>{selectedStory.readTime}</span>
                 </div>
 
-                <div className="relative aspect-video rounded-xl overflow-hidden my-3 border border-slate-200 bg-slate-100">
+                <div className="relative aspect-video rounded-xl overflow-hidden my-3 border border-slate-200 bg-slate-100 group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={selectedStory.image || 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80'}
                     alt={selectedStory.title}
                     className="w-full h-full object-cover"
                   />
+                  {selectedStory.videoUrl && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const s = selectedStory;
+                          onWatchVideo?.({
+                            title: s.title,
+                            subtitle: `${s.category} · ${s.date}`,
+                            videoUrl: s.videoUrl!,
+                            posterImage: s.image,
+                            description: s.summary,
+                            tag: `Story Video Report (${s.readTime})`,
+                            ctaText: 'Join MADEN FAF'
+                          });
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-amber-900/40 cursor-pointer active:scale-95 transition-all"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>Watch Video Report / Interview</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3 text-sm text-slate-700 leading-relaxed">

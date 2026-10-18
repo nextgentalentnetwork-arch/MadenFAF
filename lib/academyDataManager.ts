@@ -27,13 +27,37 @@ import {
   DigitalPortalConfig,
   HeroShowcaseConfig,
   DEFAULT_HERO_CONFIG,
+  CustomMediaItem,
+  DEFAULT_MEDIA_LIBRARY,
+  StoryPillarMedia,
+  DEFAULT_STORYTELLING_MEDIA,
+  HeaderConfig,
+  DEFAULT_HEADER_CONFIG,
+  HeaderMenuItem,
+  HeaderSublink,
+  FooterConfig,
+  DEFAULT_FOOTER_CONFIG,
+  FooterColumn,
+  FooterMenuItem,
+  FooterSocialLink,
 } from '@/data/academyData';
 import { UnifiedApiService } from '@/lib/unifiedApiService';
 
-export { DEFAULT_HERO_CONFIG };
+export type {
+  HeaderConfig,
+  FooterConfig,
+  HeaderMenuItem,
+  HeaderSublink,
+  FooterColumn,
+  FooterMenuItem,
+  FooterSocialLink,
+};
+export { DEFAULT_HERO_CONFIG, DEFAULT_HEADER_CONFIG, DEFAULT_FOOTER_CONFIG };
 
 const STORAGE_KEYS = {
   HERO_CONFIG: 'maden_dev_hero_config',
+  HEADER_CONFIG: 'maden_dev_header_config_v1',
+  FOOTER_CONFIG: 'maden_dev_footer_config_v1',
   PROGRAMS: 'maden_dev_programs',
   CAMPUSES: 'maden_dev_campuses',
   COACHES: 'maden_dev_coaches',
@@ -47,6 +71,8 @@ const STORAGE_KEYS = {
   PARENT_DELIVERABLES: 'maden_dev_parent_deliverables',
   PORTAL_CONFIG: 'maden_dev_portal_config',
   COMPONENT_TOGGLES: 'maden_dev_component_toggles',
+  MEDIA_LIBRARY: 'maden_dev_media_library_v1',
+  STORYTELLING_MEDIA: 'maden_dev_storytelling_media_v1',
   DEV_SESSION: 'maden_dev_auth_session',
   LAST_REMOTE_SYNC: 'maden_last_remote_sync',
 };
@@ -145,6 +171,12 @@ export const subscribeAcademyData = (callback: () => void) => {
 };
 
 export const AcademyDataManager = {
+  dispatchDataChange: () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('maden_data_updated'));
+    }
+  },
+
   // 0. Hero Showcase & Video Experience (MODULE 0)
   getHeroConfig: (): HeroShowcaseConfig =>
     getStored<HeroShowcaseConfig>(STORAGE_KEYS.HERO_CONFIG, DEFAULT_HERO_CONFIG),
@@ -165,6 +197,50 @@ export const AcademyDataManager = {
   resetHeroConfig: (): HeroShowcaseConfig => {
     AcademyDataManager.saveHeroConfig(DEFAULT_HERO_CONFIG);
     return DEFAULT_HERO_CONFIG;
+  },
+
+  // 0.1 Sticky Header Navigation & Academy Branding
+  getHeaderConfig: (): HeaderConfig =>
+    getStored<HeaderConfig>(STORAGE_KEYS.HEADER_CONFIG, DEFAULT_HEADER_CONFIG),
+  saveHeaderConfig: (config: HeaderConfig) => {
+    setStored(STORAGE_KEYS.HEADER_CONFIG, config);
+    UnifiedApiService.persistChange({
+      section: 'headerConfig',
+      action: 'syncAll',
+      data: config,
+    }).catch(console.warn);
+  },
+  updateHeaderConfig: (partial: Partial<HeaderConfig>): HeaderConfig => {
+    const current = AcademyDataManager.getHeaderConfig();
+    const updated = { ...current, ...partial };
+    AcademyDataManager.saveHeaderConfig(updated);
+    return updated;
+  },
+  resetHeaderConfig: (): HeaderConfig => {
+    AcademyDataManager.saveHeaderConfig(DEFAULT_HEADER_CONFIG);
+    return DEFAULT_HEADER_CONFIG;
+  },
+
+  // 0.2 Global Footer & Multi-Column Allocation
+  getFooterConfig: (): FooterConfig =>
+    getStored<FooterConfig>(STORAGE_KEYS.FOOTER_CONFIG, DEFAULT_FOOTER_CONFIG),
+  saveFooterConfig: (config: FooterConfig) => {
+    setStored(STORAGE_KEYS.FOOTER_CONFIG, config);
+    UnifiedApiService.persistChange({
+      section: 'footerConfig',
+      action: 'syncAll',
+      data: config,
+    }).catch(console.warn);
+  },
+  updateFooterConfig: (partial: Partial<FooterConfig>): FooterConfig => {
+    const current = AcademyDataManager.getFooterConfig();
+    const updated = { ...current, ...partial };
+    AcademyDataManager.saveFooterConfig(updated);
+    return updated;
+  },
+  resetFooterConfig: (): FooterConfig => {
+    AcademyDataManager.saveFooterConfig(DEFAULT_FOOTER_CONFIG);
+    return DEFAULT_FOOTER_CONFIG;
   },
 
   // 1. Programs
@@ -686,6 +762,7 @@ export const AcademyDataManager = {
   // 12. Component Toggles
   getComponentToggles: (): ComponentToggles =>
     getStored<ComponentToggles>(STORAGE_KEYS.COMPONENT_TOGGLES, DEFAULT_TOGGLES),
+
   saveComponentToggles: (toggles: ComponentToggles) => {
     setStored(STORAGE_KEYS.COMPONENT_TOGGLES, toggles);
     UnifiedApiService.persistChange({
@@ -694,10 +771,73 @@ export const AcademyDataManager = {
       data: toggles,
     }).catch(console.warn);
   },
+
   toggleComponent: (key: keyof ComponentToggles) => {
     const current = AcademyDataManager.getComponentToggles();
     current[key] = !current[key];
     AcademyDataManager.saveComponentToggles(current);
+  },
+
+  // 13. Custom Media Asset Hub & Media Library
+  getMediaLibrary: (): CustomMediaItem[] =>
+    getStored<CustomMediaItem[]>(STORAGE_KEYS.MEDIA_LIBRARY, DEFAULT_MEDIA_LIBRARY),
+
+  saveMediaLibrary: (items: CustomMediaItem[]) => {
+    setStored(STORAGE_KEYS.MEDIA_LIBRARY, items);
+    UnifiedApiService.persistChange({
+      section: 'mediaLibrary',
+      action: 'syncAll',
+      allData: items,
+    }).catch(console.warn);
+  },
+
+  addMediaItem: (item: CustomMediaItem) => {
+    const list = AcademyDataManager.getMediaLibrary();
+    const updated = [item, ...list];
+    AcademyDataManager.saveMediaLibrary(updated);
+  },
+
+  updateMediaItem: (id: string, partial: Partial<CustomMediaItem>) => {
+    const list = AcademyDataManager.getMediaLibrary();
+    const idx = list.findIndex((m) => m.id === id);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...partial };
+      AcademyDataManager.saveMediaLibrary([...list]);
+    }
+  },
+
+  deleteMediaItem: (id: string) => {
+    const list = AcademyDataManager.getMediaLibrary().filter((m) => m.id !== id);
+    AcademyDataManager.saveMediaLibrary(list);
+  },
+
+  // 14. Storytelling Academy Pillars Media
+  getStorytellingMedia: (): Record<string, StoryPillarMedia> =>
+    getStored<Record<string, StoryPillarMedia>>(
+      STORAGE_KEYS.STORYTELLING_MEDIA,
+      DEFAULT_STORYTELLING_MEDIA
+    ),
+
+  saveStorytellingMedia: (media: Record<string, StoryPillarMedia>) => {
+    setStored(STORAGE_KEYS.STORYTELLING_MEDIA, media);
+    UnifiedApiService.persistChange({
+      section: 'storytelling',
+      action: 'syncAll',
+      data: media,
+    }).catch(console.warn);
+  },
+
+  updateStoryPillarMedia: (
+    pillarId: string,
+    partial: Partial<StoryPillarMedia>
+  ) => {
+    const current = AcademyDataManager.getStorytellingMedia();
+    const existing = current[pillarId] || { id: pillarId, title: pillarId.toUpperCase() };
+    const updated = {
+      ...current,
+      [pillarId]: { ...existing, ...partial },
+    };
+    AcademyDataManager.saveStorytellingMedia(updated);
   },
 
   // Developer Session Management
@@ -705,6 +845,7 @@ export const AcademyDataManager = {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(STORAGE_KEYS.DEV_SESSION) === 'true';
   },
+
   setDeveloperAuthenticated: (auth: boolean) => {
     if (typeof window === 'undefined') return;
     if (auth) {
@@ -718,6 +859,8 @@ export const AcademyDataManager = {
   syncAllToSupabase: async () => {
     return UnifiedApiService.syncAllSections({
       heroConfig: AcademyDataManager.getHeroConfig(),
+      headerConfig: AcademyDataManager.getHeaderConfig(),
+      footerConfig: AcademyDataManager.getFooterConfig(),
       coaches: AcademyDataManager.getCoaches(),
       fixtures: AcademyDataManager.getFixtures(),
       news: AcademyDataManager.getNews(),
@@ -731,6 +874,8 @@ export const AcademyDataManager = {
       parentDeliverables: AcademyDataManager.getParentDeliverables(),
       portalConfig: AcademyDataManager.getPortalConfig(),
       toggles: AcademyDataManager.getComponentToggles(),
+      mediaLibrary: AcademyDataManager.getMediaLibrary(),
+      storytelling: AcademyDataManager.getStorytellingMedia(),
     });
   },
 
@@ -745,6 +890,33 @@ export const AcademyDataManager = {
 
         if (d.heroConfig && typeof d.heroConfig === 'object') {
           setStored(STORAGE_KEYS.HERO_CONFIG, { ...DEFAULT_HERO_CONFIG, ...d.heroConfig });
+          updatedCount++;
+        }
+        if (d.headerConfig && typeof d.headerConfig === 'object') {
+          setStored(STORAGE_KEYS.HEADER_CONFIG, { ...DEFAULT_HEADER_CONFIG, ...d.headerConfig });
+          updatedCount++;
+        }
+        if (d.footerConfig && typeof d.footerConfig === 'object') {
+          const remoteSocials: FooterSocialLink[] = Array.isArray(d.footerConfig.socialLinks)
+            ? d.footerConfig.socialLinks
+            : [];
+          const mergedSocials = [...remoteSocials];
+          ['facebook', 'instagram', 'twitter', 'youtube', 'whatsapp', 'email'].forEach((plat) => {
+            const hasPlat = mergedSocials.some(
+              (s) => s.platform.toLowerCase() === plat || (plat === 'twitter' && s.platform.toLowerCase() === 'x')
+            );
+            if (!hasPlat) {
+              const def = DEFAULT_FOOTER_CONFIG.socialLinks.find(
+                (s) => s.platform.toLowerCase() === plat || (plat === 'twitter' && s.platform.toLowerCase() === 'x')
+              );
+              if (def) mergedSocials.push({ ...def });
+            }
+          });
+          setStored(STORAGE_KEYS.FOOTER_CONFIG, {
+            ...DEFAULT_FOOTER_CONFIG,
+            ...d.footerConfig,
+            socialLinks: mergedSocials.length > 0 ? mergedSocials : DEFAULT_FOOTER_CONFIG.socialLinks,
+          });
           updatedCount++;
         }
         if (Array.isArray(d.coaches) && d.coaches.length > 0) {
@@ -799,11 +971,21 @@ export const AcademyDataManager = {
           setStored(STORAGE_KEYS.COMPONENT_TOGGLES, { ...DEFAULT_TOGGLES, ...d.toggles });
           updatedCount++;
         }
+        if (Array.isArray(d.mediaLibrary) && d.mediaLibrary.length > 0) {
+          setStored(STORAGE_KEYS.MEDIA_LIBRARY, d.mediaLibrary);
+          updatedCount++;
+        }
+        if (d.storytelling && typeof d.storytelling === 'object') {
+          setStored(STORAGE_KEYS.STORYTELLING_MEDIA, {
+            ...DEFAULT_STORYTELLING_MEDIA,
+            ...d.storytelling,
+          });
+          updatedCount++;
+        }
 
         if (updatedCount > 0) {
           localStorage.setItem(STORAGE_KEYS.LAST_REMOTE_SYNC, new Date().toISOString());
         }
-
         return { updated: updatedCount > 0, count: updatedCount };
       }
       return { updated: false, count: 0 };
@@ -830,6 +1012,8 @@ export const AcademyDataManager = {
     localStorage.removeItem(STORAGE_KEYS.PARENT_DELIVERABLES);
     localStorage.removeItem(STORAGE_KEYS.PORTAL_CONFIG);
     localStorage.removeItem(STORAGE_KEYS.COMPONENT_TOGGLES);
+    localStorage.removeItem(STORAGE_KEYS.MEDIA_LIBRARY);
+    localStorage.removeItem(STORAGE_KEYS.STORYTELLING_MEDIA);
     window.dispatchEvent(new Event('maden_data_updated'));
   },
 };

@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { Menu, X, ChevronDown, User, Shield, Phone, Sparkles, MapPin, ArrowRight, LogOut, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Menu, X, ChevronDown, User, Shield, Phone, Sparkles, MapPin, ArrowRight, LogOut, CheckCircle2, ExternalLink } from 'lucide-react';
 import { MadenLogo } from '@/components/ui/MadenLogo';
 import { useAuth } from '@/lib/AuthContext';
+import { AcademyDataManager, subscribeAcademyData, DEFAULT_HEADER_CONFIG } from '@/lib/academyDataManager';
 
 interface HeaderProps {
   onLoginClick: () => void;
@@ -12,7 +14,14 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => {
+  const router = useRouter();
   const { user, profile, logout } = useAuth();
+  const headerConfig = useSyncExternalStore(
+    subscribeAcademyData,
+    () => AcademyDataManager.getHeaderConfig(),
+    () => DEFAULT_HEADER_CONFIG
+  );
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -39,62 +48,26 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
     };
   }, [mobileMenuOpen]);
 
-  const navLinks = [
-    {
-      label: 'ABOUT',
-      href: '#about',
-      sublinks: [
-        { title: 'Who We Are & Philosophy', href: '#about', desc: 'Our vision, mission, and youth football ethos' },
-        { title: 'The MADEN Pathway', href: '#pathway', desc: '5-stage player development roadmap' },
-        { title: 'Impact Statistics', href: '#impact-stats', desc: 'Audited numbers on players, campuses & aid' },
-        { title: 'Coaching Staff & Mentors', href: '#coaches', desc: 'Meet our AFC & AIFF certified technical panel' },
-        { title: 'Success Stories & Reviews', href: '#stories', desc: 'Parent & player feedback and milestones' },
-        { title: 'Official Sponsors & Partners', href: '#sponsors', desc: 'Equipment, nutrition & club partners' },
-        { title: 'Global Vision', href: '#global', desc: 'Local roots to international exposure' },
-      ],
-    },
-    {
-      label: 'PROGRAMS',
-      href: '#programs',
-      sublinks: [
-        { title: 'Grassroots Foundation (U6–U9)', href: '#programs', desc: 'Agility, basic ball mastery & fun small-sided games' },
-        { title: 'Youth Development (U10–U13)', href: '#programs', desc: 'Positional awareness, technical speed & decision making' },
-        { title: 'Advanced Academy (U14–U15)', href: '#programs', desc: 'Tactical systems, strength & competitive league matches' },
-        { title: 'Elite Pro Pathway (U16–U18)', href: '#programs', desc: 'Scouting exposure, college & club showcase rosters' },
-        { title: 'Goalkeeper Specialist Program', href: '#programs', desc: 'Dedicated shot-stopping, distribution & reflex training' },
-        { title: 'Girls Football Development', href: '#programs', desc: 'Empowering future women leaders through dedicated coaching' },
-      ],
-    },
-    {
-      label: 'CAMPUSES',
-      href: '#campuses',
-      sublinks: [
-        { title: 'Gayeshpur Central Campus (HQ)', href: '#campuses', desc: 'Nadia District — Primary training facility' },
-        { title: 'North 24 Parganas Campus (Ichapore)', href: '#campuses', desc: 'In collab. with Leninnagar Sporting Club' },
-        { title: 'Krishnanagar Football School', href: '#campuses', desc: 'In collab. with United Red Star Club' },
-        { title: 'Kalyani High-Performance (Upcoming)', href: '#campuses', desc: 'Residential vision & sports science hub' },
-      ],
-    },
-    {
-      label: 'DEVELOPMENT',
-      href: '#coaches',
-      sublinks: [
-        { title: 'The MADEN Pathway', href: '#pathway', desc: '5-stage player development roadmap' },
-        { title: 'Certified Coaching Staff', href: '#coaches', desc: 'AFC & AIFF accredited technical mentors' },
-      ],
-    },
-    { label: 'MATCH CENTRE', href: '#match-centre' },
-    { label: 'EVENTS', href: '#events' },
-    { label: 'SCHOLARSHIPS', href: '#scholarships' },
-    { label: 'NEWS', href: '#news' },
-  ];
+  const navLinks = (headerConfig.menuItems || []).filter((item) => item.visible !== false);
 
-  const handleNavClick = (href: string) => {
+  const handleNavClick = (href: string, openInNewTab?: boolean) => {
     setActiveDropdown(null);
     setMobileMenuOpen(false);
-    const target = document.querySelector(href);
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth' });
+
+    if (openInNewTab || href.startsWith('http')) {
+      window.open(href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (href.startsWith('#')) {
+      const target = document.querySelector(href);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        router.push(`/${href}`);
+      }
+    } else {
+      router.push(href);
     }
   };
 
@@ -112,13 +85,41 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          {/* Logo with clean dark text for light background */}
+          {/* Logo with clean dark text for light background & admin-customizable branding */}
           <Link href="/" className="group focus:outline-none shrink-0">
             <div className="block sm:hidden">
-              <MadenLogo size="sm" variant="horizontal" lightText={false} />
+              <MadenLogo
+                size="sm"
+                variant="horizontal"
+                lightText={false}
+                logoType={headerConfig.logoType}
+                customLogoUrl={headerConfig.customLogoUrl}
+                logoIconShape={headerConfig.logoIconShape}
+                title={headerConfig.academyTitle}
+                highlight={headerConfig.academyHighlight}
+                taglinePrimary={headerConfig.taglinePrimary}
+                taglineSecondary={headerConfig.taglineSecondary}
+                showTaglines={headerConfig.showTaglines}
+                badgeText={headerConfig.badgeText}
+                showBadge={headerConfig.showBadge}
+              />
             </div>
             <div className="hidden sm:block">
-              <MadenLogo size={isScrolled ? 'sm' : 'md'} variant="horizontal" lightText={false} />
+              <MadenLogo
+                size={headerConfig.logoSize || (isScrolled ? 'sm' : 'md')}
+                variant="horizontal"
+                lightText={false}
+                logoType={headerConfig.logoType}
+                customLogoUrl={headerConfig.customLogoUrl}
+                logoIconShape={headerConfig.logoIconShape}
+                title={headerConfig.academyTitle}
+                highlight={headerConfig.academyHighlight}
+                taglinePrimary={headerConfig.taglinePrimary}
+                taglineSecondary={headerConfig.taglineSecondary}
+                showTaglines={headerConfig.showTaglines}
+                badgeText={headerConfig.badgeText}
+                showBadge={headerConfig.showBadge}
+              />
             </div>
           </Link>
 
@@ -126,36 +127,48 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
           <nav className="hidden xl:flex items-center gap-6">
             {navLinks.map((item) => (
               <div
-                key={item.label}
+                key={item.id || item.label}
                 className="relative"
-                onMouseEnter={() => item.sublinks && setActiveDropdown(item.label)}
+                onMouseEnter={() => item.sublinks && item.sublinks.length > 0 && setActiveDropdown(item.label)}
                 onMouseLeave={() => setActiveDropdown(null)}
               >
                 <button
-                  onClick={() => handleNavClick(item.href)}
-                  className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-700 hover:text-amber-600 transition-colors py-2 group focus:outline-none cursor-pointer"
+                  onClick={() => handleNavClick(item.href, item.openInNewTab)}
+                  className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700 hover:text-amber-600 transition-colors py-2 group focus:outline-none cursor-pointer"
                 >
                   <span className="group-hover:text-amber-600 transition-colors">{item.label}</span>
-                  {item.sublinks && (
+                  {item.badge && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase">
+                      {item.badge}
+                    </span>
+                  )}
+                  {item.sublinks && item.sublinks.length > 0 && (
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 transition-transform group-hover:rotate-180" />
                   )}
                 </button>
 
                 {/* Dropdown Menu */}
-                {item.sublinks && activeDropdown === item.label && (
+                {item.sublinks && item.sublinks.length > 0 && activeDropdown === item.label && (
                   <div className="absolute top-full left-0 w-72 p-2 bg-white border border-slate-200 rounded-2xl shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
                     {item.sublinks.map((sub, idx) => (
                       <button
-                        key={idx}
+                        key={sub.id || idx}
                         onClick={() => handleNavClick(sub.href)}
                         className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item block cursor-pointer"
                       >
-                        <div className="text-xs font-bold text-slate-900 group-hover/item:text-amber-600 transition-colors">
-                          {sub.title}
+                        <div className="text-xs font-bold text-slate-900 group-hover/item:text-amber-600 transition-colors flex items-center justify-between">
+                          <span>{sub.title}</span>
+                          {sub.badge && (
+                            <span className="text-[9px] font-mono px-1 rounded bg-amber-100 text-amber-800">
+                              {sub.badge}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                          {sub.desc}
-                        </div>
+                        {sub.desc && (
+                          <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                            {sub.desc}
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -229,13 +242,15 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link
-                  href="/login"
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer min-h-[38px] shadow-xs"
-                >
-                  <User className="w-3.5 h-3.5 text-slate-500" />
-                  <span>LOGIN</span>
-                </Link>
+                {headerConfig.portalButtonVisible !== false && (
+                  <Link
+                    href="/login"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer min-h-[38px] shadow-xs"
+                  >
+                    <User className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{headerConfig.portalButtonText || 'LOGIN'}</span>
+                  </Link>
+                )}
               </div>
             )}
 
@@ -249,27 +264,31 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
               <span>CMS</span>
             </Link>
 
-            {/* Join MADEN / Book Trial - Mustard Yellow */}
-            <button
-              onClick={onJoinClick}
-              className="relative group overflow-hidden px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider transition-all shadow-sm shadow-amber-200 cursor-pointer min-h-[38px] flex items-center gap-1.5 active:scale-95"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-slate-950" />
-              <span>JOIN MADEN</span>
-            </button>
+            {/* Join MADEN / Book Trial - Customizable CTA */}
+            {headerConfig.ctaButtonVisible !== false && (
+              <button
+                onClick={onJoinClick}
+                className="relative group overflow-hidden px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider transition-all shadow-sm shadow-amber-200 cursor-pointer min-h-[38px] flex items-center gap-1.5 active:scale-95"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                <span>{headerConfig.ctaButtonText || 'JOIN MADEN'}</span>
+              </button>
+            )}
           </div>
 
           {/* Mobile Right Bar */}
           <div className="flex xl:hidden items-center gap-2">
             {/* Quick Mobile Join Button */}
-            <button
-              onClick={onJoinClick}
-              className="sm:hidden px-3 py-1.5 rounded-xl bg-amber-500 active:bg-amber-600 text-slate-950 text-[11px] font-black uppercase tracking-wider shadow-sm min-h-[38px] flex items-center gap-1"
-              aria-label="Book a Trial"
-            >
-              <Sparkles className="w-3 h-3 text-slate-950" />
-              <span>Trial</span>
-            </button>
+            {headerConfig.ctaButtonVisible !== false && (
+              <button
+                onClick={onJoinClick}
+                className="sm:hidden px-3 py-1.5 rounded-xl bg-amber-500 active:bg-amber-600 text-slate-950 text-[11px] font-black uppercase tracking-wider shadow-sm min-h-[38px] flex items-center gap-1"
+                aria-label="Book a Trial"
+              >
+                <Sparkles className="w-3 h-3 text-slate-950" />
+                <span>Trial</span>
+              </button>
+            )}
 
             {/* Mobile Portal Trigger */}
             <button
@@ -297,7 +316,21 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
         <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto animate-in fade-in duration-200 xl:hidden">
           {/* Mobile Drawer Header */}
           <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white sticky top-0 z-10 shadow-xs">
-            <MadenLogo size="sm" variant="horizontal" lightText={false} />
+            <MadenLogo
+              size="sm"
+              variant="horizontal"
+              lightText={false}
+              logoType={headerConfig.logoType}
+              customLogoUrl={headerConfig.customLogoUrl}
+              logoIconShape={headerConfig.logoIconShape}
+              title={headerConfig.academyTitle}
+              highlight={headerConfig.academyHighlight}
+              taglinePrimary={headerConfig.taglinePrimary}
+              taglineSecondary={headerConfig.taglineSecondary}
+              showTaglines={headerConfig.showTaglines}
+              badgeText={headerConfig.badgeText}
+              showBadge={headerConfig.showBadge}
+            />
             <button
               onClick={() => setMobileMenuOpen(false)}
               className="p-2 text-slate-500 hover:text-slate-900 rounded-xl bg-slate-50 border border-slate-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -409,7 +442,7 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                   className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-sm shadow-amber-200 min-h-[46px] flex items-center justify-center gap-2"
                 >
                   <Sparkles className="w-4 h-4 text-slate-950" />
-                  <span>Book a Trial / Join MADEN FAF</span>
+                  <span>{headerConfig.ctaButtonText || 'Book a Trial / Join MADEN FAF'}</span>
                 </Link>
                 <Link
                   href="/login"

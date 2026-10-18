@@ -15,6 +15,8 @@ export interface Program {
     mental: number;
   };
   badgeColor: string;
+  image?: string;
+  videoUrl?: string;
 }
 
 export interface Campus {
@@ -38,6 +40,7 @@ export interface Campus {
   contactPhone: string;
   contactEmail: string;
   image: string;
+  videoUrl?: string;
 }
 
 export interface PathwayStage {
@@ -107,6 +110,8 @@ export interface MatchFixture {
   playerOfTheMatch?: string;
   matchReportSnippet?: string;
   keyEvents?: string[];
+  videoHighlightUrl?: string;
+  matchPhoto?: string;
 }
 
 export interface ScholarshipTier {
@@ -228,6 +233,8 @@ export interface AcademyEvent {
   registrationStatus: 'Open' | 'Filling Fast' | 'Waitlist';
   fee: string;
   description: string;
+  bannerImage?: string;
+  videoUrl?: string;
 }
 
 export interface NewsStory {
@@ -240,6 +247,7 @@ export interface NewsStory {
   summary: string;
   content: string[];
   image: string;
+  videoUrl?: string;
   featured?: boolean;
 }
 
@@ -1267,6 +1275,7 @@ export interface CoachStaffMember {
   certifications: string[];
   careerHighlights: string[];
   image: string;
+  videoUrl?: string;
   accentColor: string;
 }
 
@@ -1412,6 +1421,8 @@ export interface TestimonialItem {
   type: 'parent' | 'player' | 'scout';
   campus: string;
   avatar: string;
+  actionPhoto?: string;
+  videoUrl?: string;
   quote: string;
   fullStory: string;
   milestone: string;
@@ -1570,6 +1581,8 @@ export interface HeroShowcaseConfig {
   // Background visual atmosphere
   backgroundImage: string;
   backgroundOverlayOpacity: number; // 0 to 100 percent
+  enableBackground100Percent?: boolean; // When true, background picture is visible clearly at 100%
+  backgroundClarityTheme?: 'dark-contrast' | 'frosted-card' | 'clean-transparent'; // Scrim & text contrast style when 100%
   showPitchGridPattern: boolean;
 
   // Stat Strip metrics
@@ -1614,6 +1627,8 @@ export const DEFAULT_HERO_CONFIG: HeroShowcaseConfig = {
   backgroundImage:
     'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=2000&q=85',
   backgroundOverlayOpacity: 10,
+  enableBackground100Percent: false,
+  backgroundClarityTheme: 'dark-contrast',
   showPitchGridPattern: true,
 
   stats: [
@@ -1622,5 +1637,624 @@ export const DEFAULT_HERO_CONFIG: HeroShowcaseConfig = {
     { id: 'stat-3', value: 'AFC / AIFF', label: 'Certified Staff' },
     { id: 'stat-4', value: 'U8 – U18', label: 'Development Cohorts' },
   ],
+};
+
+// ==========================================
+// CUSTOM MEDIA ASSET & MEDIA LIBRARY ENGINE
+// ==========================================
+
+export type MediaSection =
+  | 'all'
+  | 'hero'
+  | 'programs'
+  | 'campuses'
+  | 'coaches'
+  | 'fixtures'
+  | 'news'
+  | 'events'
+  | 'storytelling'
+  | 'testimonials'
+  | 'sponsors'
+  | 'membership'
+  | 'general';
+
+export interface CustomMediaItem {
+  id: string;
+  title: string;
+  type: 'image' | 'video';
+  url: string; // Base64 data URL, https URL, YouTube, Vimeo, or direct MP4 link
+  thumbnailUrl?: string;
+  section: MediaSection;
+  caption?: string;
+  duration?: string; // For videos, e.g. "3:45", "1:20"
+  fileSize?: string;
+  createdAt: string;
+  isPreset?: boolean;
+}
+
+export interface StoryPillarMedia {
+  id: string;
+  title: string;
+  image?: string;
+  videoUrl?: string;
+  videoTag?: string;
+}
+
+export const DEFAULT_STORYTELLING_MEDIA: Record<string, StoryPillarMedia> = {
+  train: {
+    id: 'train',
+    title: 'TRAIN: High Ball Repetition Drills',
+    image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80',
+    videoUrl: 'https://www.youtube.com/watch?v=ScMzIvxBSi4',
+    videoTag: 'Training Methodology · 2:10',
+  },
+  learn: {
+    id: 'learn',
+    title: 'LEARN: Tactical Video & Scan Frequency',
+    image: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80',
+    videoUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+    videoTag: 'Classroom Analysis · 3:15',
+  },
+  compete: {
+    id: 'compete',
+    title: 'COMPETE: Official Youth League Fixtures',
+    image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+    videoUrl: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+    videoTag: 'Competitive Matchday · 4:20',
+  },
+  perform: {
+    id: 'perform',
+    title: 'PERFORM: Biometrics & Speed Gates',
+    image: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80',
+    videoUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    videoTag: 'Sports Science Testing · 1:45',
+  },
+  grow: {
+    id: 'grow',
+    title: 'GROW: Character & Captaincy Rotation',
+    image: 'https://images.unsplash.com/photo-1529900240041-22f114d18eb1?auto=format&fit=crop&w=1200&q=80',
+    videoUrl: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+    videoTag: 'Life Skills & Values · 2:30',
+  },
+  serve: {
+    id: 'serve',
+    title: 'SERVE: 30% Grassroots Merit Scholarships',
+    image: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1200&q=80',
+    videoUrl: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+    videoTag: 'Community Impact · 3:00',
+  },
+};
+
+export const DEFAULT_MEDIA_LIBRARY: CustomMediaItem[] = [
+  // --- HERO ASSETS ---
+  {
+    id: 'media-hero-bg-1',
+    title: 'Gayeshpur Floodlit Evening Pitch',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=2000&q=85',
+    section: 'hero',
+    caption: 'Official 11v11 natural grass training pitch under LED floodlights',
+    createdAt: '2026-04-01T10:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-hero-doc-video',
+    title: 'Where Passion Meets Excellence (Academy Showcase)',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1600&q=80',
+    section: 'hero',
+    caption: 'Cinematic documentary of MADEN FAF youth training and coaching panel',
+    duration: '3:45',
+    createdAt: '2026-04-01T10:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-hero-bg-2',
+    title: 'Youth Squad Pre-Match Huddle',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1529900240041-22f114d18eb1?auto=format&fit=crop&w=2000&q=85',
+    section: 'hero',
+    caption: 'U15 team huddle before IFA Bengal Youth Championship',
+    createdAt: '2026-04-02T11:00:00.000Z',
+    isPreset: true,
+  },
+
+  // --- PROGRAMS ASSETS ---
+  {
+    id: 'media-prog-foundation',
+    title: 'U8-U10 Grassroots Ball Mastery Drill',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80',
+    section: 'programs',
+    caption: 'Bilateral footwork cones and small-sided games setup',
+    createdAt: '2026-04-03T09:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-prog-drills-video',
+    title: 'High-Repetition Rondo & Passing Rhythm Drill',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=ScMzIvxBSi4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80',
+    section: 'programs',
+    caption: '1-touch and 2-touch dynamic rondos under coach supervision',
+    duration: '2:15',
+    createdAt: '2026-04-03T09:30:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-prog-goalkeeper',
+    title: 'Goalkeeper High Diving & Shot-Stopping Session',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1200&q=80',
+    section: 'programs',
+    caption: 'Specialist goalkeeper coaching on reflex stops and sweeping',
+    createdAt: '2026-04-04T10:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-prog-gk-video',
+    title: 'Goalkeeper Distribution & 1v1 Angle Block Video',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=EngW7tLk6R8',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1200&q=80',
+    section: 'programs',
+    caption: 'Side volleys, clip passes, and low reaction saves breakdown',
+    duration: '1:50',
+    createdAt: '2026-04-04T10:30:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-prog-girls',
+    title: 'Girls Youth Development & High Performance Cohort',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80',
+    section: 'programs',
+    caption: 'Dedicated training sessions led by licensed female coaches',
+    createdAt: '2026-04-05T12:00:00.000Z',
+    isPreset: true,
+  },
+
+  // --- CAMPUSES ASSETS ---
+  {
+    id: 'media-camp-gayeshpur',
+    title: 'Gayeshpur Central Ground Aerial Panorama',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1529900240041-22f114d18eb1?auto=format&fit=crop&w=1200&q=80',
+    section: 'campuses',
+    caption: 'Flagship campus facility with full-size grass pitch & clubhouse',
+    createdAt: '2026-04-06T08:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-camp-drone-tour',
+    title: 'Campus Tour & Training Facility Walkthrough',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=EngW7tLk6R8',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1529900240041-22f114d18eb1?auto=format&fit=crop&w=1200&q=80',
+    section: 'campuses',
+    caption: 'Drone fly-through across Gayeshpur, Ichapore, and Krishnanagar facilities',
+    duration: '2:40',
+    createdAt: '2026-04-06T08:30:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-camp-ichapore',
+    title: 'Ichapore Ground (Historic Leninnagar SC)',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+    section: 'campuses',
+    caption: 'Natural grass turf near Ichapore railway station for North 24 Parganas intake',
+    createdAt: '2026-04-07T09:00:00.000Z',
+    isPreset: true,
+  },
+
+  // --- COACHES ASSETS ---
+  {
+    id: 'media-coach-bapi',
+    title: 'Coach Bapi Roy (AFC B Technical Director)',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
+    section: 'coaches',
+    caption: 'Head of Youth Methodology and former IFA youth evaluator',
+    createdAt: '2026-04-08T11:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-coach-tactics-video',
+    title: 'Coach Tactical Masterclass & Pitch Geometry',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
+    section: 'coaches',
+    caption: 'Explaining half-space overloads and pressing triggers to U15 squad',
+    duration: '3:10',
+    createdAt: '2026-04-08T11:30:00.000Z',
+    isPreset: true,
+  },
+
+  // --- MATCHES / FIXTURES ASSETS ---
+  {
+    id: 'media-match-eastbengal',
+    title: 'MADEN FAF 3 - 1 East Bengal Youth Highlights',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+    section: 'fixtures',
+    caption: 'Full-time match highlights, goals from Subham Roy and penalty stop',
+    duration: '4:15',
+    createdAt: '2026-04-09T16:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-match-photo-derby',
+    title: 'Matchday Action: Goal Celebration at Gayeshpur Central',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+    section: 'fixtures',
+    caption: 'U15 team celebrating second-half equalizer against East Bengal',
+    createdAt: '2026-04-09T16:30:00.000Z',
+    isPreset: true,
+  },
+
+  // --- EVENTS & CAMPS ASSETS ---
+  {
+    id: 'media-event-summer-camp',
+    title: 'Bengal Summer High-Performance Camp Banner',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80',
+    section: 'events',
+    caption: 'Official 10-day intensive residential football boot camp at Nadia',
+    createdAt: '2026-04-10T14:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-event-teaser-video',
+    title: 'Open Scouting Combine 2026 Teaser & Trial Guide',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80',
+    section: 'events',
+    caption: 'What scouts look for during trial day: agility, bilateral touch, game IQ',
+    duration: '2:05',
+    createdAt: '2026-04-10T14:30:00.000Z',
+    isPreset: true,
+  },
+
+  // --- NEWS ASSETS ---
+  {
+    id: 'media-news-ifa-kickoff',
+    title: 'State Championship Kickoff Editorial Photo',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1200&q=80',
+    section: 'news',
+    caption: 'IFA Youth Championship official opening ceremony photo',
+    createdAt: '2026-04-11T12:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-news-video-report',
+    title: 'Video Report: Sports Science & Biometric Lab Launch',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1200&q=80',
+    section: 'news',
+    caption: 'Coach and sports scientist interview on Yo-Yo test integration',
+    duration: '3:20',
+    createdAt: '2026-04-11T12:30:00.000Z',
+    isPreset: true,
+  },
+
+  // --- TESTIMONIALS & STORIES ASSETS ---
+  {
+    id: 'media-test-subham-video',
+    title: 'Subham Roy Player Journey & Parent Story',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1200&q=80',
+    section: 'testimonials',
+    caption: 'How 18 months of structured coaching opened state league selection',
+    duration: '2:50',
+    createdAt: '2026-04-12T15:00:00.000Z',
+    isPreset: true,
+  },
+  {
+    id: 'media-sample-mp4-direct',
+    title: 'Direct HTML5 MP4 High-Performance Drill Demonstration',
+    type: 'video',
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+    section: 'general',
+    caption: 'High-definition direct MP4 test stream for offline/local player preview',
+    duration: '0:15',
+    createdAt: '2026-04-12T15:30:00.000Z',
+    isPreset: true,
+  },
+];
+
+// ==========================================
+// HEADER CUSTOMIZATION CONFIGURATION MODEL
+// ==========================================
+
+export interface HeaderSublink {
+  id: string;
+  title: string;
+  href: string;
+  desc: string;
+  badge?: string;
+}
+
+export interface HeaderMenuItem {
+  id: string;
+  label: string;
+  href: string;
+  visible: boolean;
+  badge?: string;
+  openInNewTab?: boolean;
+  sublinks?: HeaderSublink[];
+}
+
+export interface HeaderConfig {
+  // 1. Header Academy icon and tagline
+  logoType: 'crest' | 'custom-image';
+  customLogoUrl: string;
+  logoIconShape?: 'shield' | 'circle' | 'square' | 'rounded';
+  logoSize?: 'sm' | 'md' | 'lg';
+  academyTitle: string; // e.g. "MADEN"
+  academyHighlight: string; // e.g. "FAF"
+  taglinePrimary: string; // e.g. "Maden Football Academy Foundation"
+  taglineSecondary: string; // e.g. "Where Passion Meets Excellence"
+  showTaglines: boolean;
+  badgeText: string; // e.g. "EST. 2021"
+  showBadge: boolean;
+
+  // Header quick info / announcement strip
+  showAnnouncementBar: boolean;
+  announcementText: string;
+  announcementLinkText: string;
+  announcementLinkHref: string;
+
+  // Header Action CTAs
+  ctaButtonText: string;
+  ctaButtonVisible: boolean;
+  portalButtonText: string;
+  portalButtonVisible: boolean;
+
+  // 2. Header Menus
+  menuItems: HeaderMenuItem[];
+}
+
+export const DEFAULT_HEADER_CONFIG: HeaderConfig = {
+  logoType: 'crest',
+  customLogoUrl: '/images/maden-faf-official-logo.png',
+  logoIconShape: 'circle',
+  logoSize: 'md',
+  academyTitle: 'MADEN',
+  academyHighlight: 'FAF',
+  taglinePrimary: 'Maden Football Academy Foundation',
+  taglineSecondary: 'Where Passion Meets Excellence',
+  showTaglines: true,
+  badgeText: 'EST. 2021',
+  showBadge: true,
+
+  showAnnouncementBar: false,
+  announcementText: 'Official Intake 2026/27 Trials Now Open across all Bengal Campuses',
+  announcementLinkText: 'Book Trial',
+  announcementLinkHref: '#programs',
+
+  ctaButtonText: 'Book Evaluation',
+  ctaButtonVisible: true,
+  portalButtonText: 'Digital Portal',
+  portalButtonVisible: true,
+
+  menuItems: [
+    {
+      id: 'menu-about',
+      label: 'ABOUT',
+      href: '/about',
+      visible: true,
+      sublinks: [
+        { id: 'sub-about-1', title: 'Who We Are & Philosophy', href: '/about', desc: 'Our vision, mission, and youth football ethos' },
+        { id: 'sub-about-2', title: 'The MADEN Pathway', href: '/pathway', desc: '5-stage player development roadmap', badge: 'CORE' },
+        { id: 'sub-about-3', title: 'Coaching Staff & Mentors', href: '/coaches', desc: 'Meet our AFC & AIFF certified technical panel' },
+        { id: 'sub-about-4', title: 'Parent Experience & Reviews', href: '/parent-experience', desc: 'Weekly metrics, WhatsApp reports & reviews' },
+        { id: 'sub-about-5', title: 'Success Stories & Alumni', href: '/success-stories', desc: 'Alumni signings and collegiate awards' },
+      ],
+    },
+    {
+      id: 'menu-programs',
+      label: 'PROGRAMS',
+      href: '/programs',
+      visible: true,
+      badge: 'POPULAR',
+      sublinks: [
+        { id: 'sub-prog-1', title: 'All Football Curriculums', href: '/programs', desc: 'Explore Grassroots, Youth & Elite divisions' },
+        { id: 'sub-prog-2', title: 'Scholarship Programs', href: '/scholarships', desc: '100% full-ride & need-based financial aid', badge: 'AID' },
+        { id: 'sub-prog-3', title: 'The MADEN Pathway', href: '/pathway', desc: 'Structured technical milestone roadmap' },
+      ],
+    },
+    {
+      id: 'menu-campuses',
+      label: 'CAMPUSES',
+      href: '/campuses',
+      visible: true,
+      sublinks: [
+        { id: 'sub-camp-1', title: 'Gayeshpur Central Campus (HQ)', href: '/campuses', desc: 'Nadia District — Primary floodlit ground', badge: 'HQ' },
+        { id: 'sub-camp-2', title: 'Kalyani Youth Centre', href: '/campuses', desc: 'Synthetic turf arena & speed track' },
+        { id: 'sub-camp-3', title: 'Kolkata North Centre', href: '/campuses', desc: 'In collab. with Leninnagar Sporting Club' },
+      ],
+    },
+    { id: 'menu-fixtures', label: 'MATCH CENTRE', href: '/fixtures', visible: true, badge: 'LIVE' },
+    { id: 'menu-events', label: 'CAMPS & EVENTS', href: '/events', visible: true },
+    { id: 'menu-news', label: 'NEWS', href: '/news', visible: true },
+    { id: 'menu-contact', label: 'CONTACT', href: '/contact', visible: true },
+  ],
+};
+
+// ==========================================
+// FOOTER CUSTOMIZATION CONFIGURATION MODEL
+// ==========================================
+
+export interface FooterMenuItem {
+  id: string;
+  label: string;
+  href: string;
+  desc?: string;
+  badge?: string;
+  openInNewTab?: boolean;
+  actionType?: 'link' | 'bookTrial' | 'portalLogin';
+}
+
+export interface FooterColumn {
+  id: string;
+  title: string;
+  columnSpan?: number; // default 2 or 3
+  items: FooterMenuItem[];
+}
+
+export interface FooterSocialLink {
+  id: string;
+  platform: 'facebook' | 'instagram' | 'youtube' | 'twitter' | 'whatsapp' | 'email' | 'linkedin' | 'threads' | 'telegram' | 'website' | string;
+  label: string;
+  url: string;
+  visible: boolean;
+}
+
+export interface FooterConfig {
+  // 3. Footer Academy Icon and Tagline
+  logoType: 'crest' | 'custom-image';
+  customLogoUrl: string;
+  academyTitle: string;
+  academyHighlight: string;
+  tagline: string;
+  motto: string;
+  establishedText: string;
+  showMotto: boolean;
+  showSocials: boolean;
+  socialLinks: FooterSocialLink[];
+
+  // 4. Footer Menu items and allocation
+  columns: FooterColumn[];
+
+  // Legal & copyright bar
+  copyrightText: string;
+  bottomNote: string;
+  showScrollToTop: boolean;
+}
+
+export const DEFAULT_FOOTER_CONFIG: FooterConfig = {
+  logoType: 'crest',
+  customLogoUrl: '/images/maden-faf-official-logo.png',
+  academyTitle: 'MADEN',
+  academyHighlight: 'FAF',
+  tagline:
+    'MADEN FAF (Maden Football Academy Foundation) is dedicated to professional youth football development, technical excellence, character building, and creating life-changing athletic opportunities across West Bengal.',
+  motto: 'WHERE PASSION MEETS EXCELLENCE',
+  establishedText: 'EST. 2021 · AFC & AIFF CERTIFIED YOUTH PATHWAY',
+  showMotto: true,
+  showSocials: true,
+  socialLinks: [
+    { id: 'soc-fb', platform: 'facebook', label: 'Facebook', url: 'https://facebook.com/madenfaf', visible: true },
+    { id: 'soc-ig', platform: 'instagram', label: 'Instagram', url: 'https://instagram.com/madenfaf', visible: true },
+    { id: 'soc-tw', platform: 'twitter', label: 'Twitter / X', url: 'https://x.com/madenfaf', visible: true },
+    { id: 'soc-yt', platform: 'youtube', label: 'YouTube', url: 'https://youtube.com/@madenfaf', visible: true },
+    { id: 'soc-wa', platform: 'whatsapp', label: 'WhatsApp', url: 'https://wa.me/919830245891', visible: true },
+    { id: 'soc-em', platform: 'email', label: 'Email', url: 'contact@madenfaf.com', visible: true },
+  ],
+
+  columns: [
+    {
+      id: 'col-programs',
+      title: 'Programs',
+      columnSpan: 2,
+      items: [
+        { id: 'f-p1', label: 'Foundation (U8-U10)', href: '/programs' },
+        { id: 'f-p2', label: 'Development (U11-U13)', href: '/programs' },
+        { id: 'f-p3', label: 'Advanced (U14-U15)', href: '/programs' },
+        { id: 'f-p4', label: 'Elite Pre-Pro (U16-U18)', href: '/programs' },
+        { id: 'f-p5', label: 'Goalkeeper Academy', href: '/programs' },
+        { id: 'f-p6', label: 'Girls Football Program', href: '/programs' },
+        { id: 'f-p7', label: 'Holiday Camps', href: '/events' },
+      ],
+    },
+    {
+      id: 'col-campuses',
+      title: 'Campus Network',
+      columnSpan: 3,
+      items: [
+        {
+          id: 'f-c1',
+          label: 'Gayeshpur Campus (HQ)',
+          href: '/campuses',
+          desc: 'Central Training Ground, Nadia',
+          badge: 'HQ',
+        },
+        {
+          id: 'f-c2',
+          label: 'North 24 Parganas Campus',
+          href: '/campuses',
+          desc: 'In association with Leninnagar Sporting Club, Ichapore',
+        },
+        {
+          id: 'f-c3',
+          label: 'Krishnanagar Football School',
+          href: '/campuses',
+          desc: 'In collaboration with United Red Star Club',
+        },
+        {
+          id: 'f-c4',
+          label: 'Kalyani High-Performance Ground',
+          href: '/campuses',
+          desc: 'Synthetic Turf & Speed Arena',
+          badge: 'Hub',
+        },
+      ],
+    },
+    {
+      id: 'col-admissions',
+      title: 'Admissions & Portal',
+      columnSpan: 3,
+      items: [
+        {
+          id: 'f-a1',
+          label: 'Book Evaluation Session',
+          href: '/join',
+          actionType: 'bookTrial',
+          desc: 'Schedule on-pitch skills assessment',
+          badge: 'Apply',
+        },
+        {
+          id: 'f-a2',
+          label: 'Digital Player Portal',
+          href: '/portal',
+          actionType: 'portalLogin',
+          desc: 'Attendance, performance card & analytics',
+        },
+        {
+          id: 'f-a3',
+          label: 'Need-Based Scholarships',
+          href: '/scholarships',
+          desc: 'Full & partial merit-cum-means grants',
+        },
+        {
+          id: 'f-a4',
+          label: 'Match Fixtures & Results',
+          href: '/fixtures',
+          desc: 'Live scores & team lineups',
+        },
+        {
+          id: 'f-a5',
+          label: 'Latest News & Stories',
+          href: '/news',
+          desc: 'Tournaments and scouting milestones',
+        },
+      ],
+    },
+  ],
+
+  copyrightText: '© 2026 MADEN FAF. All rights reserved.',
+  bottomNote: 'Maden Football Academy Foundation · Registered Non-Profit Youth Sports Development Initiative',
+  showScrollToTop: true,
 };
 

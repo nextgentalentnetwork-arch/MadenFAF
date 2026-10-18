@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Campus } from '@/data/academyData';
 import { AcademyDataManager } from '@/lib/academyDataManager';
-import { ImageSelector } from './ImageSelector';
+import { MediaSelector } from './MediaSelector';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { Building, Plus, Edit3, Trash2, X, Calendar, Clock, MapPin, Phone, Mail, Shield, CheckCircle2 } from 'lucide-react';
 
@@ -252,11 +252,32 @@ export const CampusesManager: React.FC<{
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               {/* Photo Selector */}
-              <ImageSelector
-                label="Campus Grounds Photograph (Upload from Device or pick a Preset)"
+              <MediaSelector
+                label="Campus Grounds Photograph (Upload from Device, Media Library, or Presets)"
+                mediaType="image"
+                section="campuses"
                 value={editingCampus.image}
                 onChange={(imgUrl) => setEditingCampus({ ...editingCampus, image: imgUrl })}
-                presets={PRESET_CAMPUS_PHOTOS}
+                presets={PRESET_CAMPUS_PHOTOS.map((p) => ({ label: p.label, url: p.url, type: 'image' as const }))}
+                helperText="Main showcase photo for this campus facility."
+              />
+
+              {/* Video Tour Selector */}
+              <MediaSelector
+                label="Campus Virtual Tour / Aerial Drone Video"
+                mediaType="video"
+                section="campuses"
+                value={editingCampus.videoUrl || ''}
+                onChange={(vidUrl) => setEditingCampus({ ...editingCampus, videoUrl: vidUrl })}
+                presets={[
+                  {
+                    label: 'Campus Drone Aerial Fly-Through (2:40)',
+                    url: 'https://www.youtube.com/watch?v=EngW7tLk6R8',
+                    type: 'video',
+                    duration: '2:40',
+                  },
+                ]}
+                helperText="Adds a playable 'Virtual Tour' badge to the campus showcase on the homepage!"
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -492,11 +513,30 @@ export const CampusesManager: React.FC<{
 
             <form onSubmit={handleCreate} className="space-y-4 text-xs">
               {/* Photo Selector */}
-              <ImageSelector
-                label="Campus Grounds Photograph (Upload from Device or pick a Preset)"
+              <MediaSelector
+                label="Campus Grounds Photograph (Upload from Device or Media Library)"
+                mediaType="image"
+                section="campuses"
                 value={newCampus.image}
                 onChange={(imgUrl) => setNewCampus({ ...newCampus, image: imgUrl })}
-                presets={PRESET_CAMPUS_PHOTOS}
+                presets={PRESET_CAMPUS_PHOTOS.map((p) => ({ label: p.label, url: p.url, type: 'image' as const }))}
+              />
+
+              {/* Video Tour Selector */}
+              <MediaSelector
+                label="Campus Virtual Tour / Aerial Drone Video"
+                mediaType="video"
+                section="campuses"
+                value={newCampus.videoUrl || ''}
+                onChange={(vidUrl) => setNewCampus({ ...newCampus, videoUrl: vidUrl })}
+                presets={[
+                  {
+                    label: 'Campus Drone Aerial Fly-Through (2:40)',
+                    url: 'https://www.youtube.com/watch?v=EngW7tLk6R8',
+                    type: 'video',
+                    duration: '2:40',
+                  },
+                ]}
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

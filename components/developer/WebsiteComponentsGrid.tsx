@@ -267,20 +267,37 @@ export const WEBSITE_COMPONENTS: ComponentMeta[] = [
     toggleKey: 'header',
     name: 'Sticky Header Navigation',
     category: 'Site Structure & Access',
-    description: 'Global navigation bar with campus selector, evaluation CTA button, and responsive mobile menu.',
+    description: 'Customizable Academy icon/crest, title, taglines, badges, desktop and mobile menus with nested dropdowns.',
     icon: Sliders,
-    accentColor: 'slate',
-    itemsCountText: () => 'Global Navigation Bar',
+    accentColor: 'amber',
+    targetTab: 'headerFooter',
+    itemsCountText: () => {
+      try {
+        const cfg = AcademyDataManager.getHeaderConfig();
+        return `${cfg.menuItems?.length || 8} Navigation Items · Icon & Taglines`;
+      } catch {
+        return 'Custom Icon, Taglines & Menus';
+      }
+    },
   },
   {
     id: 'footer',
     toggleKey: 'footer',
     name: 'Global Footer & Legal Credentials',
     category: 'Site Structure & Access',
-    description: 'Academy registration numbers, campus address details, social handles, and copyright metadata.',
+    description: 'Academy crest, mission description, motto tagline, multi-column navigation allocation, and social links.',
     icon: Shield,
     accentColor: 'slate',
-    itemsCountText: () => 'Global Footer Section',
+    targetTab: 'headerFooter',
+    itemsCountText: () => {
+      try {
+        const cfg = AcademyDataManager.getFooterConfig();
+        const totalItems = cfg.columns?.reduce((acc, c) => acc + (c.items?.length || 0), 0) || 16;
+        return `${cfg.columns?.length || 3} Columns · ${totalItems} Allocated Items`;
+      } catch {
+        return 'Multi-Column Allocation & Taglines';
+      }
+    },
   },
 ];
 

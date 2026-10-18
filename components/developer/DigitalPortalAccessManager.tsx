@@ -39,7 +39,7 @@ export const DigitalPortalAccessManager: React.FC<DigitalPortalAccessManagerProp
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'student' | 'banner'; id?: string; name: string } | null>(null);
 
-  const [newStudent, setNewStudent] = useState({
+  const [newStudent, setNewStudent] = useState(() => ({
     id: `student-${Date.now()}`,
     name: '',
     role: '#10 Attacking Midfielder (U15)',
@@ -48,7 +48,7 @@ export const DigitalPortalAccessManager: React.FC<DigitalPortalAccessManagerProp
     attendance: '95% (Last 90 days)',
     rating: '88% Score',
     analysisCount: '4 videos ready for review',
-  });
+  }));
 
   const handleSaveConfig = (partial: Partial<DigitalPortalConfig>) => {
     const updated = { ...config, ...partial };

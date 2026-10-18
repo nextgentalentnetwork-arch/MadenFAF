@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { MatchFixture } from '@/data/academyData';
 import { AcademyDataManager } from '@/lib/academyDataManager';
 import { TeamLogo, TEAM_LOGO_PRESETS } from '@/components/common/TeamLogo';
+import { MediaSelector } from './MediaSelector';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import {
   Trophy,
@@ -17,6 +18,7 @@ import {
   Upload,
   Image as ImageIcon,
   Check,
+  Film,
 } from 'lucide-react';
 
 const createEmptyFixture = (): MatchFixture => ({
@@ -599,6 +601,41 @@ export const FixturesManager: React.FC<{
                   className="w-full px-3 py-2 border rounded-xl"
                 />
               </div>
+
+              {/* Match Action Photo Selector */}
+              <MediaSelector
+                label="Match Action Photograph (Goal celebration or key moment)"
+                mediaType="image"
+                section="fixtures"
+                value={editingFixture.matchPhoto || ''}
+                onChange={(photo) => setEditingFixture({ ...editingFixture, matchPhoto: photo })}
+                presets={[
+                  {
+                    label: 'Matchday Goal Celebration (Gayeshpur Ground)',
+                    url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+                    type: 'image',
+                  },
+                ]}
+                helperText="Displayed inside the match review and detail card in Match Centre."
+              />
+
+              {/* Match Highlights Video Selector */}
+              <MediaSelector
+                label="Match Highlights & Goals Video (YouTube / MP4)"
+                mediaType="video"
+                section="fixtures"
+                value={editingFixture.videoHighlightUrl || ''}
+                onChange={(vid) => setEditingFixture({ ...editingFixture, videoHighlightUrl: vid })}
+                presets={[
+                  {
+                    label: 'MADEN FAF 3 - 1 East Bengal Youth Highlights (4:15)',
+                    url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+                    type: 'video',
+                    duration: '4:15',
+                  },
+                ]}
+                helperText="Enables the 'Watch Highlights' video button in the Match Centre for this fixture!"
+              />
 
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button

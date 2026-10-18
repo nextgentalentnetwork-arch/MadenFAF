@@ -3,16 +3,18 @@
 import React, { useState } from 'react';
 import { NewsStory } from '@/data/academyData';
 import { AcademyDataManager } from '@/lib/academyDataManager';
-import { ImageSelector } from './ImageSelector';
+import { MediaSelector, MediaPreset } from './MediaSelector';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
-import { Newspaper, Plus, Edit3, Trash2, X, Sparkles, Calendar, Clock, User } from 'lucide-react';
+import { Newspaper, Plus, Edit3, Trash2, X, Sparkles, Calendar, Clock, User, Play, Film } from 'lucide-react';
 
-const PRESET_NEWS_PHOTOS = [
-  { label: 'Tactical Analysis Classroom', url: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Female Youth Athlete Action', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Grassroots Community Pitch Day', url: 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Trophy Celebration & Team Spirit', url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Intense Team Huddle', url: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1200&q=80' },
+const PRESET_NEWS_MEDIA: MediaPreset[] = [
+  { label: 'Tactical Analysis Classroom', url: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Female Youth Athlete Action', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Grassroots Community Pitch Day', url: 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Trophy Celebration & Team Spirit', url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Intense Team Huddle', url: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Match Highlights Video Report', url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk', type: 'video', duration: '4:20' },
+  { label: 'Player Spotlight & Interview Video', url: 'https://www.youtube.com/watch?v=ScMzIvxBSi4', type: 'video', duration: '2:45' },
 ];
 
 const createEmptyStory = (): NewsStory => ({
@@ -24,7 +26,8 @@ const createEmptyStory = (): NewsStory => ({
   author: 'Academy Editorial',
   summary: '',
   content: [],
-  image: PRESET_NEWS_PHOTOS[0].url,
+  image: PRESET_NEWS_MEDIA[0].url,
+  videoUrl: '',
   featured: false,
 });
 
@@ -135,11 +138,11 @@ export const NewsManager: React.FC<{
                 <div className="w-20 sm:w-28 h-20 sm:h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={story.image || PRESET_NEWS_PHOTOS[0].url}
+                    src={story.image || PRESET_NEWS_MEDIA[0].url}
                     alt={story.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = PRESET_NEWS_PHOTOS[0].url;
+                      (e.target as HTMLImageElement).src = PRESET_NEWS_MEDIA[0].url;
                     }}
                   />
                   {story.featured && (
@@ -205,12 +208,26 @@ export const NewsManager: React.FC<{
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-              {/* Photo Selector */}
-              <ImageSelector
-                label="Article Photograph (Upload from Device or pick a Preset)"
+              {/* 1. Article Cover Photo */}
+              <MediaSelector
+                label="Article Photograph (Upload from Device or Media Library)"
+                mediaType="image"
+                section="news"
                 value={editingStory.image}
                 onChange={(imgUrl) => setEditingStory({ ...editingStory, image: imgUrl })}
-                presets={PRESET_NEWS_PHOTOS}
+                presets={PRESET_NEWS_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Upload custom image or select from academy library."
+              />
+
+              {/* 2. Optional Video Report / Highlights */}
+              <MediaSelector
+                label="Article Video Report / Highlights (Optional Video Player)"
+                mediaType="video"
+                section="news"
+                value={editingStory.videoUrl || ''}
+                onChange={(vidUrl) => setEditingStory({ ...editingStory, videoUrl: vidUrl })}
+                presets={PRESET_NEWS_MEDIA.filter((p) => p.type === 'video')}
+                helperText="Add match video footage, interview reel, or tactical breakdown."
               />
 
               <div>
@@ -311,6 +328,29 @@ export const NewsManager: React.FC<{
                 />
               </div>
 
+              {/* Article Cover Photograph */}
+              <MediaSelector
+                label="Article Cover Photograph"
+                mediaType="image"
+                aspectRatio="wide"
+                section="news"
+                value={editingStory.image || ''}
+                onChange={(img) => setEditingStory({ ...editingStory, image: img })}
+                presets={PRESET_NEWS_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Upload custom photo or select an academy match/classroom visual."
+              />
+
+              {/* Video Report / Interview */}
+              <MediaSelector
+                label="Match Highlights / Video Report (Optional)"
+                mediaType="video"
+                section="news"
+                value={editingStory.videoUrl || ''}
+                onChange={(vid) => setEditingStory({ ...editingStory, videoUrl: vid })}
+                presets={PRESET_NEWS_MEDIA.filter((p) => p.type === 'video')}
+                helperText="YouTube or direct video link to accompany the article report."
+              />
+
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
@@ -346,12 +386,26 @@ export const NewsManager: React.FC<{
             </div>
 
             <form onSubmit={handleCreate} className="space-y-4 text-xs">
-              {/* Photo Selector */}
-              <ImageSelector
-                label="Article Photograph (Upload from Device or pick a Preset)"
+              {/* 1. Article Cover Photo */}
+              <MediaSelector
+                label="Article Photograph (Upload from Device or Media Library)"
+                mediaType="image"
+                section="news"
                 value={newStory.image}
                 onChange={(imgUrl) => setNewStory({ ...newStory, image: imgUrl })}
-                presets={PRESET_NEWS_PHOTOS}
+                presets={PRESET_NEWS_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Upload custom image or select from academy library."
+              />
+
+              {/* 2. Optional Video Report / Highlights */}
+              <MediaSelector
+                label="Article Video Report / Highlights (Optional Video Player)"
+                mediaType="video"
+                section="news"
+                value={newStory.videoUrl || ''}
+                onChange={(vidUrl) => setNewStory({ ...newStory, videoUrl: vidUrl })}
+                presets={PRESET_NEWS_MEDIA.filter((p) => p.type === 'video')}
+                helperText="Add match video footage, interview reel, or tactical breakdown."
               />
 
               <div>
@@ -445,6 +499,29 @@ export const NewsManager: React.FC<{
                   className="w-full px-3 py-2 border rounded-xl leading-relaxed"
                 />
               </div>
+
+              {/* Article Cover Photograph */}
+              <MediaSelector
+                label="Article Cover Photograph"
+                mediaType="image"
+                aspectRatio="wide"
+                section="news"
+                value={newStory.image || ''}
+                onChange={(img) => setNewStory({ ...newStory, image: img })}
+                presets={PRESET_NEWS_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Upload custom photo or select an academy match/classroom visual."
+              />
+
+              {/* Video Report / Interview */}
+              <MediaSelector
+                label="Match Highlights / Video Report (Optional)"
+                mediaType="video"
+                section="news"
+                value={newStory.videoUrl || ''}
+                onChange={(vid) => setNewStory({ ...newStory, videoUrl: vid })}
+                presets={PRESET_NEWS_MEDIA.filter((p) => p.type === 'video')}
+                helperText="YouTube or direct video link to accompany the article report."
+              />
 
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button

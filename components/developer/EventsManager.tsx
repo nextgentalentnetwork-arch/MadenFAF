@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { AcademyDataManager } from '@/lib/academyDataManager';
 import { AcademyEvent } from '@/data/academyData';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { MediaSelector, MediaPreset } from './MediaSelector';
 import {
   Calendar,
   Clock,
@@ -19,7 +20,19 @@ import {
   X,
   Save,
   Search,
+  Play,
+  Film,
+  Image as ImageIcon,
 } from 'lucide-react';
+
+const PRESET_EVENT_MEDIA: MediaPreset[] = [
+  { label: 'Gayeshpur Camp Training Pitch', url: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Scouting Trials & Assessment', url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Goalkeeper Clinic Session', url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Youth Tournament Festival', url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Camp Teaser & Highlights Video', url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', type: 'video', duration: '2:30' },
+  { label: 'Trials & Showcase Video Walkthrough', url: 'https://www.youtube.com/watch?v=EngW7tLk6R8', type: 'video', duration: '1:45' },
+];
 
 interface EventsManagerProps {
   onNotify: (msg: { type: 'success' | 'error'; text: string }) => void;
@@ -53,6 +66,8 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ onNotify }) => {
     registrationStatus: 'Open',
     fee: 'Subsidized Academy Rates',
     description: 'High-intensity tactical conditioning, small-sided games, and position-specific coaching.',
+    bannerImage: PRESET_EVENT_MEDIA[0].url,
+    videoUrl: '',
   });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
@@ -98,6 +113,8 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ onNotify }) => {
       registrationStatus: 'Open',
       fee: 'Registration Required',
       description: '',
+      bannerImage: PRESET_EVENT_MEDIA[0].url,
+      videoUrl: '',
     });
     onNotify({
       type: 'success',
@@ -219,6 +236,19 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ onNotify }) => {
                   {ev.registrationStatus}
                 </span>
               </div>
+
+              {ev.bannerImage && (
+                <div className="relative aspect-video w-full rounded-xl overflow-hidden mb-3 bg-slate-100 border border-slate-200">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={ev.bannerImage} alt={ev.title} className="w-full h-full object-cover" />
+                  {ev.videoUrl && (
+                    <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 text-amber-400 text-[10px] font-mono font-bold flex items-center gap-1 shadow-xs">
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>Video</span>
+                    </span>
+                  )}
+                </div>
+              )}
 
               <h3 className="text-base font-black uppercase text-slate-900 leading-snug tracking-tight mb-2">
                 {ev.title}
@@ -396,6 +426,28 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ onNotify }) => {
                 />
               </div>
 
+              {/* Custom Event Banner Photo */}
+              <MediaSelector
+                label="Camp / Event Banner Photo (Poster Graphic)"
+                mediaType="image"
+                section="events"
+                value={editingEvent.bannerImage || ''}
+                onChange={(img) => setEditingEvent({ ...editingEvent, bannerImage: img })}
+                presets={PRESET_EVENT_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Upload event poster from device or select from Media Library."
+              />
+
+              {/* Custom Event Video Teaser */}
+              <MediaSelector
+                label="Event Teaser & Highlights Video (Optional Showcase)"
+                mediaType="video"
+                section="events"
+                value={editingEvent.videoUrl || ''}
+                onChange={(vid) => setEditingEvent({ ...editingEvent, videoUrl: vid })}
+                presets={PRESET_EVENT_MEDIA.filter((p) => p.type === 'video')}
+                helperText="Provide a YouTube or direct MP4 link for camp drills or trial preview."
+              />
+
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
@@ -547,6 +599,28 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ onNotify }) => {
                   className="w-full px-3 py-2 border rounded-xl"
                 />
               </div>
+
+              {/* Custom Event Banner Photo */}
+              <MediaSelector
+                label="Camp / Event Banner Photo (Poster Graphic)"
+                mediaType="image"
+                section="events"
+                value={newEvent.bannerImage || ''}
+                onChange={(img) => setNewEvent({ ...newEvent, bannerImage: img })}
+                presets={PRESET_EVENT_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Upload event poster from device or select from Media Library."
+              />
+
+              {/* Custom Event Video Teaser */}
+              <MediaSelector
+                label="Event Teaser & Highlights Video (Optional Showcase)"
+                mediaType="video"
+                section="events"
+                value={newEvent.videoUrl || ''}
+                onChange={(vid) => setNewEvent({ ...newEvent, videoUrl: vid })}
+                presets={PRESET_EVENT_MEDIA.filter((p) => p.type === 'video')}
+                helperText="Provide a YouTube or direct MP4 link for camp drills or trial preview."
+              />
 
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button

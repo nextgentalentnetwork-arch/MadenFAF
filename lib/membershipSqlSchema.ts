@@ -138,4 +138,4 @@ CREATE POLICY "Users can view own memberships" ON public.memberships
 
 CREATE POLICY "Users can view own donations" ON public.donations
   FOR SELECT USING (profile_id = auth.uid());
-\`;
+`;

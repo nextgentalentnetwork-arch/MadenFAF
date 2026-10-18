@@ -96,11 +96,25 @@ export const Hero: React.FC<HeroProps> = ({
     }
   };
 
-  const overlayOpacityDecimal =
-    Math.min(Math.max(heroConfig.backgroundOverlayOpacity || 10, 0), 100) / 100;
+  const is100PercentClarity = Boolean(
+    heroConfig.enableBackground100Percent ||
+    (heroConfig.backgroundOverlayOpacity && heroConfig.backgroundOverlayOpacity >= 95)
+  );
+
+  const clarityTheme = heroConfig.backgroundClarityTheme || 'dark-contrast';
+
+  const overlayOpacityDecimal = is100PercentClarity
+    ? 1
+    : Math.min(Math.max(heroConfig.backgroundOverlayOpacity || 10, 0), 100) / 100;
 
   return (
-    <section className="relative min-h-[90vh] sm:min-h-[92vh] flex flex-col justify-between items-center pt-28 sm:pt-36 lg:pt-40 pb-12 sm:pb-16 overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50 text-center border-b border-slate-200">
+    <section
+      className={`relative min-h-[90vh] sm:min-h-[92vh] flex flex-col justify-between items-center pt-28 sm:pt-36 lg:pt-40 pb-12 sm:pb-16 overflow-hidden text-center border-b transition-colors duration-300 ${
+        is100PercentClarity && clarityTheme !== 'frosted-card'
+          ? 'bg-slate-950 text-white border-slate-900'
+          : 'bg-gradient-to-b from-slate-50 via-white to-slate-50 text-slate-900 border-slate-200'
+      }`}
+    >
       {/* Background Architectural Pitch Overlay with customizable image and opacity */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -111,24 +125,64 @@ export const Hero: React.FC<HeroProps> = ({
           }
           alt="MADEN FAF Football Ground"
           style={{ opacity: overlayOpacityDecimal }}
-          className="w-full h-full object-cover object-center brightness-110 saturate-50 transition-opacity duration-300"
+          className={`w-full h-full object-cover object-center transition-all duration-500 ${
+            is100PercentClarity
+              ? 'brightness-100 saturate-100 contrast-105'
+              : 'brightness-110 saturate-50 transition-opacity duration-300'
+          }`}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/80 to-white" />
+
+        {/* Dynamic Overlays: when 100% Clarity is active, we use a contrast scrim rather than white wash */}
+        {is100PercentClarity ? (
+          clarityTheme === 'dark-contrast' ? (
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-900/45 to-slate-950/85" />
+          ) : clarityTheme === 'frosted-card' ? (
+            <div className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/65" />
+          )
+        ) : (
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/80 to-white"
+            style={{
+              opacity: Math.max(0.1, 1 - overlayOpacityDecimal * 0.7),
+            }}
+          />
+        )}
+
         {heroConfig.showPitchGridPattern && (
-          <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40" />
+          <div
+            className={`absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] ${
+              is100PercentClarity ? 'opacity-20 invert' : 'opacity-40'
+            }`}
+          />
         )}
       </div>
 
       {/* Main Hero Content */}
-      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col justify-center items-center text-center my-auto">
+      <div
+        className={`relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col justify-center items-center text-center my-auto transition-all ${
+          is100PercentClarity && clarityTheme === 'frosted-card'
+            ? 'backdrop-blur-md bg-white/90 border border-white/60 shadow-2xl rounded-3xl p-6 sm:p-12 my-6'
+            : ''
+        }`}
+      >
         {/* Eyebrow Label (Toggleable & Customizable) */}
         {heroConfig.eyebrowBadgeVisible && (
           <div
-            className={`inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full ${pulseStyle.bg} border ${pulseStyle.border} mb-6 sm:mb-8 mx-auto text-center shadow-xs transition-all`}
+            className={`inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full mb-6 sm:mb-8 mx-auto text-center shadow-xs transition-all ${
+              is100PercentClarity && clarityTheme !== 'frosted-card'
+                ? 'bg-black/60 backdrop-blur-md border border-amber-400/40 text-amber-300'
+                : `${pulseStyle.bg} border ${pulseStyle.border}`
+            }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${pulseStyle.dot} animate-pulse`} />
             <span
-              className={`text-[11px] sm:text-xs font-bold uppercase tracking-widest ${pulseStyle.text}`}
+              className={`text-[11px] sm:text-xs font-bold uppercase tracking-widest ${
+                is100PercentClarity && clarityTheme !== 'frosted-card'
+                  ? 'text-amber-300 font-mono'
+                  : pulseStyle.text
+              }`}
             >
               {heroConfig.eyebrowBadgeText}
             </span>
@@ -136,13 +190,25 @@ export const Hero: React.FC<HeroProps> = ({
         )}
 
         {/* Minimal Powerful Headline */}
-        <h1 className="w-full text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black uppercase tracking-tight text-slate-900 leading-[1.08] sm:leading-[1.04] text-center mx-auto text-balance">
+        <h1
+          className={`w-full text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black uppercase tracking-tight leading-[1.08] sm:leading-[1.04] text-center mx-auto text-balance ${
+            is100PercentClarity && clarityTheme !== 'frosted-card'
+              ? 'text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]'
+              : 'text-slate-900'
+          }`}
+        >
           {heroConfig.headlinePart1} <br />
           <span className={highlightColorClass}>{heroConfig.headlineHighlight}</span>
         </h1>
 
         {/* Crisp Supporting Copy */}
-        <p className="mt-5 sm:mt-7 text-sm sm:text-lg md:text-xl text-slate-600 font-normal leading-relaxed max-w-2xl mx-auto text-center text-balance px-2 sm:px-0">
+        <p
+          className={`mt-5 sm:mt-7 text-sm sm:text-lg md:text-xl font-normal leading-relaxed max-w-2xl mx-auto text-center text-balance px-2 sm:px-0 ${
+            is100PercentClarity && clarityTheme !== 'frosted-card'
+              ? 'text-slate-100 font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]'
+              : 'text-slate-600'
+          }`}
+        >
           {heroConfig.subHeadline}
         </p>
 
@@ -152,7 +218,7 @@ export const Hero: React.FC<HeroProps> = ({
           {heroConfig.cta1Visible && (
             <button
               onClick={() => handleCtaClick(heroConfig.cta1Action, heroConfig.cta1Url)}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md shadow-amber-200 flex items-center justify-center gap-2 cursor-pointer min-h-[46px]"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer min-h-[46px]"
             >
               <span>{heroConfig.cta1Text}</span>
               {heroConfig.cta1Action === 'customUrl' ? (
@@ -167,11 +233,21 @@ export const Hero: React.FC<HeroProps> = ({
           {heroConfig.cta2Visible && (
             <button
               onClick={() => handleCtaClick(heroConfig.cta2Action, heroConfig.cta2Url)}
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-300 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all shadow-xs cursor-pointer min-h-[46px] flex items-center justify-center gap-1.5"
+              className={`w-full sm:w-auto px-7 py-3.5 rounded-xl active:scale-95 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer min-h-[46px] flex items-center justify-center gap-1.5 ${
+                is100PercentClarity && clarityTheme !== 'frosted-card'
+                  ? 'bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-md shadow-lg'
+                  : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-xs'
+              }`}
             >
               <span>{heroConfig.cta2Text}</span>
               {heroConfig.cta2Action === 'customUrl' && (
-                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                <ExternalLink
+                  className={`w-3.5 h-3.5 ${
+                    is100PercentClarity && clarityTheme !== 'frosted-card'
+                      ? 'text-white/70'
+                      : 'text-slate-400'
+                  }`}
+                />
               )}
             </button>
           )}
@@ -180,9 +256,13 @@ export const Hero: React.FC<HeroProps> = ({
           {heroConfig.showWatchFilmButton && onWatchFilmClick && (
             <button
               onClick={onWatchFilmClick}
-              className="w-full sm:w-auto px-5 py-3.5 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-slate-900 font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer min-h-[46px] flex items-center justify-center gap-2"
+              className={`w-full sm:w-auto px-5 py-3.5 rounded-xl font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer min-h-[46px] flex items-center justify-center gap-2 ${
+                is100PercentClarity && clarityTheme !== 'frosted-card'
+                  ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20 backdrop-blur-md shadow-md'
+                  : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
+              }`}
             >
-              <Play className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
+              <Play className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
               <span>{heroConfig.watchFilmButtonText || 'Watch Film'}</span>
             </button>
           )}
@@ -192,14 +272,34 @@ export const Hero: React.FC<HeroProps> = ({
       {/* Clean Spacious Minimal Stat Strip (Dynamic Items) */}
       {heroConfig.stats && heroConfig.stats.length > 0 && (
         <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10">
-          <div className="flex flex-wrap items-center justify-center gap-x-6 sm:gap-x-10 gap-y-3 text-xs sm:text-sm text-slate-600 font-medium border-t border-slate-200 pt-5 sm:pt-6 text-center mx-auto">
+          <div
+            className={`flex flex-wrap items-center justify-center gap-x-6 sm:gap-x-10 gap-y-3 text-xs sm:text-sm font-medium border-t pt-5 sm:pt-6 text-center mx-auto ${
+              is100PercentClarity && clarityTheme !== 'frosted-card'
+                ? 'border-white/20 text-slate-200'
+                : 'border-slate-200 text-slate-600'
+            }`}
+          >
             {heroConfig.stats.map((stat, idx) => (
               <React.Fragment key={stat.id || `stat-${idx}`}>
                 {idx > 0 && (
-                  <span className="hidden sm:inline text-slate-300 select-none">•</span>
+                  <span
+                    className={`hidden sm:inline select-none ${
+                      is100PercentClarity && clarityTheme !== 'frosted-card'
+                        ? 'text-white/40'
+                        : 'text-slate-300'
+                    }`}
+                  >
+                    •
+                  </span>
                 )}
                 <div className="flex items-center justify-center gap-2">
-                  <span className="font-black text-slate-900 text-sm sm:text-base">
+                  <span
+                    className={`font-black text-sm sm:text-base ${
+                      is100PercentClarity && clarityTheme !== 'frosted-card'
+                        ? 'text-white drop-shadow-sm'
+                        : 'text-slate-900'
+                    }`}
+                  >
                     {stat.value}
                   </span>
                   <span>{stat.label}</span>

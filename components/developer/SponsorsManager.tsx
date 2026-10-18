@@ -52,7 +52,7 @@ export const SponsorsManager: React.FC<SponsorsManagerProps> = ({ onNotify }) =>
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // New Sponsor Form
-  const [newSponsor, setNewSponsor] = useState<SponsorPartner>({
+  const [newSponsor, setNewSponsor] = useState<SponsorPartner>(() => ({
     id: `sponsor-${Date.now()}`,
     name: '',
     category: 'Match Ball & Technical Gear',
@@ -61,8 +61,8 @@ export const SponsorsManager: React.FC<SponsorsManagerProps> = ({ onNotify }) =>
     logoUrl: '',
     websiteUrl: 'https://',
     active: true,
-    order: sponsors.length + 1,
-  });
+    order: 1,
+  }));
 
   const refreshSponsors = () => {
     setSponsors(AcademyDataManager.getSponsors());

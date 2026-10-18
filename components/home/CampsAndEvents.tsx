@@ -2,13 +2,15 @@
 
 import React, { useState, useSyncExternalStore } from 'react';
 import { AcademyDataManager, subscribeAcademyData } from '@/lib/academyDataManager';
-import { Calendar, MapPin, Users, Tag, ChevronRight, Sparkles } from 'lucide-react';
+import { Calendar, MapPin, Users, Tag, ChevronRight, Sparkles, Play, Film } from 'lucide-react';
+import { ActiveVideoData } from '@/components/modals/VideoModal';
 
 interface CampsAndEventsProps {
   onRegisterEvent: (eventTitle: string) => void;
+  onWatchVideo?: (video: ActiveVideoData) => void;
 }
 
-export const CampsAndEvents: React.FC<CampsAndEventsProps> = ({ onRegisterEvent }) => {
+export const CampsAndEvents: React.FC<CampsAndEventsProps> = ({ onRegisterEvent, onWatchVideo }) => {
   const events = useSyncExternalStore(
     subscribeAcademyData,
     () => AcademyDataManager.getEvents(),
@@ -68,11 +70,67 @@ export const CampsAndEvents: React.FC<CampsAndEventsProps> = ({ onRegisterEvent 
               className="p-6 sm:p-7 rounded-3xl bg-white border border-slate-200 hover:border-amber-400 hover:shadow-md transition-all duration-300 flex flex-col justify-between shadow-xs relative overflow-hidden group"
             >
               <div>
+                {/* Event Banner Image with Video Trigger */}
+                {evt.bannerImage && (
+                  <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 border border-slate-200 bg-slate-100 group-hover:shadow-xs transition-all">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={evt.bannerImage}
+                      alt={evt.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    {evt.videoUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onWatchVideo?.({
+                            title: evt.title,
+                            subtitle: `${evt.category} · ${evt.location}`,
+                            videoUrl: evt.videoUrl!,
+                            posterImage: evt.bannerImage,
+                            description: evt.description,
+                            tag: `Event Video Preview (${evt.ageGroup})`,
+                            ctaText: `Register for ${evt.category}`
+                          });
+                        }}
+                        className="absolute bottom-2.5 right-2.5 px-3 py-1.5 rounded-lg bg-black/85 hover:bg-amber-500 hover:text-slate-950 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 backdrop-blur-xs transition-colors cursor-pointer shadow-md"
+                      >
+                        <Play className="w-3 h-3 fill-current" />
+                        <span>Watch Preview</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Badge Row */}
                 <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-[10px] font-mono uppercase px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
-                    {evt.category}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                      {evt.category}
+                    </span>
+                    {!evt.bannerImage && evt.videoUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onWatchVideo?.({
+                            title: evt.title,
+                            subtitle: `${evt.category} · ${evt.location}`,
+                            videoUrl: evt.videoUrl!,
+                            posterImage: evt.bannerImage,
+                            description: evt.description,
+                            tag: `Event Video Preview (${evt.ageGroup})`,
+                            ctaText: `Register for ${evt.category}`
+                          });
+                        }}
+                        className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Play className="w-2.5 h-2.5 fill-current" />
+                        <span>Watch Video</span>
+                      </button>
+                    )}
+                  </div>
                   <span
                     className={`text-[10px] font-mono uppercase px-2.5 py-1 rounded-full font-bold ${
                       evt.registrationStatus === 'Open'

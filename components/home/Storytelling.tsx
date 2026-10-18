@@ -1,13 +1,22 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Target, BookOpen, Trophy, BarChart3, UserCheck, HeartHandshake, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Quote } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { Target, BookOpen, Trophy, BarChart3, UserCheck, HeartHandshake, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Quote, Play, Film } from 'lucide-react';
+import { AcademyDataManager, subscribeAcademyData } from '@/lib/academyDataManager';
+import { DEFAULT_STORYTELLING_MEDIA } from '@/data/academyData';
+import { ActiveVideoData } from '@/components/modals/VideoModal';
 
 interface StorytellingProps {
   onLearnMoreClick: (tab: string) => void;
+  onWatchVideo?: (video: ActiveVideoData) => void;
 }
 
-export const Storytelling: React.FC<StorytellingProps> = ({ onLearnMoreClick }) => {
+export const Storytelling: React.FC<StorytellingProps> = ({ onLearnMoreClick, onWatchVideo }) => {
+  const storytellingMedia = useSyncExternalStore(
+    subscribeAcademyData,
+    () => AcademyDataManager.getStorytellingMedia(),
+    () => DEFAULT_STORYTELLING_MEDIA
+  );
   const [activeCard, setActiveCard] = useState<number>(0);
   const [visibleColumns, setVisibleColumns] = useState<number>(3);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -298,12 +307,13 @@ export const Storytelling: React.FC<StorytellingProps> = ({ onLearnMoreClick }) 
           {pillars.map((pillar, idx) => {
             const Icon = pillar.icon;
             const isActive = activeCard === idx;
+            const pMedia = storytellingMedia[pillar.id];
 
             return (
               <div
                 key={pillar.id}
                 onClick={() => setActiveCard(idx)}
-                className={`shrink-0 snap-start rounded-2xl p-5 sm:p-6 border transition-all duration-300 flex flex-col justify-between cursor-pointer select-none
+                className={`shrink-0 snap-start rounded-2xl p-5 sm:p-6 border transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group
                   w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]
                   ${
                     isActive
@@ -313,6 +323,39 @@ export const Storytelling: React.FC<StorytellingProps> = ({ onLearnMoreClick }) 
                 `}
               >
                 <div>
+                  {/* Custom Pillar Photo with Video Trigger */}
+                  {pMedia?.image && (
+                    <div className="relative aspect-video rounded-xl overflow-hidden mb-3.5 border border-slate-200 bg-slate-100 group-hover:shadow-xs transition-all">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={pMedia.image}
+                        alt={pillar.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {pMedia?.videoUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onWatchVideo?.({
+                              title: `${pillar.title}: ${pillar.headline}`,
+                              subtitle: 'MADEN Philosophy Video Experience',
+                              videoUrl: pMedia.videoUrl!,
+                              posterImage: pMedia.image,
+                              description: pillar.summary,
+                              tag: pMedia.videoTag || `Philosophy Pillar ${pillar.num}`,
+                              ctaText: 'Explore Player Pathway'
+                            });
+                          }}
+                          className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/85 hover:bg-amber-500 hover:text-slate-950 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 backdrop-blur-xs transition-colors cursor-pointer shadow-md"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>Watch Video</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Top Bar: Number & Icon */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -322,6 +365,27 @@ export const Storytelling: React.FC<StorytellingProps> = ({ onLearnMoreClick }) 
                       <span className="text-xs font-black uppercase tracking-wider text-amber-600">
                         {pillar.title}
                       </span>
+                      {!pMedia?.image && pMedia?.videoUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onWatchVideo?.({
+                              title: `${pillar.title}: ${pillar.headline}`,
+                              subtitle: 'MADEN Philosophy Video Experience',
+                              videoUrl: pMedia.videoUrl!,
+                              posterImage: pMedia.image,
+                              description: pillar.summary,
+                              tag: pMedia.videoTag || `Philosophy Pillar ${pillar.num}`,
+                              ctaText: 'Explore Player Pathway'
+                            });
+                          }}
+                          className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                          <span>Video</span>
+                        </button>
+                      )}
                     </div>
 
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${pillar.accent}`}>

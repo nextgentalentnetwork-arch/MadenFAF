@@ -487,6 +487,70 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // 13.1 Sticky Header Navigation Config
+    if (section === 'headerConfig' || section === 'header' || section === 'all') {
+      const { data: contentData } = await supabase
+        .from('academy_content')
+        .select('data')
+        .in('key', ['headerConfig', 'header'])
+        .maybeSingle();
+      if (contentData?.data) {
+        result.headerConfig = contentData.data;
+      } else {
+        const sysData = await readFromSystemRegistrationSync(supabase, 'headerConfig');
+        if (sysData) result.headerConfig = sysData;
+      }
+    }
+
+    // 13.2 Global Footer & Column Allocation Config
+    if (section === 'footerConfig' || section === 'footer' || section === 'all') {
+      const { data: contentData } = await supabase
+        .from('academy_content')
+        .select('data')
+        .in('key', ['footerConfig', 'footer'])
+        .maybeSingle();
+      if (contentData?.data) {
+        result.footerConfig = contentData.data;
+      } else {
+        const sysData = await readFromSystemRegistrationSync(supabase, 'footerConfig');
+        if (sysData) result.footerConfig = sysData;
+      }
+    }
+
+    // 14. Custom Media Asset Hub & Media Library
+    if (section === 'mediaLibrary' || section === 'media' || section === 'all') {
+      const { data: contentData } = await supabase
+        .from('academy_content')
+        .select('data')
+        .in('key', ['mediaLibrary', 'media'])
+        .maybeSingle();
+
+      if (contentData?.data) {
+        result.mediaLibrary = contentData.data;
+      } else {
+        const sysData =
+          (await readFromSystemRegistrationSync(supabase, 'mediaLibrary')) ||
+          (await readFromSystemRegistrationSync(supabase, 'media'));
+        if (sysData) result.mediaLibrary = sysData;
+      }
+    }
+
+    // 15. Storytelling Pillars Media
+    if (section === 'storytelling' || section === 'all') {
+      const { data: contentData } = await supabase
+        .from('academy_content')
+        .select('data')
+        .eq('key', 'storytelling')
+        .maybeSingle();
+
+      if (contentData?.data) {
+        result.storytelling = contentData.data;
+      } else {
+        const sysData = await readFromSystemRegistrationSync(supabase, 'storytelling');
+        if (sysData) result.storytelling = sysData;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       section,

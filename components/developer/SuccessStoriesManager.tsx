@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { AcademyDataManager } from '@/lib/academyDataManager';
 import { TestimonialItem } from '@/data/academyData';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { MediaSelector, MediaPreset } from './MediaSelector';
 import {
   Trophy,
   Star,
@@ -20,7 +21,21 @@ import {
   Sparkles,
   Heart,
   Upload,
+  Play,
+  Film,
+  Image as ImageIcon,
 } from 'lucide-react';
+
+const PRESET_STORY_MEDIA: MediaPreset[] = [
+  { label: 'Subham Roy (Midfielder)', url: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?auto=format&fit=crop&w=400&q=80', type: 'image' },
+  { label: 'Ananya Das (Winger)', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80', type: 'image' },
+  { label: 'Pradip Roy (Parent)', url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80', type: 'image' },
+  { label: 'Sunita Mukherjee (Parent)', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80', type: 'image' },
+  { label: 'Match Day Action Celebration', url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Trophy Lift & Squad Spirit', url: 'https://images.unsplash.com/photo-1529900240041-22f114d18eb1?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+  { label: 'Player Breakthrough Video Interview', url: 'https://www.youtube.com/watch?v=9bZkp7q19f0', type: 'video', duration: '2:15' },
+  { label: 'Parent Experience Video', url: 'https://www.youtube.com/watch?v=L_LUpnjgPso', type: 'video', duration: '3:00' },
+];
 
 interface SuccessStoriesManagerProps {
   onNotify: (msg: { type: 'success' | 'error'; text: string }) => void;
@@ -37,20 +52,22 @@ export const SuccessStoriesManager: React.FC<SuccessStoriesManagerProps> = ({ on
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; author: string } | null>(null);
 
   // New Story Form
-  const [newStory, setNewStory] = useState<TestimonialItem>({
+  const [newStory, setNewStory] = useState<TestimonialItem>(() => ({
     id: `story-${Date.now()}`,
     author: '',
     role: 'U15 Striker (#9)',
     type: 'player',
     campus: 'Gayeshpur Flagship Campus',
     avatar: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?auto=format&fit=crop&w=300&q=80',
+    actionPhoto: '',
+    videoUrl: '',
     quote: '',
     fullStory: '',
     milestone: 'Selected for Bengal Youth Championship Squad',
     rating: 5,
     highlightTag: 'Tactical Game Intelligence',
     verifiedBadge: 'Advanced Academy Player',
-  });
+  }));
 
   const refreshStories = () => {
     setStories(AcademyDataManager.getTestimonials());
@@ -88,6 +105,8 @@ export const SuccessStoriesManager: React.FC<SuccessStoriesManagerProps> = ({ on
       type: 'player',
       campus: 'Gayeshpur Flagship Campus',
       avatar: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?auto=format&fit=crop&w=300&q=80',
+      actionPhoto: '',
+      videoUrl: '',
       quote: '',
       fullStory: '',
       milestone: 'Selected for Bengal Youth Championship Squad',
@@ -384,29 +403,40 @@ export const SuccessStoriesManager: React.FC<SuccessStoriesManagerProps> = ({ on
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Avatar Photo (URL or Device Upload)
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editingStory.avatar}
-                    onChange={(e) => setEditingStory({ ...editingStory, avatar: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                  />
-                  <label className="px-3 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold cursor-pointer flex items-center gap-1">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleAvatarUpload(e, true)}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
+              {/* 1. Member / Author Avatar */}
+              <MediaSelector
+                label="Member Photograph / Avatar (Profile Picture)"
+                mediaType="image"
+                aspectRatio="square"
+                section="testimonials"
+                value={editingStory.avatar}
+                onChange={(img) => setEditingStory({ ...editingStory, avatar: img })}
+                presets={PRESET_STORY_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Upload athlete, parent, or scout headshot, or select preset."
+              />
+
+              {/* 2. Custom Match / Action Photograph */}
+              <MediaSelector
+                label="Match Day / Action Photograph (Showcase Banner)"
+                mediaType="image"
+                aspectRatio="wide"
+                section="testimonials"
+                value={editingStory.actionPhoto || ''}
+                onChange={(img) => setEditingStory({ ...editingStory, actionPhoto: img })}
+                presets={PRESET_STORY_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Optional on-pitch action photo displayed in modal and cards."
+              />
+
+              {/* 3. Custom Video Interview / Highlights */}
+              <MediaSelector
+                label="Video Interview / Breakthrough Highlights (Optional)"
+                mediaType="video"
+                section="testimonials"
+                value={editingStory.videoUrl || ''}
+                onChange={(vid) => setEditingStory({ ...editingStory, videoUrl: vid })}
+                presets={PRESET_STORY_MEDIA.filter((p) => p.type === 'video')}
+                helperText="Provide a YouTube interview or direct video link for full storytelling experience."
+              />
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
@@ -541,29 +571,40 @@ export const SuccessStoriesManager: React.FC<SuccessStoriesManagerProps> = ({ on
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Avatar Photo (URL or Device Upload)
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newStory.avatar}
-                    onChange={(e) => setNewStory({ ...newStory, avatar: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                  />
-                  <label className="px-3 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold cursor-pointer flex items-center gap-1">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleAvatarUpload(e, false)}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
+              {/* 1. Member / Author Avatar */}
+              <MediaSelector
+                label="Member Photograph / Avatar (Profile Picture)"
+                mediaType="image"
+                aspectRatio="square"
+                section="testimonials"
+                value={newStory.avatar}
+                onChange={(img) => setNewStory({ ...newStory, avatar: img })}
+                presets={PRESET_STORY_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Upload athlete, parent, or scout headshot, or select preset."
+              />
+
+              {/* 2. Custom Match / Action Photograph */}
+              <MediaSelector
+                label="Match Day / Action Photograph (Showcase Banner)"
+                mediaType="image"
+                aspectRatio="wide"
+                section="testimonials"
+                value={newStory.actionPhoto || ''}
+                onChange={(img) => setNewStory({ ...newStory, actionPhoto: img })}
+                presets={PRESET_STORY_MEDIA.filter((p) => p.type === 'image')}
+                helperText="Optional on-pitch action photo displayed in modal and cards."
+              />
+
+              {/* 3. Custom Video Interview / Highlights */}
+              <MediaSelector
+                label="Video Interview / Breakthrough Highlights (Optional)"
+                mediaType="video"
+                section="testimonials"
+                value={newStory.videoUrl || ''}
+                onChange={(vid) => setNewStory({ ...newStory, videoUrl: vid })}
+                presets={PRESET_STORY_MEDIA.filter((p) => p.type === 'video')}
+                helperText="Provide a YouTube interview or direct video link for full storytelling experience."
+              />
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button

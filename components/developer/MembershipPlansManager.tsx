@@ -26,30 +26,26 @@ const STORAGE_KEY = 'maden_dev_membership_plans';
 export const MembershipPlansManager: React.FC<{
   onNotify?: (msg: { type: 'success' | 'error'; text: string }) => void;
 }> = ({ onNotify }) => {
-  const [plans, setPlans] = useState<MembershipPlan[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [plans, setPlans] = useState<MembershipPlan[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) return JSON.parse(stored);
+      } catch {
+        // fallback
+      }
+    }
+    return DEFAULT_MEMBERSHIP_PLANS;
+  });
+  const [isLoaded, setIsLoaded] = useState(true);
   const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MembershipPlan | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [newBenefitInput, setNewBenefitInput] = useState('');
 
-  // Initial load from localStorage, Supabase API fallback, or defaults
+  // Sync latest from backend API if configured
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setPlans(JSON.parse(stored));
-      } else {
-        setPlans(DEFAULT_MEMBERSHIP_PLANS);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_MEMBERSHIP_PLANS));
-      }
-    } catch {
-      setPlans(DEFAULT_MEMBERSHIP_PLANS);
-    }
-    setIsLoaded(true);
-
-    // Also fetch latest from backend API if configured
     fetch('/api/academy-data?section=membershipPlans')
       .then((res) => res.json())
       .then((data) => {

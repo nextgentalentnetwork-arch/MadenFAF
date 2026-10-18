@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import { CoachStaffMember } from '@/data/academyData';
 import { AcademyDataManager } from '@/lib/academyDataManager';
-import { ImageSelector } from './ImageSelector';
+import { MediaSelector } from './MediaSelector';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
-import { Users, Plus, Edit3, Trash2, X, Award, Shield, MapPin, CheckCircle2 } from 'lucide-react';
+import { Users, Plus, Edit3, Trash2, X, Award, Shield, MapPin, CheckCircle2, Film } from 'lucide-react';
 
 const PRESET_COACH_PHOTOS = [
   { label: 'Technical Director (Male)', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80' },
@@ -228,11 +228,32 @@ export const CoachesManager: React.FC<{
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               {/* Photo Selector */}
-              <ImageSelector
+              <MediaSelector
                 label="Coach Photograph (Upload from Device or pick a Preset)"
+                mediaType="image"
+                section="coaches"
                 value={editingCoach.image}
                 onChange={(imgUrl) => setEditingCoach({ ...editingCoach, image: imgUrl })}
-                presets={PRESET_COACH_PHOTOS}
+                presets={PRESET_COACH_PHOTOS.map((p) => ({ label: p.label, url: p.url, type: 'image' as const }))}
+                helperText="Coach portrait displayed on the website coaching grid."
+              />
+
+              {/* Tactical Philosophy / Drill Video */}
+              <MediaSelector
+                label="Coach Tactical Drill or Philosophy Video (YouTube / MP4)"
+                mediaType="video"
+                section="coaches"
+                value={editingCoach.videoUrl || ''}
+                onChange={(vidUrl) => setEditingCoach({ ...editingCoach, videoUrl: vidUrl })}
+                presets={[
+                  {
+                    label: 'Coach Tactical Masterclass (YouTube 3:10)',
+                    url: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+                    type: 'video',
+                    duration: '3:10',
+                  },
+                ]}
+                helperText="Adds a 'Watch Philosophy & Drills' video button on the coach profile card!"
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -367,11 +388,30 @@ export const CoachesManager: React.FC<{
 
             <form onSubmit={handleCreate} className="space-y-4 text-xs">
               {/* Photo Selector */}
-              <ImageSelector
+              <MediaSelector
                 label="Coach Photograph (Upload from Device or pick a Preset)"
+                mediaType="image"
+                section="coaches"
                 value={newCoach.image}
                 onChange={(imgUrl) => setNewCoach({ ...newCoach, image: imgUrl })}
-                presets={PRESET_COACH_PHOTOS}
+                presets={PRESET_COACH_PHOTOS.map((p) => ({ label: p.label, url: p.url, type: 'image' as const }))}
+              />
+
+              {/* Tactical Video */}
+              <MediaSelector
+                label="Coach Tactical Drill or Philosophy Video (YouTube / MP4)"
+                mediaType="video"
+                section="coaches"
+                value={newCoach.videoUrl || ''}
+                onChange={(vidUrl) => setNewCoach({ ...newCoach, videoUrl: vidUrl })}
+                presets={[
+                  {
+                    label: 'Coach Tactical Masterclass (YouTube 3:10)',
+                    url: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+                    type: 'video',
+                    duration: '3:10',
+                  },
+                ]}
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

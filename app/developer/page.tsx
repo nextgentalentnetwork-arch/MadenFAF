@@ -17,6 +17,7 @@ import { SuccessStoriesManager } from '@/components/developer/SuccessStoriesMana
 import { SponsorsManager } from '@/components/developer/SponsorsManager';
 import { DigitalPortalAccessManager } from '@/components/developer/DigitalPortalAccessManager';
 import { HeroManager } from '@/components/developer/HeroManager';
+import { HeaderFooterManager } from '@/components/developer/HeaderFooterManager';
 import { WebsiteComponentsGrid } from '@/components/developer/WebsiteComponentsGrid';
 import { DeleteConfirmModal } from '@/components/developer/DeleteConfirmModal';
 import { UnifiedApiService, SyncStatus } from '@/lib/unifiedApiService';
@@ -68,6 +69,7 @@ import {
   Layers,
   Trash,
   RotateCcw,
+  Sliders,
 } from 'lucide-react';
 
 const FULL_SUPABASE_SQL = `-- Run this in your Supabase SQL Editor (Dashboard -> SQL Editor -> New Query -> Run)
@@ -238,6 +240,7 @@ export default function DeveloperPage() {
   const [activeTab, setActiveTab] = useState<
     | 'componentsGrid'
     | 'hero'
+    | 'headerFooter'
     | 'database'
     | 'programs'
     | 'campuses'
@@ -888,6 +891,18 @@ export default function DeveloperPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('headerFooter')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              activeTab === 'headerFooter'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-xs ring-2 ring-amber-500/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>Header & Footer Studio</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('database')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
               activeTab === 'database'
@@ -1105,6 +1120,11 @@ export default function DeveloperPage() {
         {/* ---------------- HERO SHOWCASE & VIDEO EXPERIENCE TAB ---------------- */}
         {activeTab === 'hero' && (
           <HeroManager onNotify={(msg) => setDbMessage(msg)} />
+        )}
+
+        {/* ---------------- HEADER & FOOTER CUSTOMIZATION STUDIO TAB ---------------- */}
+        {activeTab === 'headerFooter' && (
+          <HeaderFooterManager onNotify={(msg) => setDbMessage(msg)} />
         )}
 
         {/* ---------------- 1. SUPABASE DATABASE CRUD TAB ---------------- */}

@@ -3,13 +3,15 @@
 import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { ACADEMY_TESTIMONIALS, TestimonialItem } from '@/data/academyData';
 import { AcademyDataManager, subscribeAcademyData } from '@/lib/academyDataManager';
-import { Quote, Star, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, ShieldCheck, Heart, ArrowRight, X } from 'lucide-react';
+import { Quote, Star, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, ShieldCheck, Heart, ArrowRight, X, Play, Film } from 'lucide-react';
+import { ActiveVideoData } from '@/components/modals/VideoModal';
 
 interface SuccessStoriesProps {
   onJoinClick: () => void;
+  onWatchVideo?: (video: ActiveVideoData) => void;
 }
 
-export const SuccessStories: React.FC<SuccessStoriesProps> = ({ onJoinClick }) => {
+export const SuccessStories: React.FC<SuccessStoriesProps> = ({ onJoinClick, onWatchVideo }) => {
   const testimonials = useSyncExternalStore(
     subscribeAcademyData,
     () => AcademyDataManager.getTestimonials(),
@@ -262,6 +264,35 @@ export const SuccessStories: React.FC<SuccessStoriesProps> = ({ onJoinClick }) =
                 `}
               >
                 <div>
+                  {/* Action Photo / Video Banner if available */}
+                  {story.actionPhoto && (
+                    <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 border border-slate-200 bg-slate-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={story.actionPhoto} alt={story.author} className="w-full h-full object-cover" />
+                      {story.videoUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onWatchVideo?.({
+                              title: `${story.author} — ${story.role}`,
+                              subtitle: `Success Story · ${story.campus}`,
+                              videoUrl: story.videoUrl!,
+                              posterImage: story.actionPhoto || story.avatar,
+                              description: story.fullStory,
+                              tag: `Interview / Testimonial`,
+                              ctaText: 'Join MADEN FAF'
+                            });
+                          }}
+                          className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/85 hover:bg-amber-500 hover:text-slate-950 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 backdrop-blur-xs transition-colors cursor-pointer shadow-md"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>Watch Video</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Top Bar: Stars + Highlight Tag */}
                   <div className="flex items-center justify-between gap-2 mb-4">
                     <div className="flex items-center gap-1">
@@ -270,9 +301,32 @@ export const SuccessStories: React.FC<SuccessStoriesProps> = ({ onJoinClick }) =
                       ))}
                     </div>
 
-                    <span className="text-[10px] font-mono uppercase font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full truncate">
-                      {story.highlightTag}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {!story.actionPhoto && story.videoUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onWatchVideo?.({
+                              title: `${story.author} — ${story.role}`,
+                              subtitle: `Success Story · ${story.campus}`,
+                              videoUrl: story.videoUrl!,
+                              posterImage: story.avatar,
+                              description: story.fullStory,
+                              tag: `Interview / Testimonial`,
+                              ctaText: 'Join MADEN FAF'
+                            });
+                          }}
+                          className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                          <span>Video</span>
+                        </button>
+                      )}
+                      <span className="text-[10px] font-mono uppercase font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full truncate">
+                        {story.highlightTag}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Quote Body */}
@@ -417,6 +471,46 @@ export const SuccessStories: React.FC<SuccessStoriesProps> = ({ onJoinClick }) =
                   <div className="text-xs text-slate-500">{selectedStory.campus}</div>
                 </div>
               </div>
+
+              {/* Action Photo / Video Showcase */}
+              {(selectedStory.actionPhoto || selectedStory.videoUrl) && (
+                <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-900 group">
+                  {selectedStory.actionPhoto && (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={selectedStory.actionPhoto}
+                        alt={selectedStory.author}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+                    </>
+                  )}
+                  {selectedStory.videoUrl && (
+                    <div className={selectedStory.actionPhoto ? "absolute inset-0 flex items-center justify-center p-4 bg-black/40" : "p-6 flex items-center justify-center text-center"}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const s = selectedStory;
+                          onWatchVideo?.({
+                            title: `${s.author} — ${s.role}`,
+                            subtitle: `Success Story · ${s.campus}`,
+                            videoUrl: s.videoUrl!,
+                            posterImage: s.actionPhoto || s.avatar,
+                            description: s.fullStory,
+                            tag: `Interview / Testimonial`,
+                            ctaText: 'Join MADEN FAF'
+                          });
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-amber-900/40 cursor-pointer transition-all"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>Watch Video Interview / Testimonial</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm italic text-slate-800 leading-relaxed">
                 &ldquo;{selectedStory.quote}&rdquo;

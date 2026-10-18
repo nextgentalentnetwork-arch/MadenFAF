@@ -117,7 +117,31 @@ export const TeamLogo: React.FC<TeamLogoProps> = ({
     );
   }
 
-  // 2. Check if matches preset
+  // 2. Official MADEN FAF Academy Logo
+  if (
+    logo === 'preset:maden-faf' ||
+    logo === 'maden-faf' ||
+    teamName.toLowerCase().includes('maden')
+  ) {
+    return (
+      <div
+        className={`relative inline-flex items-center justify-center shrink-0 rounded-full bg-slate-950 border border-amber-400/40 shadow-xs overflow-hidden ${sizeClasses} ${className}`}
+        title={teamName || 'MADEN FAF'}
+      >
+        <img
+          src="/images/maden-faf-official-logo.png"
+          alt={`${teamName || 'MADEN FAF'} Official Logo`}
+          className="w-full h-full object-contain"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = '/images/maden-faf-official-logo.svg';
+          }}
+        />
+      </div>
+    );
+  }
+
+  // 3. Check if matches other presets
   const preset = TEAM_LOGO_PRESETS.find((p) => p.id === logo) ||
     TEAM_LOGO_PRESETS.find((p) => teamName.toLowerCase().includes(p.name.toLowerCase().split(' ')[0]));
 
