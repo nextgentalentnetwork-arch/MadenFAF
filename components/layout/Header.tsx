@@ -179,6 +179,17 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
 
           {/* Desktop Action CTAs */}
           <div className="hidden sm:flex items-center gap-3">
+            {profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' && (
+              <Link
+                href="/developer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-amber-400/60 text-amber-400 hover:bg-slate-800 text-xs font-mono font-bold transition-all shadow-sm shadow-amber-400/10 cursor-pointer min-h-[38px]"
+                title="Master Developer Backend Console"
+              >
+                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                <span>Backend CMS</span>
+              </Link>
+            )}
+
             {profile ? (
               <div className="relative">
                 <button
@@ -423,6 +434,17 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                     <span>Sign Out</span>
                   </button>
                 </div>
+
+                {profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' && (
+                  <Link
+                    href="/developer"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full py-3 rounded-xl bg-slate-900 border border-amber-400/60 text-amber-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 min-h-[44px] shadow-sm mb-2"
+                  >
+                    <Shield className="w-4 h-4 text-amber-400" />
+                    <span>Backend Command Center</span>
+                  </Link>
+                )}
 
                 <button
                   onClick={() => {

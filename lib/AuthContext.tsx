@@ -73,12 +73,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initAuth = async () => {
       try {
+        // 1. Check local storage first for persisted Master Developer session
+        let localUser: UserProfile | null = null;
+        if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('maden_faf_active_user');
+          if (saved) {
+            try {
+              localUser = JSON.parse(saved);
+            } catch (e) {
+              localUser = null;
+            }
+          }
+        }
+
+        const isLocalDev = localUser?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' &&
+          AcademyDataManager.isDeveloperAuthenticated();
+
+        if (isLocalDev && localUser && isMounted) {
+          AcademyDataManager.setDeveloperAuthenticated(true);
+          setUser({ id: localUser.id, email: localUser.email });
+          setProfile(localUser);
+        }
+
         if (isSupabaseActive) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user && isMounted) {
             const userEmail = session.user.email || '';
             const isDev = userEmail.toLowerCase() === 'pravakarghosh.2025@gmail.com';
-            AcademyDataManager.setDeveloperAuthenticated(isDev);
+            if (isDev) {
+              AcademyDataManager.setDeveloperAuthenticated(true);
+            }
             setUser(session.user);
             setProfile({
               id: session.user.id,
@@ -87,6 +111,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               role: (session.user.user_metadata?.role as any) || (isDev ? 'admin' : 'player'),
               campus: session.user.user_metadata?.campus || 'Gayeshpur',
             });
+          } else if (!isLocalDev && localUser && isMounted) {
+            // Restore active local user profile if not master dev
+            setUser({ id: localUser.id, email: localUser.email });
+            setProfile(localUser);
           }
 
           // Listen for Supabase auth state changes
@@ -105,23 +133,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 campus: session.user.user_metadata?.campus || 'Gayeshpur',
               });
             } else {
-              AcademyDataManager.setDeveloperAuthenticated(false);
-              setUser(null);
-              setProfile(null);
+              // If Supabase session is null, check if local master developer is active
+              const savedUser = typeof window !== 'undefined' ? localStorage.getItem('maden_faf_active_user') : null;
+              let parsed: UserProfile | null = null;
+              try {
+                parsed = savedUser ? JSON.parse(savedUser) : null;
+              } catch {
+                parsed = null;
+              }
+
+              if (parsed?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' && AcademyDataManager.isDeveloperAuthenticated()) {
+                // Keep Master Developer active
+                AcademyDataManager.setDeveloperAuthenticated(true);
+                setUser({ id: parsed.id, email: parsed.email });
+                setProfile(parsed);
+              } else {
+                AcademyDataManager.setDeveloperAuthenticated(false);
+                setUser(null);
+                setProfile(null);
+              }
             }
           });
-        } else {
-          // Check local stored session for offline/demo development
-          if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('maden_faf_active_user');
-            if (saved && isMounted) {
-              const parsed = JSON.parse(saved);
-              const isDev = parsed.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com';
-              AcademyDataManager.setDeveloperAuthenticated(isDev);
-              setUser({ id: parsed.id, email: parsed.email });
-              setProfile(parsed);
-            }
-          }
+        } else if (!isLocalDev && localUser && isMounted) {
+          setUser({ id: localUser.id, email: localUser.email });
+          setProfile(localUser);
         }
       } catch (err) {
         console.warn('Auth initialization warning:', err);

@@ -21,11 +21,13 @@ import { HeaderFooterManager } from '@/components/developer/HeaderFooterManager'
 import { WebsiteComponentsGrid } from '@/components/developer/WebsiteComponentsGrid';
 import { DeleteConfirmModal } from '@/components/developer/DeleteConfirmModal';
 import { UnifiedApiService, SyncStatus } from '@/lib/unifiedApiService';
+import { useAuth } from '@/lib/AuthContext';
 import {
   ShieldAlert,
   Database,
   Users,
   User,
+  Mail,
   Building,
   Trophy,
   Newspaper,
@@ -223,18 +225,35 @@ CREATE POLICY "Allow public write academy_campuses" ON public.academy_campuses F
 `;
 
 const subscribeDevAuth = (callback: () => void) => {
+  if (typeof window === 'undefined') return () => {};
   window.addEventListener('maden_data_updated', callback);
-  return () => window.removeEventListener('maden_data_updated', callback);
+  window.addEventListener('storage', callback);
+  return () => {
+    window.removeEventListener('maden_data_updated', callback);
+    window.removeEventListener('storage', callback);
+  };
 };
 
 export default function DeveloperPage() {
-  const isAuth = useSyncExternalStore(
+  const { profile, login, logout } = useAuth();
+  const isDevSession = useSyncExternalStore(
     subscribeDevAuth,
     () => AcademyDataManager.isDeveloperAuthenticated(),
     () => false
   );
 
+  const isMasterUser = profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com';
+  const isAuth = isDevSession || isMasterUser;
+
+  // Auto-sync developer auth state if master user is detected
+  useEffect(() => {
+    if (isMasterUser && !isDevSession) {
+      AcademyDataManager.setDeveloperAuthenticated(true);
+    }
+  }, [isMasterUser, isDevSession]);
+
   // Authentication State
+  const [devEmail, setDevEmail] = useState('pravakarghosh.2025@gmail.com');
   const [devPasscode, setDevPasscode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -465,20 +484,40 @@ export default function DeveloperPage() {
     };
   }, [isAuth]);
 
-  const handleDevLogin = (e?: React.FormEvent) => {
+  const handleDevLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setAuthError('');
+    const emailKey = devEmail.trim().toLowerCase();
     const key = devPasscode.trim();
-    // Authorized Master Developer Credential
-    if (key === 'maden-dev-2026') {
+
+    // Authorized Master Developer Credentials:
+    // Email: pravakarghosh.2025@gmail.com
+    // Password: maden-dev-2026
+    const isAuthorized =
+      emailKey === 'pravakarghosh.2025@gmail.com' &&
+      key === 'maden-dev-2026';
+
+    if (isAuthorized) {
       AcademyDataManager.setDeveloperAuthenticated(true);
+      try {
+        await login(emailKey, key);
+      } catch (err) {
+        console.warn('Sync dev login warning:', err);
+      }
     } else {
-      setAuthError('Access Denied: Invalid Master Developer Key. Only authorized developer credentials can access the backend.');
+      setAuthError(
+        'Access Denied: Only authorized developer credential (pravakarghosh.2025@gmail.com) can access the backend.'
+      );
     }
   };
 
-  const handleDevLogout = () => {
+  const handleDevLogout = async () => {
     AcademyDataManager.setDeveloperAuthenticated(false);
+    try {
+      await logout();
+    } catch (e) {
+      console.warn('Dev logout warning:', e);
+    }
   };
 
   const handleUpdateStatus = async (rowId: string, newStatus: string) => {
@@ -720,22 +759,42 @@ export default function DeveloperPage() {
 
           <form onSubmit={handleDevLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Master Developer Password
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>Authorized Developer Email</span>
+                <span className="text-[10px] text-amber-400 font-mono">EXCLUSIVE</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={devEmail}
+                  onChange={(e) => setDevEmail(e.target.value)}
+                  placeholder="pravakarghosh.2025@gmail.com"
+                  autoComplete="email"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition-all font-mono"
+                />
+                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>Master Developer Password</span>
+                <span className="text-[10px] text-slate-400 font-mono">REQUIRED</span>
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={devPasscode}
                   onChange={(e) => setDevPasscode(e.target.value)}
-                  placeholder="Enter master developer password..."
+                  placeholder="Enter developer password (maden-dev-2026)..."
                   autoComplete="current-password"
-                  className="w-full pl-4 pr-11 py-3 bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition-all font-mono"
+                  className="w-full pl-10 pr-11 py-3 bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition-all font-mono"
                 />
+                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 p-1 text-slate-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-3 p-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -755,7 +814,7 @@ export default function DeveloperPage() {
               className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
             >
               <Lock className="w-4 h-4" />
-              <span>Authenticate Developer Session</span>
+              <span>Unlock Backend Command Center</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

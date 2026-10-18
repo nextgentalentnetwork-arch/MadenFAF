@@ -22,7 +22,11 @@ import {
   Sparkles,
   ArrowRight,
   Key,
-  Megaphone
+  Megaphone,
+  Mail,
+  Eye,
+  EyeOff,
+  LogOut
 } from 'lucide-react';
 import { DIGITAL_PORTAL_ROLES, DEFAULT_PORTAL_CONFIG } from '@/data/academyData';
 import { AcademyDataManager, subscribeAcademyData } from '@/lib/academyDataManager';
@@ -77,7 +81,7 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
   initialRole = 'player',
   onBookTrialClick
 }) => {
-  const { profile, isSupabaseActive } = useAuth();
+  const { profile, login, logout, isSupabaseActive } = useAuth();
   const portalConfig = useSyncExternalStore(
     subscribeAcademyData,
     () => AcademyDataManager.getPortalConfig(),
@@ -95,11 +99,47 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
   const [pinError, setPinError] = useState('');
   const [isPinUnlocked, setIsPinUnlocked] = useState(false);
 
+  // Modal Sign In State
+  const [showSignInTab, setShowSignInTab] = useState(false);
+  const [modalEmail, setModalEmail] = useState('');
+  const [modalPassword, setModalPassword] = useState('');
+  const [modalShowPassword, setModalShowPassword] = useState(false);
+  const [modalAuthError, setModalAuthError] = useState('');
+  const [isModalLoggingIn, setIsModalLoggingIn] = useState(false);
+  const [modalLoginSuccess, setModalLoginSuccess] = useState('');
+
+  const isMasterDev =
+    profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' ||
+    AcademyDataManager.isDeveloperAuthenticated();
+
   const isAccessAllowed =
     portalConfig.portalMode === 'preview' ||
     Boolean(profile) ||
-    AcademyDataManager.isDeveloperAuthenticated() ||
+    isMasterDev ||
     isPinUnlocked;
+
+  const handleModalSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalAuthError('');
+    setModalLoginSuccess('');
+    if (!modalEmail.trim() || !modalPassword.trim()) {
+      setModalAuthError('Please enter both email and password.');
+      return;
+    }
+    setIsModalLoggingIn(true);
+    const res = await login(modalEmail, modalPassword);
+    setIsModalLoggingIn(false);
+    if (res.success) {
+      if (modalEmail.trim().toLowerCase() === 'pravakarghosh.2025@gmail.com') {
+        setModalLoginSuccess('Master Developer Authenticated! Backend unlocked.');
+      } else {
+        setModalLoginSuccess('Signed in successfully!');
+      }
+      setShowSignInTab(false);
+    } else {
+      setModalAuthError(res.error || 'Invalid credentials. Please try again.');
+    }
+  };
 
   const handleVerifyPin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,14 +232,30 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {!profile && (
-              <Link
-                href="/login"
-                onClick={onClose}
-                className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-xs font-bold text-slate-800 border border-slate-300 transition-colors shadow-xs"
+            {!profile ? (
+              <button
+                type="button"
+                onClick={() => setShowSignInTab(!showSignInTab)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                <span>Sign In</span>
-              </Link>
+                <User className="w-3.5 h-3.5" />
+                <span>{showSignInTab ? 'View Portal' : 'Academy Sign In'}</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="hidden sm:inline-block text-[11px] font-mono text-slate-600 max-w-[120px] truncate">
+                  {profile.fullName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
+                  title="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Sign Out</span>
+                </button>
+              </div>
             )}
             <button
               onClick={onClose}
@@ -211,28 +267,158 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
           </div>
         </div>
 
-        {/* Announcement Banner if configured in backend */}
-        {(portalConfig.announcementTitle || portalConfig.announcementMessage) && (
-          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 sm:px-6 flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 min-w-0">
-              <Megaphone className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <div className="truncate">
-                {portalConfig.announcementTitle && (
-                  <span className="font-bold text-amber-950 mr-1.5">{portalConfig.announcementTitle}:</span>
-                )}
-                <span className="text-amber-900">{portalConfig.announcementMessage}</span>
+        {/* Master Developer Quick Access Banner */}
+        {isMasterDev && (
+          <div className="bg-slate-950 border-b border-amber-500/50 p-3 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                <Shield className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold">
+                  Authorized Master Developer
+                </div>
+                <div className="text-xs font-bold text-slate-200">
+                  {profile?.email || 'pravakarghosh.2025@gmail.com'}
+                </div>
               </div>
             </div>
-            {portalConfig.portalMode === 'pin_protected' && (
-              <span className="text-[10px] font-mono font-bold uppercase bg-amber-200 text-amber-950 px-2 py-0.5 rounded shrink-0">
-                PIN Protected
-              </span>
-            )}
+            <Link
+              href="/developer"
+              onClick={onClose}
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Enter Backend Command Center</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         )}
 
-        {/* Access Gate Screen if PIN protected and not verified */}
-        {!isAccessAllowed ? (
+        {/* Modal Inline Sign In Form Screen */}
+        {showSignInTab ? (
+          <div className="p-6 sm:p-10 max-w-md mx-auto w-full my-auto space-y-5">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 mx-auto">
+                <User className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-black uppercase text-slate-900 tracking-tight">
+                Academy Portal Sign In
+              </h3>
+              <p className="text-xs text-slate-500">
+                Sign in with your verified Academy credentials or Master Developer account.
+              </p>
+            </div>
+
+            <form onSubmit={handleModalSignIn} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={modalEmail}
+                    onChange={(e) => setModalEmail(e.target.value)}
+                    placeholder="Enter email (e.g. pravakarghosh.2025@gmail.com)"
+                    autoComplete="email"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-mono"
+                  />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={modalShowPassword ? 'text' : 'password'}
+                    value={modalPassword}
+                    onChange={(e) => setModalPassword(e.target.value)}
+                    placeholder="Enter password..."
+                    autoComplete="current-password"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-mono"
+                  />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <button
+                    type="button"
+                    onClick={() => setModalShowPassword(!modalShowPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                  >
+                    {modalShowPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {modalAuthError && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                  {modalAuthError}
+                </div>
+              )}
+
+              {modalLoginSuccess && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+                  {modalLoginSuccess}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isModalLoggingIn}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isModalLoggingIn ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Lock className="w-4 h-4" />
+                )}
+                <span>{isModalLoggingIn ? 'Authenticating...' : 'Sign In with Academy Account'}</span>
+              </button>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowSignInTab(false)}
+                  className="hover:text-slate-900 underline cursor-pointer"
+                >
+                  Cancel / Return to Preview
+                </button>
+                <Link
+                  href="/login"
+                  onClick={onClose}
+                  className="text-amber-700 hover:text-amber-800 font-bold"
+                >
+                  Open Full Sign In Page ➔
+                </Link>
+              </div>
+            </form>
+          </div>
+        ) : (
+          <>
+            {/* Announcement Banner if configured in backend */}
+            {(portalConfig.announcementTitle || portalConfig.announcementMessage) && (
+              <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 sm:px-6 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Megaphone className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <div className="truncate">
+                    {portalConfig.announcementTitle && (
+                      <span className="font-bold text-amber-950 mr-1.5">{portalConfig.announcementTitle}:</span>
+                    )}
+                    <span className="text-amber-900">{portalConfig.announcementMessage}</span>
+                  </div>
+                </div>
+                {portalConfig.portalMode === 'pin_protected' && (
+                  <span className="text-[10px] font-mono font-bold uppercase bg-amber-200 text-amber-950 px-2 py-0.5 rounded shrink-0">
+                    PIN Protected
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Access Gate Screen if PIN protected and not verified */}
+            {!isAccessAllowed ? (
           <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-5 my-auto">
             <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 shadow-inner">
               <Lock className="w-7 h-7" />
@@ -609,7 +795,9 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
             </div>
           )}
         </div>
-        </>
+          </>
+        )}
+          </>
         )}
 
         {/* Modal Footer */}
