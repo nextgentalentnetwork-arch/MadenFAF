@@ -80,7 +80,7 @@ export const ParentExperience: React.FC<ParentExperienceProps> = ({ onOpenParent
                 onClick={onOpenParentPortal}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-amber-500 hover:text-slate-950 active:scale-95 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
               >
-                <span>OPEN PARENT PORTAL PREVIEW</span>
+                <span>OPEN PARENT PORTAL</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

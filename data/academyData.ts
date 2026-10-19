@@ -2226,10 +2226,10 @@ export const DEFAULT_FOOTER_CONFIG: FooterConfig = {
         },
         {
           id: 'f-a2',
-          label: 'Digital Player Portal',
+          label: 'Member Digital Portal',
           href: '/portal',
           actionType: 'portalLogin',
-          desc: 'Attendance, performance card & analytics',
+          desc: 'Attendance, performance passport & analytics',
         },
         {
           id: 'f-a3',

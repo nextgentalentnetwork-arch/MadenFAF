@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Menu, X, ChevronDown, User, Shield, Phone, Sparkles, MapPin, ArrowRight, LogOut, CheckCircle2, ExternalLink } from 'lucide-react';
 import { MadenLogo } from '@/components/ui/MadenLogo';
 import { useAuth } from '@/lib/AuthContext';
+import { getRoleDefinition } from '@/lib/rbac';
 import { AcademyDataManager, subscribeAcademyData, DEFAULT_HEADER_CONFIG } from '@/lib/academyDataManager';
 
 interface HeaderProps {
@@ -16,6 +17,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => {
   const router = useRouter();
   const { user, profile, logout } = useAuth();
+  const roleDef = profile ? getRoleDefinition(profile.role) : null;
   const headerConfig = useSyncExternalStore(
     subscribeAcademyData,
     () => AcademyDataManager.getHeaderConfig(),
@@ -175,6 +177,57 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                 )}
               </div>
             ))}
+
+            {/* Authenticated Member Digital Portal Link (Displays ONLY Assigned Role) */}
+            {profile && roleDef && (
+              <div
+                className="relative"
+                onMouseEnter={() => setActiveDropdown('member-digital-portal')}
+                onMouseLeave={() => setActiveDropdown(null)}
+              >
+                <Link
+                  href="/portal"
+                  className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-700 hover:text-amber-600 transition-colors py-2 group focus:outline-none"
+                >
+                  <span>MEMBER DIGITAL PORTAL</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase border ${roleDef.badgeColor}`}>
+                    {roleDef.badge}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-amber-600 group-hover:rotate-180 transition-transform" />
+                </Link>
+
+                {activeDropdown === 'member-digital-portal' && (
+                  <div className="absolute top-full left-0 w-80 p-3 bg-white border border-slate-200 rounded-2xl shadow-xl animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 mb-2">
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold">
+                        Authorized Role Portal
+                      </div>
+                      <div className="text-xs font-bold text-slate-900 mt-0.5">{profile.fullName}</div>
+                      <div className="text-[11px] text-slate-600 font-medium flex items-center gap-1.5 mt-0.5">
+                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase border ${roleDef.badgeColor}`}>
+                          {roleDef.badge}
+                        </span>
+                        <span>{roleDef.label}</span>
+                      </div>
+                    </div>
+
+                    <Link
+                      href="/portal"
+                      onClick={() => setActiveDropdown(null)}
+                      className="w-full text-left p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-slate-950 transition-all group/item block border border-amber-500/30"
+                    >
+                      <div className="text-xs font-black uppercase flex items-center justify-between">
+                        <span>{roleDef.portalTitle}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="text-[11px] text-slate-600 group-hover/item:text-slate-950 mt-0.5 leading-snug">
+                        {roleDef.portalSubtitle}
+                      </div>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           {/* Desktop Action CTAs */}
@@ -200,25 +253,24 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                     {profile.fullName.charAt(0)}
                   </div>
                   <span className="font-bold truncate max-w-[120px]">{profile.fullName}</span>
-                  <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold ${
-                    profile.role === 'coach'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : profile.role === 'parent'
-                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                      : profile.role === 'admin'
-                      ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                      : 'bg-amber-50 text-amber-800 border border-amber-200'
-                  }`}>
-                    {profile.role}
-                  </span>
+                  {roleDef && (
+                    <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold border ${roleDef.badgeColor}`}>
+                      {roleDef.badge}
+                    </span>
+                  )}
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in duration-150">
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in duration-150">
                     <div className="px-3 py-2 border-b border-slate-100 mb-1">
                       <div className="text-[11px] font-bold text-slate-900 truncate">{profile.fullName}</div>
                       <div className="text-[10px] text-slate-500 font-mono truncate">{profile.email}</div>
+                      {roleDef && (
+                        <div className="text-[10px] text-slate-600 mt-0.5 font-medium">
+                          Role: <strong className="text-slate-800">{roleDef.label}</strong>
+                        </div>
+                      )}
                     </div>
                     {profile.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' && (
                       <Link
@@ -230,16 +282,14 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                         <Shield className="w-3.5 h-3.5 text-amber-400" />
                       </Link>
                     )}
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        onLoginClick();
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center justify-between cursor-pointer"
+                    <Link
+                      href="/portal"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-slate-800 hover:text-slate-950 hover:bg-amber-50 transition-colors flex items-center justify-between cursor-pointer"
                     >
-                      <span>Player/Parent Portal</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-amber-600" />
-                    </button>
+                      <span className="truncate">{roleDef?.portalTitle || 'Member Portal'}</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    </Link>
                     <Link
                       href="/join"
                       onClick={() => setUserMenuOpen(false)}
@@ -446,16 +496,14 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                   </Link>
                 )}
 
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onLoginClick();
-                  }}
-                  className="w-full py-3 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 min-h-[44px] shadow-xs"
+                <Link
+                  href="/portal"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-3 rounded-xl bg-amber-500/10 hover:bg-amber-500 hover:text-slate-950 text-slate-800 border border-amber-500/30 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 min-h-[44px] shadow-xs transition-colors"
                 >
-                  <User className="w-4 h-4 text-slate-500" />
-                  <span>Open Academy Portal</span>
-                </button>
+                  <User className="w-4 h-4 text-amber-600" />
+                  <span>Open {roleDef?.label || 'Assigned Portal'}</span>
+                </Link>
               </div>
             ) : (
               <>
@@ -473,7 +521,7 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                   className="w-full py-3 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 min-h-[44px] shadow-xs"
                 >
                   <User className="w-4 h-4 text-slate-500" />
-                  <span>Sign In with Supabase</span>
+                  <span>Sign In</span>
                 </Link>
               </>
             )}

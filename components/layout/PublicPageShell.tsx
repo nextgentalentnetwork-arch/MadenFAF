@@ -9,7 +9,7 @@ import { JoinModal } from '@/components/modals/JoinModal';
 import { DigitalPortalModal } from '@/components/modals/DigitalPortalModal';
 import { VideoModal, ActiveVideoData } from '@/components/modals/VideoModal';
 import { AcademyDataManager, subscribeAcademyData, DEFAULT_TOGGLES } from '@/lib/academyDataManager';
-import { useAuth } from '@/lib/AuthContext';
+import { useAuth, UserRole } from '@/lib/AuthContext';
 import {
   ChevronRight,
   Home,
@@ -37,7 +37,7 @@ export interface PublicPageShellProps {
   ctaAction?: () => void;
   // Access control
   accessLevel?: 'public' | 'login_required' | 'role_restricted';
-  allowedRoles?: ('player' | 'parent' | 'coach' | 'admin')[];
+  allowedRoles?: UserRole[];
 }
 
 export const PublicPageShell: React.FC<PublicPageShellProps> = ({
@@ -50,7 +50,7 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
   ctaText,
   ctaAction,
   accessLevel = 'public',
-  allowedRoles = ['player', 'parent', 'coach', 'admin'],
+  allowedRoles = ['player', 'parent', 'coach', 'admin', 'manager', 'staff1', 'staff2'],
 }) => {
   const { user, profile } = useAuth();
   const toggles = useSyncExternalStore(

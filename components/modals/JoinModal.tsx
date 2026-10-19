@@ -120,11 +120,8 @@ export const JoinModal: React.FC<JoinModalProps> = ({
               />
             </div>
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
-                <span>Official Intake 2026/27</span>
-                <span className="text-[9px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full font-bold">
-                  Supabase DB Sync
-                </span>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                Official Intake 2026/27
               </div>
               <h2 className="text-sm sm:text-lg font-bold text-slate-900 leading-tight">
                 Book a Trial / Join MADEN FAF
@@ -160,7 +157,7 @@ export const JoinModal: React.FC<JoinModalProps> = ({
                     name="playerName"
                     value={formData.playerName}
                     onChange={handleChange}
-                    placeholder="e.g. Subham Roy"
+                    placeholder="Enter player's full name"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-base sm:text-sm focus:outline-none focus:border-amber-500 min-h-[44px] shadow-xs"
                   />
                 </div>
@@ -229,7 +226,7 @@ export const JoinModal: React.FC<JoinModalProps> = ({
                     name="parentName"
                     value={formData.parentName}
                     onChange={handleChange}
-                    placeholder="e.g. Pradip Roy"
+                    placeholder="Enter parent/guardian full name"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-base sm:text-sm focus:outline-none focus:border-amber-500 min-h-[44px] shadow-xs"
                   />
                 </div>
@@ -244,7 +241,7 @@ export const JoinModal: React.FC<JoinModalProps> = ({
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="+91 98300 00000"
+                    placeholder="Enter phone or WhatsApp number"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-base sm:text-sm focus:outline-none focus:border-amber-500 min-h-[44px] shadow-xs"
                   />
                 </div>
@@ -261,7 +258,7 @@ export const JoinModal: React.FC<JoinModalProps> = ({
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="parent@example.com"
+                    placeholder="Enter email address"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-base sm:text-sm focus:outline-none focus:border-amber-500 min-h-[44px] shadow-xs"
                   />
                 </div>
@@ -276,7 +273,7 @@ export const JoinModal: React.FC<JoinModalProps> = ({
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
-                    placeholder="e.g. Kalyani, Barrackpore, Krishnanagar"
+                    placeholder="Enter district, city, or residential area"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-base sm:text-sm focus:outline-none focus:border-amber-500 min-h-[44px] shadow-xs"
                   />
                 </div>

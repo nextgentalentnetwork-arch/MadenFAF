@@ -197,7 +197,7 @@ export const PlayerDevelopmentSystem: React.FC<PlayerDevelopmentSystemProps> = (
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 sm:mb-8">
             <div>
               <div className="text-xs font-bold uppercase tracking-widest text-amber-400 font-mono">
-                Real-Time Academy Platform Preview
+                Academy Performance Standards
               </div>
               <h3 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white mt-1">
                 PERFORMANCE DASHBOARD
@@ -209,7 +209,7 @@ export const PlayerDevelopmentSystem: React.FC<PlayerDevelopmentSystemProps> = (
 
             {/* Switch Player Selector - Mobile Swipeable Rail */}
             <div className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto no-scrollbar touch-pan-x w-full md:w-auto">
-              <span className="text-[10px] uppercase font-mono text-slate-500 px-2 shrink-0">Sample Roster:</span>
+              <span className="text-[10px] uppercase font-mono text-slate-500 px-2 shrink-0">Academy Squad:</span>
               {SAMPLE_PLAYERS.map((pl) => (
                 <button
                   key={pl.id}

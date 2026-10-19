@@ -533,7 +533,7 @@ export const ProgramsSection: React.FC<ProgramsSectionProps> = ({ onSelectProgra
                         const prog = selectedModalProgram;
                         onWatchVideo?.({
                           title: prog.name,
-                          subtitle: `${prog.subtitle} · Training Demonstration`,
+                          subtitle: `${prog.subtitle} · Training Curriculum Session`,
                           videoUrl: prog.videoUrl!,
                           posterImage: prog.image,
                           description: prog.description,

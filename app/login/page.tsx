@@ -20,16 +20,18 @@ import {
   EyeOff
 } from 'lucide-react';
 
+import { UserRole } from '@/lib/rbac';
+
 export default function LoginPage() {
   const router = useRouter();
-  const { login, signup, loginWithDemo, isSupabaseActive } = useAuth();
+  const { login, signup } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'player' | 'parent' | 'coach'>('player');
+  const [role, setRole] = useState<UserRole>('player');
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -63,10 +65,10 @@ export default function LoginPage() {
             router.push('/developer');
           }, 600);
         } else {
-          setSuccessMsg('Logged in successfully! Redirecting...');
+          setSuccessMsg('Authenticated! Redirecting to your assigned portal...');
           setTimeout(() => {
-            router.push('/');
-          }, 800);
+            router.push('/portal');
+          }, 600);
         }
       } else {
         setErrorMsg(res.error || 'Invalid credentials. Please try again.');
@@ -80,22 +82,14 @@ export default function LoginPage() {
       const res = await signup(email, password, fullName, role);
       setIsSubmitting(false);
       if (res.success) {
-        setSuccessMsg('Account created successfully! Redirecting...');
+        setSuccessMsg('Account created successfully! Loading your authorized portal...');
         setTimeout(() => {
-          router.push('/');
-        }, 800);
+          router.push('/portal');
+        }, 700);
       } else {
         setErrorMsg(res.error || 'Failed to create account.');
       }
     }
-  };
-
-  const handleDemoClick = (demoRole: 'player' | 'parent' | 'coach' | 'admin') => {
-    loginWithDemo(demoRole);
-    setSuccessMsg(`Logged in as Demo ${demoRole.toUpperCase()}! Redirecting...`);
-    setTimeout(() => {
-      router.push('/');
-    }, 600);
   };
 
   return (
@@ -109,23 +103,6 @@ export default function LoginPage() {
           <ArrowLeft className="w-4 h-4 text-amber-600" />
           <span>Back to Home</span>
         </Link>
-
-        {/* Supabase Status Indicator */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 text-[11px] font-mono shadow-xs">
-          <Database className="w-3 h-3 text-emerald-600" />
-          <span className="text-slate-500">Database:</span>
-          {isSupabaseActive ? (
-            <span className="text-emerald-700 font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              Supabase Live
-            </span>
-          ) : (
-            <span className="text-amber-700 font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              Supabase Ready
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Main Login Card */}
@@ -204,7 +181,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Subham Roy"
+                  placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors shadow-xs"
@@ -222,7 +199,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 required
-                placeholder="name@madenfaf.com"
+                placeholder="Enter your email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors shadow-xs"
@@ -274,7 +251,11 @@ export default function LoginPage() {
               >
                 <option value="player">Player (Academy Athlete)</option>
                 <option value="parent">Parent / Guardian</option>
-                <option value="coach">Technical Coach / Staff</option>
+                <option value="coach">Technical Coach</option>
+                <option value="manager">Campus / Academy Manager</option>
+                <option value="staff1">Staff 1 (Admissions & Intake)</option>
+                <option value="staff2">Staff 2 (Campus Logistics & Attendance)</option>
+                <option value="pending">Applicant (Pending Role Assignment)</option>
               </select>
             </div>
           )}
@@ -288,7 +269,7 @@ export default function LoginPage() {
               <span>Processing...</span>
             ) : mode === 'signin' ? (
               <>
-                <span>Sign In with Supabase</span>
+                <span>Sign In</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
@@ -300,66 +281,8 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo One-Click Sign In */}
-        <div className="mt-8 pt-6 border-t border-slate-200">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Instant Demo Access
-            </span>
-            <span className="text-[10px] font-mono text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
-              1-Click Fill
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => handleDemoClick('player')}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-500 hover:bg-white text-left transition-all cursor-pointer group shadow-xs"
-            >
-              <div className="font-bold text-slate-900 text-[11px] group-hover:text-amber-600 transition-colors">
-                Subham Roy
-              </div>
-              <div className="text-[10px] text-slate-500 font-mono">Player (U15)</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDemoClick('parent')}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-500 hover:bg-white text-left transition-all cursor-pointer group shadow-xs"
-            >
-              <div className="font-bold text-slate-900 text-[11px] group-hover:text-amber-600 transition-colors">
-                Mr. Pradip Roy
-              </div>
-              <div className="text-[10px] text-slate-500 font-mono">Parent Account</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDemoClick('coach')}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-emerald-500 hover:bg-white text-left transition-all cursor-pointer group shadow-xs"
-            >
-              <div className="font-bold text-slate-900 text-[11px] group-hover:text-emerald-600 transition-colors">
-                Coach Bapi Roy
-              </div>
-              <div className="text-[10px] text-slate-500 font-mono">AFC ‘B’ Head Coach</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDemoClick('admin')}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-purple-500 hover:bg-white text-left transition-all cursor-pointer group shadow-xs"
-            >
-              <div className="font-bold text-slate-900 text-[11px] group-hover:text-purple-600 transition-colors">
-                Tech Director
-              </div>
-              <div className="text-[10px] text-slate-500 font-mono">Academy Admin</div>
-            </button>
-          </div>
-        </div>
-
-        {/* Link to Join MADEN & Developer Command Center */}
-        <div className="mt-6 pt-4 border-t border-slate-100 text-center space-y-2">
+        {/* Link to Join MADEN */}
+        <div className="mt-8 pt-6 border-t border-slate-200 text-center space-y-2">
           <p className="text-xs text-slate-600">
             Want to enroll a new player?{' '}
             <Link href="/join" className="text-amber-700 hover:text-amber-800 font-bold transition-colors">
