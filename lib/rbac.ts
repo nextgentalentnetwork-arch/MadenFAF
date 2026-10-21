@@ -176,6 +176,12 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
 };
 
 /**
+ * Exact required error message when a user attempts to log in to or access another role's portal
+ */
+export const UNAUTHORIZED_PORTAL_ACCESS_MESSAGE =
+  'Access Denied: Your account is not authorized to access this portal. Please log in using your registered account role.';
+
+/**
  * Roles that can be selected by a public user during self-registration.
  * Privileged roles (admin, manager, coach, staff1, staff2) CANNOT be self-assigned.
  */
@@ -203,18 +209,68 @@ export function getRoleDefinition(role?: UserRole | string | null): RoleDefiniti
 }
 
 /**
- * Checks if a user role has authorization to access a required role or list of roles
+ * Canonical portal path for a given role
+ */
+export function getPortalPathForRole(role: UserRole): string {
+  return `/portal?role=${role}`;
+}
+
+/**
+ * Strict bidirectional portal authorization check:
+ * Default policy: one account, one assigned role, one authorized portal.
+ * A user registered under one role cannot access another role's portal unless an Admin
+ * has explicitly authorized that account for the additional role in `authorizedRoles`.
+ */
+export function canUserAccessPortal(
+  primaryRole: UserRole | string | undefined | null,
+  targetPortalRole: UserRole | string | undefined | null,
+  authorizedRoles?: UserRole[]
+): boolean {
+  if (!primaryRole || !isValidRole(primaryRole)) return false;
+  if (!targetPortalRole || !isValidRole(targetPortalRole)) return false;
+
+  const allowedSet = new Set<UserRole>([primaryRole]);
+  if (Array.isArray(authorizedRoles)) {
+    for (const r of authorizedRoles) {
+      if (isValidRole(r)) {
+        allowedSet.add(r);
+      }
+    }
+  }
+
+  return allowedSet.has(targetPortalRole);
+}
+
+/**
+ * Checks if a user role has authorization to access a required role or list of roles.
+ * Strictly enforces assigned role(s) without automatic cross-portal privilege escalation.
  */
 export function isRoleAuthorized(
   userRole: UserRole | string | undefined | null,
-  requiredRole: UserRole | UserRole[]
+  requiredRole: UserRole | UserRole[],
+  authorizedRoles?: UserRole[]
 ): boolean {
   if (!userRole || !isValidRole(userRole)) return false;
-  if (userRole === 'admin') return true; // Admin has universal access
-  if (Array.isArray(requiredRole)) {
-    return requiredRole.includes(userRole);
+  const targets = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+  return targets.some((target) => canUserAccessPortal(userRole, target, authorizedRoles));
+}
+
+/**
+ * Policy: Can this user access player recruitment / trial application features?
+ * Foundation Supporter & Donor ('member') accounts are strictly prohibited from accessing
+ * player recruitment features or submitting trial applications unless explicitly authorized.
+ */
+export function canAccessRecruitmentAndTrials(
+  userRole?: UserRole | string | null,
+  authorizedRoles?: UserRole[]
+): boolean {
+  if (!userRole) return true; // Public unauthenticated visitors can book a trial
+  if (!isValidRole(userRole)) return false;
+  if (userRole === 'member') {
+    const allowed = Array.isArray(authorizedRoles) ? authorizedRoles : ['member'];
+    return allowed.some((r) => r === 'player' || r === 'parent' || r === 'admin');
   }
-  return userRole === requiredRole;
+  return true;
 }
 
 /**
@@ -234,3 +290,4 @@ export function canManageDonations(role?: UserRole | string | null): boolean {
   if (!role || !isValidRole(role)) return false;
   return Boolean(ROLE_DEFINITIONS[role].canManageDonations);
 }
+

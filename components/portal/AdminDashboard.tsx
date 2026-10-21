@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AdminDonationsManager } from '@/components/portal/AdminDonationsManager';
+import { AdminRbacGovernanceManager } from '@/components/portal/AdminRbacGovernanceManager';
 
 interface AdminDashboardProps {
   profile: UserProfile;
@@ -137,6 +138,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ profile }) => {
           <div className="text-[11px] text-slate-500 font-medium">Nadia & N24 Parganas</div>
         </div>
       </div>
+
+      {/* Strict RBAC Account Role Separation & Migration Governance */}
+      <AdminRbacGovernanceManager profile={profile} />
 
       {/* Donators Portal & Official QR Payment Governance */}
       <AdminDonationsManager profile={profile} />

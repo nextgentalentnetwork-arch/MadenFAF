@@ -2,9 +2,15 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { X, CheckCircle, Calendar, MapPin, Award, ChevronRight, Phone, ShieldCheck, Sparkles, Database, ExternalLink } from 'lucide-react';
+import { X, CheckCircle, Calendar, MapPin, Award, ChevronRight, Phone, ShieldCheck, ShieldAlert, Sparkles, Database, ExternalLink } from 'lucide-react';
 import { ACADEMY_CAMPUSES } from '@/data/academyData';
 import { submitRegistration, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
+import {
+  canAccessRecruitmentAndTrials,
+  getPortalPathForRole,
+  UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+} from '@/lib/rbac';
 
 interface JoinModalProps {
   isOpen: boolean;
@@ -19,6 +25,10 @@ export const JoinModal: React.FC<JoinModalProps> = ({
   defaultCampus = 'gayeshpur',
   defaultProgram = 'development'
 }) => {
+  const { profile } = useAuth();
+  const isRecruitmentRestricted = Boolean(
+    profile && !canAccessRecruitmentAndTrials(profile.role, profile.roles)
+  );
   const [formData, setFormData] = useState({
     playerName: '',
     dob: '',
@@ -41,6 +51,49 @@ export const JoinModal: React.FC<JoinModalProps> = ({
   const isSupabaseActive = isSupabaseConfigured();
 
   if (!isOpen) return null;
+
+  if (isRecruitmentRestricted && profile) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <div
+          className="relative w-full max-w-lg bg-white border-2 border-rose-300 rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-black uppercase text-slate-900">
+            Recruitment &amp; Trial Access Restricted
+          </h3>
+          <p role="alert" className="text-xs font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-3.5">
+            {UNAUTHORIZED_PORTAL_ACCESS_MESSAGE}
+          </p>
+          <p className="text-xs text-slate-600">
+            Foundation Supporter &amp; Donor (<strong>Member</strong>) accounts cannot access player recruitment or trial applications.
+          </p>
+          <div className="flex justify-center gap-3 pt-2">
+            <Link
+              href={getPortalPathForRole(profile.role)}
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl bg-slate-900 text-amber-400 text-xs font-bold uppercase tracking-wider"
+            >
+              Return to Donators Portal
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold uppercase cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

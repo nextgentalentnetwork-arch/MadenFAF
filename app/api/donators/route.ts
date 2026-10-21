@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  getAuthoritativeAccountByEmail,
+  verifyRbacToken,
+  UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+} from '@/lib/serverRbac';
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cyolljxxcmaekhhllbix.supabase.co';
@@ -138,34 +143,64 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const section = searchParams.get('section') || 'all';
   const uid = searchParams.get('uid');
-  const role = searchParams.get('role');
+  const email = searchParams.get('email')?.toLowerCase().trim();
+  const authHeader = req.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : searchParams.get('token');
 
   try {
+    // Server-side RBAC verification: Never trust browser 'role' parameter alone
+    let verifiedIsAdmin = false;
+    let verifiedIsMember = false;
+
+    const tokenCheck = verifyRbacToken(token);
+    const resolvedEmail = tokenCheck.valid ? tokenCheck.payload?.email : email;
+
+    if (resolvedEmail) {
+      const authoritativeAccount = await getAuthoritativeAccountByEmail(resolvedEmail);
+      if (authoritativeAccount) {
+        verifiedIsAdmin = authoritativeAccount.roles.includes('admin');
+        verifiedIsMember = authoritativeAccount.roles.includes('member');
+
+        // Reverse restriction: If an authenticated non-Member, non-Admin user (e.g. Player, Coach, Manager, Staff)
+        // attempts to access Donators Portal API data, deny access immediately!
+        if (!verifiedIsAdmin && !verifiedIsMember) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const supabase = getSupabaseServerClient();
 
     if (section !== 'all' && ALLOWED_SECTIONS.has(section)) {
       const data = await readSectionFromCloud(supabase, section);
 
       // Server-side ownership filtering if non-admin requests user-scoped collections
-      if (uid && role !== 'admin' && Array.isArray(data)) {
+      if (!verifiedIsAdmin && Array.isArray(data)) {
+        if (section === 'auditLogs') {
+          return NextResponse.json(
+            { success: false, error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE },
+            { status: 403 }
+          );
+        }
         if (
-          section === 'memberProfiles' ||
-          section === 'donationPlans' ||
-          section === 'donations' ||
-          section === 'paymentSubmissions' ||
-          section === 'notifications'
+          uid &&
+          (section === 'memberProfiles' ||
+            section === 'donationPlans' ||
+            section === 'donations' ||
+            section === 'paymentSubmissions' ||
+            section === 'notifications')
         ) {
           return NextResponse.json({
             success: true,
             section,
             data: data.filter((item: any) => item.uid === uid),
           });
-        }
-        if (section === 'auditLogs') {
-          return NextResponse.json(
-            { success: false, error: 'Unauthorized access to administrative audit logs.' },
-            { status: 403 }
-          );
         }
       }
 
@@ -174,6 +209,9 @@ export async function GET(req: NextRequest) {
 
     const result: Record<string, any> = {};
     for (const sec of ALLOWED_SECTIONS) {
+      if (sec === 'auditLogs' && !verifiedIsAdmin && resolvedEmail) {
+        continue;
+      }
       const val = await readSectionFromCloud(supabase, sec);
       if (val !== null) {
         result[sec] = val;
@@ -204,7 +242,34 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { action, section, data } = body;
+    const { action, section, data, actorEmail, rbacToken } = body;
+
+    // Server-side RBAC verification on mutations
+    const tokenCheck = verifyRbacToken(rbacToken);
+    const resolvedEmail = tokenCheck.valid
+      ? tokenCheck.payload?.email
+      : actorEmail?.toLowerCase().trim();
+
+    if (resolvedEmail) {
+      const account = await getAuthoritativeAccountByEmail(resolvedEmail);
+      if (account) {
+        const isAdmin = account.roles.includes('admin');
+        const isMember = account.roles.includes('member');
+        if (!isAdmin && !isMember) {
+          return NextResponse.json(
+            { success: false, error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE },
+            { status: 403 }
+          );
+        }
+        // Admin-only sections
+        if (section === 'organizationPaymentSettings' && !isAdmin) {
+          return NextResponse.json(
+            { success: false, error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE },
+            { status: 403 }
+          );
+        }
+      }
+    }
 
     if (action === 'syncSection') {
       if (!section || !ALLOWED_SECTIONS.has(section)) {

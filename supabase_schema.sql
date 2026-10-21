@@ -66,10 +66,30 @@ CREATE POLICY "Allow user read their own profile"
   FOR SELECT
   USING (auth.uid() = id);
 
-CREATE POLICY "Allow user update their own profile"
+CREATE POLICY "Allow user update their own profile without changing role"
   ON public.profiles
   FOR UPDATE
-  USING (auth.uid() = id);
+  USING (auth.uid() = id)
+  WITH CHECK (
+    auth.uid() = id
+    AND role = (SELECT p.role FROM public.profiles p WHERE p.id = auth.uid())
+  );
+
+-- Prevent non-admin users from modifying their assigned role in public.profiles
+CREATE OR REPLACE FUNCTION public.prevent_self_role_modification()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role AND current_setting('request.jwt.claim.role', true) IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'Access Denied: Users are not permitted to modify their own database role.';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS enforce_immutable_user_role ON public.profiles;
+CREATE TRIGGER enforce_immutable_user_role
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE PROCEDURE public.prevent_self_role_modification();
 
 -- 4. Automatically create profile row when user signs up
 CREATE OR REPLACE FUNCTION public.handle_new_user()

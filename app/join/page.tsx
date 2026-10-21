@@ -6,6 +6,12 @@ import { useRouter } from 'next/navigation';
 import { MadenLogo } from '@/components/ui/MadenLogo';
 import { ACADEMY_CAMPUSES, ACADEMY_PROGRAMS } from '@/data/academyData';
 import { submitRegistration, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
+import {
+  canAccessRecruitmentAndTrials,
+  getPortalPathForRole,
+  UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+} from '@/lib/rbac';
 import { 
   CheckCircle2, 
   Sparkles, 
@@ -15,6 +21,7 @@ import {
   Mail, 
   User, 
   ShieldCheck, 
+  ShieldAlert,
   ArrowRight, 
   ArrowLeft,
   Database,
@@ -23,7 +30,11 @@ import {
 
 export default function JoinPage() {
   const router = useRouter();
+  const { profile } = useAuth();
   const isSupabaseActive = isSupabaseConfigured();
+  const isRecruitmentRestricted = Boolean(
+    profile && !canAccessRecruitmentAndTrials(profile.role, profile.roles)
+  );
 
   const [formData, setFormData] = useState({
     playerName: '',
@@ -119,7 +130,37 @@ export default function JoinPage() {
       </div>
 
       <div className="max-w-4xl mx-auto">
-        {!isSubmitted ? (
+        {isRecruitmentRestricted && profile ? (
+          <div className="bg-white border-2 border-rose-300 rounded-3xl p-8 text-center space-y-5 shadow-xl">
+            <div className="w-16 h-16 mx-auto rounded-3xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-xl sm:text-2xl font-black uppercase text-slate-900">
+                Player Recruitment &amp; Trial Access Restricted
+              </h1>
+              <p
+                role="alert"
+                className="text-sm font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-2xl p-4 max-w-xl mx-auto"
+              >
+                {UNAUTHORIZED_PORTAL_ACCESS_MESSAGE}
+              </p>
+              <p className="text-xs text-slate-600 max-w-lg mx-auto">
+                Your account (<strong>{profile.email}</strong>) is registered under the{' '}
+                <strong>Member (Foundation Supporter &amp; Donors Portal)</strong> role and is exclusively authorized for the Donators Portal.
+              </p>
+            </div>
+            <div className="pt-2 flex justify-center">
+              <Link
+                href={getPortalPathForRole(profile.role)}
+                className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2"
+              >
+                <span>Return to Donators Portal</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        ) : !isSubmitted ? (
           <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-xl relative">
             {/* Form Headline */}
             <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">

@@ -500,13 +500,13 @@ export default function DeveloperPage() {
     if (isAuthorized) {
       AcademyDataManager.setDeveloperAuthenticated(true);
       try {
-        await login(emailKey, key);
+        await login(emailKey, key, 'admin');
       } catch (err) {
         console.warn('Sync dev login warning:', err);
       }
     } else {
       setAuthError(
-        'Access Denied: Only authorized developer credential (pravakarghosh.2025@gmail.com) can access the backend.'
+        'Access Denied: Your account is not authorized to access this portal. Please log in using your registered account role.'
       );
     }
   };
@@ -748,6 +748,31 @@ export default function DeveloperPage() {
               Authorized developer portal for curriculum, campus network, live match centre, and Supabase database modifications.
             </p>
           </div>
+
+          {profile && profile.role !== 'admin' && (
+            <div
+              role="alert"
+              className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs space-y-2.5"
+            >
+              <div className="flex items-start gap-2 font-bold text-rose-200">
+                <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>
+                  Access Denied: Your account is not authorized to access this portal. Please log in using your registered account role.
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] font-mono text-slate-300">
+                  Signed in as: {profile.email} ({profile.role.toUpperCase()})
+                </span>
+                <Link
+                  href={`/portal?role=${profile.role}`}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-[11px] uppercase tracking-wider"
+                >
+                  Return to Your Portal
+                </Link>
+              </div>
+            </div>
+          )}
 
           <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between text-xs font-mono">
             <span className="text-slate-400">Target Database:</span>

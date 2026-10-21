@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import { Menu, X, ChevronDown, User, Shield, Phone, Sparkles, MapPin, ArrowRight, LogOut, CheckCircle2, ExternalLink } from 'lucide-react';
 import { MadenLogo } from '@/components/ui/MadenLogo';
 import { useAuth } from '@/lib/AuthContext';
-import { getRoleDefinition } from '@/lib/rbac';
+import {
+  getRoleDefinition,
+  getPortalPathForRole,
+  canAccessRecruitmentAndTrials,
+} from '@/lib/rbac';
 import { AcademyDataManager, subscribeAcademyData, DEFAULT_HEADER_CONFIG } from '@/lib/academyDataManager';
 
 interface HeaderProps {
@@ -186,10 +190,10 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                 onMouseLeave={() => setActiveDropdown(null)}
               >
                 <Link
-                  href="/portal"
+                  href={getPortalPathForRole(profile.role)}
                   className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-700 hover:text-amber-600 transition-colors py-2 group focus:outline-none"
                 >
-                  <span>MEMBER DIGITAL PORTAL</span>
+                  <span>{roleDef.navLabel.toUpperCase()}</span>
                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase border ${roleDef.badgeColor}`}>
                     {roleDef.badge}
                   </span>
@@ -200,7 +204,7 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                   <div className="absolute top-full left-0 w-80 p-3 bg-white border border-slate-200 rounded-2xl shadow-xl animate-in fade-in slide-in-from-top-2 duration-150 z-50">
                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 mb-2">
                       <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold">
-                        Authorized Role Portal
+                        Exclusively Authorized Portal
                       </div>
                       <div className="text-xs font-bold text-slate-900 mt-0.5">{profile.fullName}</div>
                       <div className="text-[11px] text-slate-600 font-medium flex items-center gap-1.5 mt-0.5">
@@ -212,7 +216,7 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                     </div>
 
                     <Link
-                      href="/portal"
+                      href={getPortalPathForRole(profile.role)}
                       onClick={() => setActiveDropdown(null)}
                       className="w-full text-left p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-slate-950 transition-all group/item block border border-amber-500/30"
                     >
@@ -283,21 +287,23 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
                       </Link>
                     )}
                     <Link
-                      href="/portal"
+                      href={getPortalPathForRole(profile.role)}
                       onClick={() => setUserMenuOpen(false)}
                       className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-slate-800 hover:text-slate-950 hover:bg-amber-50 transition-colors flex items-center justify-between cursor-pointer"
                     >
                       <span className="truncate">{roleDef?.portalTitle || 'Member Portal'}</span>
                       <ArrowRight className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     </Link>
-                    <Link
-                      href="/join"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center justify-between cursor-pointer"
-                    >
-                      <span>New Trial Application</span>
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    </Link>
+                    {canAccessRecruitmentAndTrials(profile.role, profile.roles) && (
+                      <Link
+                        href="/join"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center justify-between cursor-pointer"
+                      >
+                        <span>New Trial Application</span>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      </Link>
+                    )}
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);

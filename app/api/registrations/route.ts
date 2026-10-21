@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  getAuthoritativeAccountByEmail,
+  UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+} from '@/lib/serverRbac';
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cyolljxxcmaekhhllbix.supabase.co';
@@ -7,8 +11,21 @@ const supabaseKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5b2xsanh4Y21hZWtoaGxsYml4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDUwMDkzNSwiZXhwIjoyMTA2MDc2OTM1fQ.YUQW0sdxzObMXueBkZsxor-GlJ06Se1PbyXUmvRzQ_4';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const callerEmail = searchParams.get('email')?.toLowerCase().trim();
+    if (callerEmail) {
+      const account = await getAuthoritativeAccountByEmail(callerEmail);
+      // Member accounts must not access player recruitment/trial registration records
+      if (account && account.role === 'member' && !account.roles.includes('admin')) {
+        return NextResponse.json(
+          { success: false, error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE },
+          { status: 403 }
+        );
+      }
+    }
+
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({ success: false, error: 'Supabase credentials missing' }, { status: 500 });
     }
@@ -60,6 +77,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Missing mandatory registration fields (player name, parent name, phone, email).' },
         { status: 400 }
+      );
+    }
+
+    // Server-side RBAC check: Foundation Supporter & Donor ('member') accounts cannot submit player trial applications
+    const existingAccount = await getAuthoritativeAccountByEmail(email);
+    if (
+      existingAccount &&
+      existingAccount.role === 'member' &&
+      !existingAccount.roles.some((r) => r === 'player' || r === 'parent' || r === 'admin')
+    ) {
+      return NextResponse.json(
+        { error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE },
+        { status: 403 }
       );
     }
 

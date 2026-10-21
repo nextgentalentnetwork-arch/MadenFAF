@@ -17,7 +17,14 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { getRoleDefinition } from '@/lib/rbac';
+import {
+  getRoleDefinition,
+  UserRole,
+  isValidRole,
+  canUserAccessPortal,
+  getPortalPathForRole,
+  UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+} from '@/lib/rbac';
 import { PlayerDashboard } from '@/components/portal/PlayerDashboard';
 import { ParentDashboard } from '@/components/portal/ParentDashboard';
 import { CoachDashboard } from '@/components/portal/CoachDashboard';
@@ -38,13 +45,17 @@ interface DigitalPortalModalProps {
 export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
   isOpen,
   onClose,
+  initialRole,
   onBookTrialClick,
 }) => {
-  const { profile, login, logout } = useAuth();
+  const { profile, login, logout, accessDeniedReason, clearAccessDenied } = useAuth();
 
   // Sign In State for logged-out modal view
   const [modalEmail, setModalEmail] = useState('');
   const [modalPassword, setModalPassword] = useState('');
+  const [modalTargetRole, setModalTargetRole] = useState<UserRole | 'auto'>(
+    initialRole && isValidRole(initialRole) ? initialRole : 'auto'
+  );
   const [modalShowPassword, setModalShowPassword] = useState(false);
   const [modalAuthError, setModalAuthError] = useState('');
   const [isModalLoggingIn, setIsModalLoggingIn] = useState(false);
@@ -54,20 +65,30 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
   const handleModalSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalAuthError('');
+    clearAccessDenied();
     if (!modalEmail.trim() || !modalPassword.trim()) {
       setModalAuthError('Please enter both email and password.');
       return;
     }
     setIsModalLoggingIn(true);
-    const res = await login(modalEmail, modalPassword);
+    const res = await login(modalEmail, modalPassword, modalTargetRole);
     setIsModalLoggingIn(false);
     if (!res.success) {
-      setModalAuthError(res.error || 'Invalid credentials. Please verify your email and password.');
+      setModalAuthError(
+        res.error || 'Invalid credentials. Please verify your email and password.'
+      );
     }
   };
 
   // If user is authenticated, determine their authorized role definition
   const roleDef = profile ? getRoleDefinition(profile.role) : null;
+  const requestedModalRole =
+    initialRole && isValidRole(initialRole) ? initialRole : null;
+  const isModalRoleUnauthorized = Boolean(
+    profile &&
+      requestedModalRole &&
+      !canUserAccessPortal(profile.role, requestedModalRole, profile.roles)
+  );
 
   return (
     <div
@@ -213,8 +234,29 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Portal Verification Target
+                  </label>
+                  <select
+                    value={modalTargetRole}
+                    onChange={(e) => setModalTargetRole(e.target.value as UserRole | 'auto')}
+                    className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                  >
+                    <option value="auto">Registered Account Role (Auto-Redirect)</option>
+                    <option value="member">Member Portal (Donators Portal)</option>
+                    <option value="player">Player Portal (Academy Athlete)</option>
+                    <option value="parent">Parent / Guardian Portal</option>
+                    <option value="coach">Coach Portal</option>
+                    <option value="manager">Manager Portal</option>
+                    <option value="staff1">Staff 1 Portal</option>
+                    <option value="staff2">Staff 2 Portal</option>
+                    <option value="admin">Admin Portal</option>
+                  </select>
+                </div>
+
                 {modalAuthError && (
-                  <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                  <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-semibold text-xs">
                     {modalAuthError}
                   </div>
                 )}
@@ -229,7 +271,7 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
                   ) : (
                     <Lock className="w-4 h-4" />
                   )}
-                  <span>{isModalLoggingIn ? 'Authenticating...' : 'Sign In'}</span>
+                  <span>{isModalLoggingIn ? 'Verifying Role...' : 'Verify Role & Sign In'}</span>
                 </button>
 
                 <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-200">
@@ -253,13 +295,39 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
                 </div>
               </form>
             </div>
+          ) : isModalRoleUnauthorized || accessDeniedReason ? (
+            <div className="p-6 rounded-2xl bg-rose-50 border border-rose-300 text-center space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-black uppercase text-rose-900">
+                  Unauthorized Portal Access
+                </h3>
+                <p className="text-xs font-semibold text-rose-800 max-w-md mx-auto">
+                  {accessDeniedReason || UNAUTHORIZED_PORTAL_ACCESS_MESSAGE}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <Link
+                  href={getPortalPathForRole(profile.role)}
+                  onClick={() => {
+                    clearAccessDenied();
+                    onClose();
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold uppercase tracking-wider"
+                >
+                  Open Authorized {roleDef?.label} Portal
+                </Link>
+              </div>
+            </div>
           ) : (
             /* CASE 2: Authenticated user -> Render ONLY their assigned role dashboard */
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold">
-                    Authorized Role Portal
+                    Authorized Role Portal · Strict RBAC Verified
                   </div>
                   <h3 className="text-sm sm:text-base font-black text-slate-900">
                     {roleDef?.portalTitle}
@@ -269,7 +337,7 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
                   </p>
                 </div>
                 <Link
-                  href="/portal"
+                  href={getPortalPathForRole(profile.role)}
                   onClick={onClose}
                   className="sm:hidden w-full py-2 px-3 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs"
                 >
@@ -308,14 +376,17 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
         <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-600 text-center sm:text-left">
             {profile ? (
-              <span>Authenticated as <strong className="text-slate-800">{profile.email}</strong> ({roleDef?.label})</span>
+              <span>
+                Authenticated as <strong className="text-slate-800">{profile.email}</strong> (
+                {roleDef?.label} — Exclusively Authorized)
+              </span>
             ) : (
-              <span>Ready to enroll your child into the MADEN FAF digital tracking system?</span>
+              <span>One account, one assigned role, one authorized portal.</span>
             )}
           </div>
           {profile ? (
             <Link
-              href="/portal"
+              href={getPortalPathForRole(profile.role)}
               onClick={onClose}
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 font-bold text-xs uppercase tracking-wider text-slate-950 transition-all flex items-center justify-center gap-2 min-h-[42px] shadow-sm shadow-amber-200 cursor-pointer"
             >

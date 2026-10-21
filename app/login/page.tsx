@@ -1,30 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { MadenLogo } from '@/components/ui/MadenLogo';
-import { 
-  Lock, 
-  Mail, 
-  User, 
-  ArrowRight, 
-  ShieldCheck, 
-  Sparkles, 
-  CheckCircle2, 
+import {
+  Lock,
+  Mail,
+  User,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
   AlertCircle,
-  Database,
   ArrowLeft,
   Eye,
-  EyeOff
+  EyeOff,
+  ShieldAlert,
 } from 'lucide-react';
-
-import { UserRole } from '@/lib/rbac';
+import { UserRole, isValidRole, getPortalPathForRole } from '@/lib/rbac';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, signup } = useAuth();
+  const { login, signup, accessDeniedReason, clearAccessDenied } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -32,6 +30,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<UserRole>('member');
+  const [targetPortalRole, setTargetPortalRole] = useState<UserRole | 'auto'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const requestedRole = params.get('role');
+      if (requestedRole && isValidRole(requestedRole)) {
+        return requestedRole;
+      }
+    }
+    return 'auto';
+  });
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -41,6 +49,7 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
+    clearAccessDenied();
 
     if (!email || !password) {
       setErrorMsg('Please provide both email and password.');
@@ -55,54 +64,71 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     if (mode === 'signin') {
-      const res = await login(email, password);
+      const res = await login(email, password, targetPortalRole);
       setIsSubmitting(false);
-      if (res.success) {
-        const isDev = email.trim().toLowerCase() === 'pravakarghosh.2025@gmail.com';
-        if (isDev) {
-          setSuccessMsg('Master Developer Authenticated! Redirecting to Backend Command Center...');
+      if (res.success && res.role) {
+        const isDev =
+          email.trim().toLowerCase() === 'pravakarghosh.2025@gmail.com' &&
+          (targetPortalRole === 'auto' || targetPortalRole === 'admin');
+        if (isDev && targetPortalRole === 'auto') {
+          setSuccessMsg(
+            'Master Developer Authenticated! Redirecting to Backend Command Center...'
+          );
           setTimeout(() => {
             router.push('/developer');
-          }, 600);
+          }, 500);
         } else {
-          setSuccessMsg('Authenticated! Redirecting to your assigned portal...');
+          const destPortal = getPortalPathForRole(
+            targetPortalRole !== 'auto' ? targetPortalRole : res.role
+          );
+          setSuccessMsg(
+            `Role Verified (${res.role.toUpperCase()})! Redirecting to your authorized portal...`
+          );
           setTimeout(() => {
-            router.push('/portal');
-          }, 600);
+            router.push(destPortal);
+          }, 500);
         }
       } else {
         setErrorMsg(res.error || 'Invalid credentials. Please try again.');
       }
     } else {
-      if (!fullName) {
+      if (!fullName.trim()) {
         setIsSubmitting(false);
         setErrorMsg('Please enter your full name for registration.');
         return;
       }
       const res = await signup(email, password, fullName, role);
       setIsSubmitting(false);
-      if (res.success) {
-        setSuccessMsg('Account created successfully! Loading your authorized portal...');
+      if (res.success && res.role) {
+        const destPortal = getPortalPathForRole(res.role);
+        setSuccessMsg(
+          `Account registered under ${res.role.toUpperCase()} role! Redirecting to your authorized portal...`
+        );
         setTimeout(() => {
-          router.push('/portal');
-        }, 700);
+          router.push(destPortal);
+        }, 600);
       } else {
         setErrorMsg(res.error || 'Failed to create account.');
       }
     }
   };
 
+  const isAccessDeniedError = errorMsg.startsWith('Access Denied:');
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Top Bar with Back Link */}
       <div className="max-w-md w-full mx-auto mb-6 flex items-center justify-between z-10">
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors p-2 px-3 rounded-xl bg-white border border-slate-200 shadow-xs"
         >
           <ArrowLeft className="w-4 h-4 text-amber-600" />
           <span>Back to Home</span>
         </Link>
+        <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-full bg-slate-900 text-amber-400 border border-slate-800">
+          Strict RBAC Enforced
+        </span>
       </div>
 
       {/* Main Login Card */}
@@ -116,7 +142,7 @@ export default function LoginPage() {
             {mode === 'signin' ? 'Academy Portal Sign In' : 'Create Academy Account'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Access training dossiers, performance cards, schedules, and attendance.
+            One account, one assigned role, one authorized portal.
           </p>
         </div>
 
@@ -156,8 +182,19 @@ export default function LoginPage() {
 
         {/* Alert Notifications */}
         {errorMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2 animate-in fade-in duration-200">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div
+            role="alert"
+            className={`mb-4 p-3.5 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-200 ${
+              isAccessDeniedError
+                ? 'bg-rose-50 border-rose-300 text-rose-900 font-semibold'
+                : 'bg-amber-50 border-amber-200 text-amber-800'
+            }`}
+          >
+            {isAccessDeniedError ? (
+              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            )}
             <span>{errorMsg}</span>
           </div>
         )}
@@ -212,11 +249,6 @@ export default function LoginPage() {
               <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
                 Password
               </label>
-              {mode === 'signin' && (
-                <span className="text-[11px] text-slate-500 hover:text-slate-800 cursor-pointer">
-                  Forgot?
-                </span>
-              )}
             </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -239,23 +271,58 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {mode === 'signin' && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Portal Verification Target
+              </label>
+              <select
+                value={targetPortalRole}
+                onChange={(e) => setTargetPortalRole(e.target.value as UserRole | 'auto')}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 outline-none transition-colors shadow-xs"
+              >
+                <option value="auto">
+                  Registered Account Role (Verify &amp; Auto-Redirect)
+                </option>
+                <option value="member">
+                  Member Portal (Foundation Supporter &amp; Donators Portal)
+                </option>
+                <option value="player">Player Portal (Academy Athlete)</option>
+                <option value="parent">Parent / Guardian Portal</option>
+                <option value="coach">Coach Portal (Technical Staff)</option>
+                <option value="manager">Manager Portal (Campus Operations)</option>
+                <option value="staff1">Staff 1 Portal (Admissions Desk)</option>
+                <option value="staff2">Staff 2 Portal (Field &amp; Attendance)</option>
+                <option value="admin">Admin Portal (Executive Command)</option>
+              </select>
+              <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">
+                Your portal access is strictly determined by your server-registered account role. Attempting to sign in to another role&apos;s portal will be denied.
+              </p>
+            </div>
+          )}
+
           {mode === 'signup' && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Primary Account Role
+                Assigned Account Role (Permanent)
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as UserRole)}
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 outline-none transition-colors shadow-xs"
               >
-                <option value="member">Member (Foundation Supporter &amp; Donators Portal)</option>
-                <option value="player">Player (Academy Athlete)</option>
-                <option value="parent">Parent / Guardian</option>
-                <option value="pending">Applicant (Pending Staff / Coach Role Assignment)</option>
+                <option value="member">
+                  Member (Foundation Supporter &amp; Donators Portal Only)
+                </option>
+                <option value="player">Player (Academy Athlete Portal Only)</option>
+                <option value="parent">Parent / Guardian (Parent Portal Only)</option>
+                <option value="pending">
+                  Applicant (Pending Admin Staff / Coach Role Assignment)
+                </option>
               </select>
               <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">
-                Select <strong>Member</strong> to access the MADEN FAF Donators Portal. Admin, Manager, Coach, and Staff roles are assigned exclusively by Academy Administration.
+                <strong>Strict Role Separation:</strong> Accounts registered as{' '}
+                <strong>Member</strong> are exclusively authorized for the Donators Portal and cannot access Player, Coach, Staff, or Admin portals.
               </p>
             </div>
           )}
@@ -266,10 +333,10 @@ export default function LoginPage() {
             className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-amber-200 flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
           >
             {isSubmitting ? (
-              <span>Processing...</span>
+              <span>Verifying Role &amp; Credentials...</span>
             ) : mode === 'signin' ? (
               <>
-                <span>Sign In</span>
+                <span>Verify Role &amp; Sign In</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
@@ -284,12 +351,14 @@ export default function LoginPage() {
         {/* Link to Join MADEN */}
         <div className="mt-8 pt-6 border-t border-slate-200 text-center space-y-2">
           <p className="text-xs text-slate-600">
-            Want to enroll a new player?{' '}
-            <Link href="/join" className="text-amber-700 hover:text-amber-800 font-bold transition-colors">
+            Want to enroll a new youth athlete?{' '}
+            <Link
+              href="/join"
+              className="text-amber-700 hover:text-amber-800 font-bold transition-colors"
+            >
               Book a Trial / Join MADEN
             </Link>
           </p>
-
         </div>
       </div>
     </div>
