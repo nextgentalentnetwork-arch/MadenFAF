@@ -68,7 +68,7 @@ export default function PortalPage({ forcedRoleProp }: PortalPageProps = {}) {
   const donatorsTick = useSyncExternalStore(
     subscribeDonatorsPortal,
     () => DonatorsPortalService.getSnapshotTick(),
-    () => 0
+    () => 'server'
   );
   const memberPortalConfig = React.useMemo(
     () => DonatorsPortalService.getPaymentSettings()?.portalModuleConfig,
@@ -335,7 +335,7 @@ export default function PortalPage({ forcedRoleProp }: PortalPageProps = {}) {
       }
       secondaryCtaText={
         effectiveRole === 'member'
-          ? memberPortalConfig?.profilePortalLabel || 'See Your Digital Profile'
+          ? memberPortalConfig?.secondaryCtaLabel || 'See Your Digital Profile'
           : undefined
       }
       secondaryCtaAction={

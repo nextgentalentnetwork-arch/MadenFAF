@@ -197,7 +197,7 @@ export interface OrganizationPaymentSettings {
     authorizedSignatoryName: string;
     authorizedSignatoryTitle: string;
   };
-  portalModuleConfig?: DonatorsPortalModuleConfig;
+  portalModuleConfig: DonatorsPortalModuleConfig;
   updatedBy: string;
   updatedAt: string;
 }
@@ -550,6 +550,23 @@ export const subscribeDonatorsPortal = (callback: () => void) => {
 };
 
 export const DonatorsPortalService = {
+  getSnapshotTick(): string {
+    if (typeof window === 'undefined') return 'server';
+    try {
+      return (
+        (localStorage.getItem(STORAGE_KEYS.MEMBER_PROFILES) || '') +
+        (localStorage.getItem(STORAGE_KEYS.DONATIONS) || '') +
+        (localStorage.getItem(STORAGE_KEYS.DONATION_PLANS) || '') +
+        (localStorage.getItem(STORAGE_KEYS.PAYMENT_SUBMISSIONS) || '') +
+        (localStorage.getItem(STORAGE_KEYS.ORG_PAYMENT_SETTINGS) || '') +
+        (localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS) || '') +
+        (localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS) || '')
+      );
+    } catch {
+      return 'client';
+    }
+  },
+
   // Hydrate from server API on client boot
   async hydrateFromCloud(): Promise<void> {
     if (typeof window === 'undefined') return;
@@ -748,23 +765,27 @@ export const DonatorsPortalService = {
 
   getMemberProfileByUid(uid: string, fallbackEmail?: string, fallbackName?: string): MemberProfileRecord {
     const all = this.getAllMemberProfiles();
+    const safeEmail = (fallbackEmail || '').trim().toLowerCase();
     const found = all.find(
-      (p) => p.uid === uid || (fallbackEmail && p.authEmail.toLowerCase() === fallbackEmail.toLowerCase())
+      (p) =>
+        p &&
+        (p.uid === uid ||
+          (safeEmail &&
+            ((p.authEmail || '').toLowerCase() === safeEmail ||
+              (p.email || '').toLowerCase() === safeEmail)))
     );
-    if (found) return found;
 
-    // Return an unpersisted initial scaffold with a collision-checked Member ID
     const nowIso = new Date().toISOString();
-    return {
-      uid,
-      memberId: this.generateUniqueMemberId(),
-      authEmail: fallbackEmail || '',
-      fullName: fallbackName || '',
+    const defaultScaffold: MemberProfileRecord = {
+      uid: found?.uid || uid,
+      memberId: found?.memberId || this.generateUniqueMemberId(),
+      authEmail: found?.authEmail || fallbackEmail || '',
+      fullName: found?.fullName || fallbackName || 'Foundation Member',
       profilePhotograph: '',
       dob: '',
       gender: '',
       occupation: '',
-      email: fallbackEmail || '',
+      email: found?.email || fallbackEmail || '',
       primaryMobile: '',
       alternateMobile: '',
       houseAndStreet: '',
@@ -797,6 +818,27 @@ export const DonatorsPortalService = {
       },
       createdAt: nowIso,
       updatedAt: nowIso,
+    };
+
+    if (!found) return defaultScaffold;
+
+    return {
+      ...defaultScaffold,
+      ...found,
+      fullName: found.fullName || fallbackName || 'Foundation Member',
+      memberId: found.memberId || defaultScaffold.memberId,
+      memberCategory: found.memberCategory || 'individual',
+      preferredCommunicationMethod: found.preferredCommunicationMethod || 'email',
+      areasOfInterest: Array.isArray(found.areasOfInterest) ? found.areasOfInterest : [],
+      emergencyContact: {
+        name: found.emergencyContact?.name || '',
+        relationship: found.emergencyContact?.relationship || '',
+        phone: found.emergencyContact?.phone || '',
+      },
+      verifiedContactMetadata: {
+        ...defaultScaffold.verifiedContactMetadata!,
+        ...(found.verifiedContactMetadata || {}),
+      },
     };
   },
 

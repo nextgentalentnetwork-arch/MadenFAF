@@ -1612,10 +1612,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                         Areas of Interest in Football Development (Optional)
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {(portalModuleConfig.availableInterests?.length
-                          ? portalModuleConfig.availableInterests
+                        {(portalModuleConfig.interestAreas?.length
+                          ? portalModuleConfig.interestAreas
                           : FOOTBALL_INTEREST_AREAS
-                        ).map((area) => {
+                        ).map((area: string) => {
                           const checked = (wizardForm.areasOfInterest || []).includes(area);
                           return (
                             <label
@@ -1975,9 +1975,9 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                   <label className="block text-xs font-semibold text-slate-800">
                     3. Donation Purpose or Message (Optional)
                   </label>
-                  {portalModuleConfig.availablePurposes?.length > 0 && (
+                  {portalModuleConfig.donationPurposes?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {portalModuleConfig.availablePurposes.map((p) => (
+                      {portalModuleConfig.donationPurposes.map((p: string) => (
                         <button
                           key={p}
                           type="button"

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { AcademyDataManager } from '@/lib/academyDataManager';
+import { DonatorsPortalService } from '@/lib/donatorsPortalService';
 import {
   UserRole,
   isValidRole,
@@ -692,28 +693,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const serverProfile: UserProfile = rbacRegData.authoritativeProfile;
 
-      // 2. Also register in Supabase Auth if active
+      // 2. Also register in Supabase Auth if active (non-blocking if trigger/network fails)
       if (isSupabaseActive) {
-        const legacyDbCompatibleRole =
-          role === 'player' || role === 'parent' ? role : 'player';
+        try {
+          const legacyDbCompatibleRole =
+            role === 'player' || role === 'parent' ? role : 'player';
 
-        const { data, error } = await supabase.auth.signUp({
-          email: normalizedEmail,
-          password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              role: legacyDbCompatibleRole,
-              portal_role: role,
-              maden_role: role,
-              roles: [role],
-              campus: 'Gayeshpur Flagship Campus',
+          await supabase.auth.signUp({
+            email: normalizedEmail,
+            password,
+            options: {
+              data: {
+                full_name: fullName.trim(),
+                role: legacyDbCompatibleRole,
+                portal_role: role,
+                maden_role: role,
+                roles: [role],
+                campus: 'Gayeshpur Flagship Campus',
+              },
             },
-          },
-        });
+          });
+        } catch {
+          // Non-blocking: authoritative account is persisted in server RBAC store
+        }
+      }
 
-        if (!error && data?.user?.id) {
-          serverProfile.id = data.user.id;
+      // 3. If registered as a Member, ensure an initial draft Member dossier is created
+      if (serverProfile.role === 'member') {
+        try {
+          const initialDossier = DonatorsPortalService.getMemberProfileByUid(
+            serverProfile.id,
+            serverProfile.email,
+            serverProfile.fullName
+          );
+          DonatorsPortalService.saveMemberProfile(serverProfile.id, initialDossier, true);
+        } catch {
+          // Non-blocking
         }
       }
 

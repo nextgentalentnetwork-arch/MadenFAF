@@ -713,7 +713,7 @@ export function generateDonationPdfBlob(
   );
 
   const pdfBytes = compilePdfDocument([page], `${docNumber} - ${org.legalName}`);
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
   const filename = `${docNumber}.pdf`;
 
   return { blob, filename, effectiveMode, docNumber };
@@ -967,7 +967,7 @@ export function downloadAnnualVerifiedStatementPdf(
   );
 
   const pdfBytes = compilePdfDocument([page], `${statementNo} - ${org.legalName}`);
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
