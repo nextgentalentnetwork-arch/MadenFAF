@@ -98,6 +98,7 @@ export interface ComponentToggles {
   footer?: boolean;
   preFooterCta?: boolean;
   digitalPortal?: boolean;
+  memberPortal?: boolean;
 }
 
 export const DEFAULT_TOGGLES: ComponentToggles = {
@@ -121,6 +122,7 @@ export const DEFAULT_TOGGLES: ComponentToggles = {
   footer: true,
   preFooterCta: true,
   digitalPortal: true,
+  memberPortal: true,
 };
 
 // In-memory cache to guarantee referential stability for React useSyncExternalStore

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AcademyDataManager, ComponentToggles } from '@/lib/academyDataManager';
+import { DonatorsPortalService } from '@/lib/donatorsPortalService';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import {
   LayoutGrid,
@@ -251,6 +252,25 @@ export const WEBSITE_COMPONENTS: ComponentMeta[] = [
     accentColor: 'indigo',
     itemsCountText: () => 'Role-Based Authentication',
     targetTab: 'digitalPortal',
+  },
+  {
+    id: 'memberPortal',
+    toggleKey: 'memberPortal',
+    name: 'Member (Foundation Supporter & Donators Portal Only)',
+    category: 'Site Structure & Access',
+    description: 'Full backend management for Foundation Supporters & Donators: Member dossiers, recurring donation plans, UPI QR verification, 80G tax receipts, notifications, and portal module studio.',
+    icon: Handshake,
+    accentColor: 'amber',
+    targetTab: 'memberPortal',
+    itemsCountText: () => {
+      try {
+        const members = DonatorsPortalService.getAllMemberProfiles();
+        const donations = DonatorsPortalService.getAllDonations();
+        return `${members.length} Member Dossiers · ${donations.length} Donations`;
+      } catch {
+        return 'Supporters & Donators Portal Studio';
+      }
+    },
   },
   {
     id: 'preFooterCta',

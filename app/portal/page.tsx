@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AcademyDataManager } from '@/lib/academyDataManager';
+import { DonatorsPortalService, subscribeDonatorsPortal } from '@/lib/donatorsPortalService';
+import { useSyncExternalStore } from 'react';
 
 import { PlayerDashboard } from '@/components/portal/PlayerDashboard';
 import { ParentDashboard } from '@/components/portal/ParentDashboard';
@@ -62,6 +64,17 @@ export default function PortalPage({ forcedRoleProp }: PortalPageProps = {}) {
   });
   const [activeAuthorizedRole, setActiveAuthorizedRole] = useState<UserRole | null>(null);
   const [serverDeniedMessage, setServerDeniedMessage] = useState<string | null>(null);
+
+  const donatorsTick = useSyncExternalStore(
+    subscribeDonatorsPortal,
+    () => DonatorsPortalService.getSnapshotTick(),
+    () => 0
+  );
+  const memberPortalConfig = React.useMemo(
+    () => DonatorsPortalService.getPaymentSettings()?.portalModuleConfig,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [donatorsTick]
+  );
 
   const effectiveRequestedRole = forcedRoleProp
     ? forcedRoleProp.toLowerCase().trim()
@@ -301,14 +314,30 @@ export default function PortalPage({ forcedRoleProp }: PortalPageProps = {}) {
 
   return (
     <PublicPageShell
-      title={roleDef.portalTitle}
-      subtitle={roleDef.portalSubtitle}
+      title={
+        effectiveRole === 'member'
+          ? memberPortalConfig?.portalHeadline || roleDef.portalTitle
+          : roleDef.portalTitle
+      }
+      subtitle={
+        effectiveRole === 'member'
+          ? memberPortalConfig?.portalSubheadline || roleDef.portalSubtitle
+          : roleDef.portalSubtitle
+      }
       badge={roleDef.badge}
       breadcrumbs={[{ label: 'Digital Portal', href: getPortalPathForRole(effectiveRole) }, { label: roleDef.label }]}
       accessLevel="public"
       showPreFooterCta={false}
-      ctaText={effectiveRole === 'member' ? 'Visit Our Academy' : undefined}
-      secondaryCtaText={effectiveRole === 'member' ? 'See Your Digital Profile' : undefined}
+      ctaText={
+        effectiveRole === 'member'
+          ? memberPortalConfig?.primaryCtaLabel || 'Visit Our Academy'
+          : undefined
+      }
+      secondaryCtaText={
+        effectiveRole === 'member'
+          ? memberPortalConfig?.profilePortalLabel || 'See Your Digital Profile'
+          : undefined
+      }
       secondaryCtaAction={
         effectiveRole === 'member'
           ? () => {

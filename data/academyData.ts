@@ -154,6 +154,7 @@ export interface DigitalPortalConfig {
   parentPortalEnabled: boolean;
   coachPortalEnabled: boolean;
   adminPortalEnabled: boolean;
+  memberPortalEnabled?: boolean;
   demoStudents: {
     id: string;
     name: string;
@@ -1174,6 +1175,7 @@ export const DEFAULT_PORTAL_CONFIG: DigitalPortalConfig = {
   parentPortalEnabled: true,
   coachPortalEnabled: true,
   adminPortalEnabled: true,
+  memberPortalEnabled: true,
   demoStudents: [
     {
       id: 'student-subham',
@@ -1255,6 +1257,18 @@ export const DIGITAL_PORTAL_ROLES = {
       { name: 'Coach Licensing', count: '18 Certified AFC/AIFF Trainers' },
       { name: 'Trial Registrations', count: '89 New Submissions for May Intake' },
       { name: 'Scholarship Allocation', count: '42 Active Scholarship Grants' }
+    ]
+  },
+  member: {
+    roleName: 'Member (Foundation Supporter & Donators Portal Only)',
+    user: 'Verified Foundation Member & Donor',
+    campus: 'MADEN FAF Foundation Hub',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    modules: [
+      { name: '4-Step Member Dossier', count: 'Verified Contact & KYC' },
+      { name: 'Recurring Donation Plans', count: 'Monthly, Quarterly & Annual' },
+      { name: 'Official UPI QR & UTR', count: 'Manual Admin Verification' },
+      { name: 'PDF Invoices & Receipts', count: '80G Tax-Ready Documents' }
     ]
   }
 };

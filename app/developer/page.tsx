@@ -16,6 +16,7 @@ import { ParentReviewsManager } from '@/components/developer/ParentReviewsManage
 import { SuccessStoriesManager } from '@/components/developer/SuccessStoriesManager';
 import { SponsorsManager } from '@/components/developer/SponsorsManager';
 import { DigitalPortalAccessManager } from '@/components/developer/DigitalPortalAccessManager';
+import { AdminDonationsManager } from '@/components/portal/AdminDonationsManager';
 import { HeroManager } from '@/components/developer/HeroManager';
 import { HeaderFooterManager } from '@/components/developer/HeaderFooterManager';
 import { WebsiteComponentsGrid } from '@/components/developer/WebsiteComponentsGrid';
@@ -276,6 +277,7 @@ export default function DeveloperPage() {
     | 'successStories'
     | 'sponsors'
     | 'digitalPortal'
+    | 'memberPortal'
     | 'toggles'
     | 'system'
   >('componentsGrid');
@@ -1163,6 +1165,18 @@ export default function DeveloperPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('memberPortal')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              activeTab === 'memberPortal'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Handshake className="w-4 h-4" />
+            <span>Member (Supporters &amp; Donators Portal)</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('toggles')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
               activeTab === 'toggles'
@@ -1506,7 +1520,15 @@ export default function DeveloperPage() {
 
         {/* ---------------- 13. ACCESS TO DIGITAL PORTAL TAB (MODULE 8) ---------------- */}
         {activeTab === 'digitalPortal' && (
-          <DigitalPortalAccessManager onNotify={(msg) => setDbMessage(msg)} />
+          <DigitalPortalAccessManager
+            onNotify={(msg) => setDbMessage(msg)}
+            onOpenMemberModule={() => setActiveTab('memberPortal')}
+          />
+        )}
+
+        {/* ---------------- 14. MEMBER (FOUNDATION SUPPORTER & DONATORS PORTAL ONLY) MODULE ---------------- */}
+        {activeTab === 'memberPortal' && (
+          <AdminDonationsManager profile={profile || undefined} />
         )}
 
         {/* ---------------- COMPONENT TOGGLES TAB ---------------- */}

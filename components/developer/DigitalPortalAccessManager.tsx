@@ -26,10 +26,12 @@ import {
 
 interface DigitalPortalAccessManagerProps {
   onNotify: (msg: { type: 'success' | 'error'; text: string }) => void;
+  onOpenMemberModule?: () => void;
 }
 
 export const DigitalPortalAccessManager: React.FC<DigitalPortalAccessManagerProps> = ({
   onNotify,
+  onOpenMemberModule,
 }) => {
   const [config, setConfig] = useState<DigitalPortalConfig>(() =>
     AcademyDataManager.getPortalConfig()
@@ -328,6 +330,37 @@ export const DigitalPortalAccessManager: React.FC<DigitalPortalAccessManagerProp
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                 />
                 <span className="font-bold text-slate-800">Admin Operations</span>
+              </label>
+
+              <label className="col-span-2 flex items-center justify-between gap-2.5 p-3 rounded-xl bg-amber-50/70 border border-amber-200 cursor-pointer hover:bg-amber-50">
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={config.memberPortalEnabled !== false}
+                    onChange={(e) => handleSaveConfig({ memberPortalEnabled: e.target.checked })}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                  />
+                  <div>
+                    <div className="font-bold text-slate-900">
+                      Member (Foundation Supporter &amp; Donators Portal Only)
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Restricted Donor &amp; Supporter Portal · 4-Step Dossier, UPI QR &amp; 80G Receipts
+                    </div>
+                  </div>
+                </div>
+                {onOpenMemberModule && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onOpenMemberModule();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[11px] uppercase tracking-wider shrink-0 cursor-pointer"
+                  >
+                    Manage Member Module →
+                  </button>
+                )}
               </label>
             </div>
           </div>

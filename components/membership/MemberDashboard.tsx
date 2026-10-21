@@ -112,6 +112,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
     [portalTick]
   );
 
+  const portalModuleConfig = settings.portalModuleConfig || DEFAULT_ORG_PAYMENT_SETTINGS.portalModuleConfig;
+
   const memberRecord = React.useMemo(
     () => DonatorsPortalService.getMemberProfileByUid(profile.id, profile.email, profile.fullName),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -599,7 +601,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
       <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="text-xs text-amber-400 font-medium flex flex-wrap items-center gap-2">
-            <span>MADEN FAF Donators Portal</span>
+            <span>{portalModuleConfig.portalHeadline || 'MADEN FAF Donators Portal'}</span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums">Member ID: {memberRecord.memberId}</span>
             <span aria-hidden="true">·</span>
@@ -611,7 +613,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
             Welcome, {memberRecord.fullName || profile.fullName}
           </h1>
           <p className="text-xs text-slate-300 max-w-2xl">
-            Manage your Foundation Member profile, recurring contribution plans, official QR transfers, mobile confirmation, and verified donation receipts.
+            {portalModuleConfig.portalSubheadline ||
+              'Manage your Foundation Member profile, recurring contribution plans, official QR transfers, mobile confirmation, and verified donation receipts.'}
           </p>
         </div>
 
@@ -634,6 +637,22 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
           </button>
         </div>
       </div>
+
+      {portalModuleConfig.portalAnnouncementBanner && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex items-center gap-2.5">
+          <Bell className="w-4 h-4 text-amber-600 shrink-0" />
+          <span className="font-medium">{portalModuleConfig.portalAnnouncementBanner}</span>
+        </div>
+      )}
+
+      {!portalModuleConfig.moduleEnabled && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center gap-2.5">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>
+            New contributions are temporarily paused by Foundation Administration for scheduled maintenance. Your existing donation records and official tax receipts remain available below.
+          </span>
+        </div>
+      )}
 
       {/* Incomplete Profile Alert Banner */}
       {memberRecord.profileCompletionStatus !== 'complete' && (
@@ -1593,7 +1612,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                         Areas of Interest in Football Development (Optional)
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {FOOTBALL_INTEREST_AREAS.map((area) => {
+                        {(portalModuleConfig.availableInterests?.length
+                          ? portalModuleConfig.availableInterests
+                          : FOOTBALL_INTEREST_AREAS
+                        ).map((area) => {
                           const checked = (wizardForm.areasOfInterest || []).includes(area);
                           return (
                             <label
@@ -1949,10 +1971,28 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                 </div>
 
                 {/* 3. Optional Purpose / Message */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-800 mb-1">
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-800">
                     3. Donation Purpose or Message (Optional)
                   </label>
+                  {portalModuleConfig.availablePurposes?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {portalModuleConfig.availablePurposes.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setDonationPurpose(p)}
+                          className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors cursor-pointer ${
+                            donationPurpose === p
+                              ? 'bg-slate-900 text-amber-400 border-slate-900'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <input
                     type="text"
                     maxLength={180}

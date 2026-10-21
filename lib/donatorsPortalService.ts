@@ -155,6 +155,17 @@ export interface PaymentSubmissionRecord {
   reviewedAt?: string;
 }
 
+export interface DonatorsPortalModuleConfig {
+  moduleEnabled: boolean;
+  portalHeadline: string;
+  portalSubheadline: string;
+  portalAnnouncementBanner: string;
+  primaryCtaLabel: string;
+  secondaryCtaLabel: string;
+  donationPurposes: string[];
+  interestAreas: string[];
+}
+
 export interface OrganizationPaymentSettings {
   officialQrCodeUrl: string;
   officialQrCodeStoragePath: string;
@@ -186,6 +197,7 @@ export interface OrganizationPaymentSettings {
     authorizedSignatoryName: string;
     authorizedSignatoryTitle: string;
   };
+  portalModuleConfig?: DonatorsPortalModuleConfig;
   updatedBy: string;
   updatedAt: string;
 }
@@ -260,6 +272,32 @@ export const DEFAULT_ORG_PAYMENT_SETTINGS: OrganizationPaymentSettings = {
     tax80gRegistrationNumber: '',
     authorizedSignatoryName: 'Technical & Foundation Directorate',
     authorizedSignatoryTitle: 'Authorized Signatory, MADEN Football Academy Foundation',
+  },
+  portalModuleConfig: {
+    moduleEnabled: true,
+    portalHeadline: 'Foundation Supporter & Donators Portal',
+    portalSubheadline:
+      'Official MADEN FAF Member contribution management, verified QR donations, recurring commitments, and statutory receipts.',
+    portalAnnouncementBanner:
+      'All contributions directly fund grassroots youth training, underprivileged player scholarships, and campus equipment across West Bengal.',
+    primaryCtaLabel: 'Visit Our Academy',
+    secondaryCtaLabel: 'See Your Digital Profile',
+    donationPurposes: [
+      'Grassroots Youth Training & Player Scholarships',
+      'Underprivileged Player Scholarships (Full Merit & Need-Based)',
+      'Girls & Women Football Development Grant',
+      'Sports Nutrition, Physiotherapy & Medical Welfare',
+      'Campus Turf Infrastructure & Training Equipment',
+      'Regional Youth Tournament & Exposure Travel',
+    ],
+    interestAreas: [
+      'Grassroots Youth Training (U-6 to U-12)',
+      'Underprivileged Player Scholarships',
+      'Girls & Women Football Development',
+      'Sports Nutrition & Medical Welfare',
+      'Campus Infrastructure & Turf Equipment',
+      'Youth Tournament & Exposure Travel',
+    ],
   },
   updatedBy: 'system-bootstrap',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -571,10 +609,22 @@ export const DonatorsPortalService = {
 
   // ---------------- 1. ORGANIZATION PAYMENT SETTINGS ---------------- //
   getPaymentSettings(): OrganizationPaymentSettings {
-    return readStore<OrganizationPaymentSettings>(
+    const stored = readStore<OrganizationPaymentSettings>(
       STORAGE_KEYS.ORG_PAYMENT_SETTINGS,
       DEFAULT_ORG_PAYMENT_SETTINGS
     );
+    return {
+      ...DEFAULT_ORG_PAYMENT_SETTINGS,
+      ...stored,
+      organizationDisplayDetails: {
+        ...DEFAULT_ORG_PAYMENT_SETTINGS.organizationDisplayDetails,
+        ...(stored?.organizationDisplayDetails || {}),
+      },
+      portalModuleConfig: {
+        ...DEFAULT_ORG_PAYMENT_SETTINGS.portalModuleConfig!,
+        ...(stored?.portalModuleConfig || {}),
+      },
+    };
   },
 
   updatePaymentSettings(
@@ -596,6 +646,10 @@ export const DonatorsPortalService = {
         ...current.organizationDisplayDetails,
         ...(updates.organizationDisplayDetails || {}),
       },
+      portalModuleConfig: {
+        ...(current.portalModuleConfig || DEFAULT_ORG_PAYMENT_SETTINGS.portalModuleConfig!),
+        ...(updates.portalModuleConfig || {}),
+      },
       updatedBy: actor.email,
       updatedAt: new Date().toISOString(),
     };
@@ -609,10 +663,69 @@ export const DonatorsPortalService = {
       action: 'UPDATED_ORGANIZATION_PAYMENT_SETTINGS',
       targetType: 'payment_settings',
       targetId: 'organizationPaymentSettings',
-      details: `Updated payment configuration (QR Active: ${updated.activeStatus}, Presets: ${updated.presetAmounts.join(', ')})`,
+      details: `Updated Donators Portal & QR configuration (Module Enabled: ${updated.portalModuleConfig?.moduleEnabled !== false}, QR Active: ${updated.activeStatus}, Presets: ${updated.presetAmounts.join(', ')})`,
     });
 
     return { success: true, settings: updated };
+  },
+
+  async forcePullFromCloud(): Promise<{ success: boolean; message: string }> {
+    if (typeof window === 'undefined') {
+      return { success: false, message: 'Client environment required.' };
+    }
+    try {
+      const res = await fetch('/api/donators?section=all');
+      if (!res.ok) {
+        return { success: false, message: 'Could not reach cloud endpoint.' };
+      }
+      const json = await res.json();
+      if (!json?.success || !json?.data) {
+        return { success: false, message: 'No cloud records found.' };
+      }
+      const {
+        memberProfiles,
+        donationPlans,
+        donations,
+        paymentSubmissions,
+        organizationPaymentSettings,
+        notifications,
+        auditLogs,
+      } = json.data;
+
+      if (Array.isArray(memberProfiles)) {
+        localStorage.setItem(STORAGE_KEYS.MEMBER_PROFILES, JSON.stringify(memberProfiles));
+      }
+      if (Array.isArray(donationPlans)) {
+        localStorage.setItem(STORAGE_KEYS.DONATION_PLANS, JSON.stringify(donationPlans));
+      }
+      if (Array.isArray(donations)) {
+        localStorage.setItem(STORAGE_KEYS.DONATIONS, JSON.stringify(donations));
+      }
+      if (Array.isArray(paymentSubmissions)) {
+        localStorage.setItem(STORAGE_KEYS.PAYMENT_SUBMISSIONS, JSON.stringify(paymentSubmissions));
+      }
+      if (organizationPaymentSettings) {
+        localStorage.setItem(
+          STORAGE_KEYS.ORG_PAYMENT_SETTINGS,
+          JSON.stringify(organizationPaymentSettings)
+        );
+      }
+      if (Array.isArray(notifications)) {
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifications));
+      }
+      if (Array.isArray(auditLogs)) {
+        localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(auditLogs));
+      }
+      Object.keys(cacheStore).forEach((k) => delete cacheStore[k]);
+      window.dispatchEvent(new Event('maden_donators_portal_updated'));
+      window.dispatchEvent(new Event('maden_data_updated'));
+      return {
+        success: true,
+        message: 'All Member & Donators Portal records synchronized from Supabase Cloud.',
+      };
+    } catch (e: any) {
+      return { success: false, message: e?.message || 'Cloud sync failed.' };
+    }
   },
 
   // ---------------- 2. MEMBER PROFILES & WIZARD ---------------- //
@@ -1658,5 +1771,424 @@ export const DonatorsPortalService = {
       timestamp: new Date().toISOString(),
     };
     writeStore(STORAGE_KEYS.AUDIT_LOGS, [newEntry, ...all], 'auditLogs');
+  },
+
+  // ---------------- 8. BACKEND ADMIN CRUD FOR MEMBERS, PLANS, DONATIONS & BROADCASTS ---------------- //
+  adminUpsertMemberProfile(
+    adminActor: { uid: string; email: string; role: UserRole | string },
+    profileInput: Partial<MemberProfileRecord> & { email: string; fullName: string }
+  ): { success: boolean; error?: string; profile?: MemberProfileRecord } {
+    if (!canManageDonations(adminActor.role)) {
+      return {
+        success: false,
+        error: 'Unauthorized: Only an Administrator can create or edit Member profiles from the backend.',
+      };
+    }
+
+    const cleanEmail = (profileInput.email || '').trim().toLowerCase();
+    const cleanName = (profileInput.fullName || '').trim();
+    if (!cleanEmail || !isValidEmailAddress(cleanEmail)) {
+      return { success: false, error: 'Please provide a valid email address for the Member.' };
+    }
+    if (!cleanName) {
+      return { success: false, error: 'Please provide the Member full name.' };
+    }
+
+    const all = this.getAllMemberProfiles();
+    const existingIdx = all.findIndex(
+      (p) =>
+        (profileInput.uid && p.uid === profileInput.uid) ||
+        p.authEmail.toLowerCase() === cleanEmail ||
+        p.email.toLowerCase() === cleanEmail
+    );
+    const existing = existingIdx >= 0 ? all[existingIdx] : null;
+    const nowIso = new Date().toISOString();
+
+    const cleanMobile = profileInput.primaryMobile
+      ? normalizeIndianMobile(profileInput.primaryMobile)
+      : existing?.primaryMobile || '';
+
+    const uid = existing?.uid || profileInput.uid || `usr-member-${Date.now()}`;
+    const memberId = existing?.memberId || profileInput.memberId || this.generateUniqueMemberId();
+
+    const merged: MemberProfileRecord = {
+      uid,
+      memberId,
+      authEmail: existing?.authEmail || cleanEmail,
+      fullName: cleanName,
+      profilePhotograph: profileInput.profilePhotograph ?? existing?.profilePhotograph ?? '',
+      dob: profileInput.dob ?? existing?.dob ?? '1992-01-01',
+      gender: profileInput.gender ?? existing?.gender ?? 'prefer_not_to_say',
+      occupation: profileInput.occupation ?? existing?.occupation ?? 'Foundation Supporter',
+      email: cleanEmail,
+      primaryMobile: cleanMobile,
+      alternateMobile: profileInput.alternateMobile ?? existing?.alternateMobile ?? '',
+      houseAndStreet: profileInput.houseAndStreet ?? existing?.houseAndStreet ?? 'Central Road',
+      villageTownCity: profileInput.villageTownCity ?? existing?.villageTownCity ?? 'Kalyani',
+      postOffice: profileInput.postOffice ?? existing?.postOffice ?? 'Kalyani HPO',
+      policeStation: profileInput.policeStation ?? existing?.policeStation ?? 'Kalyani PS',
+      district: profileInput.district ?? existing?.district ?? 'Nadia',
+      state: profileInput.state ?? existing?.state ?? 'West Bengal',
+      pinCode: profileInput.pinCode ?? existing?.pinCode ?? '741235',
+      country: profileInput.country ?? existing?.country ?? 'India',
+      membershipRegistrationDate:
+        profileInput.membershipRegistrationDate ??
+        existing?.membershipRegistrationDate ??
+        nowIso.split('T')[0],
+      memberCategory: profileInput.memberCategory ?? existing?.memberCategory ?? 'individual',
+      areasOfInterest:
+        profileInput.areasOfInterest ??
+        existing?.areasOfInterest ?? [
+          'Grassroots Youth Training (U-6 to U-12)',
+          'Underprivileged Player Scholarships',
+        ],
+      preferredCommunicationMethod:
+        profileInput.preferredCommunicationMethod ??
+        existing?.preferredCommunicationMethod ??
+        'email',
+      emergencyContact: profileInput.emergencyContact ??
+        existing?.emergencyContact ?? {
+          name: '',
+          relationship: '',
+          phone: '',
+        },
+      accuracyConfirmed: profileInput.accuracyConfirmed ?? existing?.accuracyConfirmed ?? true,
+      dataProcessingConsent:
+        profileInput.dataProcessingConsent ?? existing?.dataProcessingConsent ?? true,
+      promotionalUpdatesConsent:
+        profileInput.promotionalUpdatesConsent ?? existing?.promotionalUpdatesConsent ?? true,
+      profileCompletionStatus:
+        profileInput.profileCompletionStatus ?? existing?.profileCompletionStatus ?? 'complete',
+      completionPercentage: 100,
+      currentWizardStep: 4,
+      verifiedContactMetadata: profileInput.verifiedContactMetadata ??
+        existing?.verifiedContactMetadata ?? {
+          mobileNumber: cleanMobile,
+          isVerified: Boolean(cleanMobile),
+          verificationStatus: cleanMobile ? 'verified' : 'unverified',
+          verifiedAt: cleanMobile ? nowIso : undefined,
+          verifiedBy: cleanMobile ? adminActor.email : undefined,
+          verificationMethod: 'admin_verified',
+        },
+      createdAt: existing?.createdAt || nowIso,
+      updatedAt: nowIso,
+    };
+
+    const completion = calculateProfileCompletion(merged);
+    merged.completionPercentage =
+      merged.profileCompletionStatus === 'complete' ? 100 : completion.percentage;
+
+    const updatedList =
+      existingIdx >= 0
+        ? all.map((p, idx) => (idx === existingIdx ? merged : p))
+        : [merged, ...all];
+
+    writeStore(STORAGE_KEYS.MEMBER_PROFILES, updatedList, 'memberProfiles');
+
+    this.recordAuditLog({
+      actorUid: adminActor.uid,
+      actorEmail: adminActor.email,
+      actorRole: String(adminActor.role),
+      action: existing ? 'ADMIN_UPDATED_MEMBER_PROFILE' : 'ADMIN_CREATED_MEMBER_PROFILE',
+      targetType: 'member_profile',
+      targetId: merged.memberId,
+      details: `${existing ? 'Updated' : 'Created'} Member Profile for ${merged.fullName} (${merged.email}, ID: ${merged.memberId})`,
+    });
+
+    return { success: true, profile: merged };
+  },
+
+  adminDeleteMemberProfile(
+    adminActor: { uid: string; email: string; role: UserRole | string },
+    targetUid: string
+  ): { success: boolean; error?: string } {
+    if (!canManageDonations(adminActor.role)) {
+      return {
+        success: false,
+        error: 'Unauthorized: Only an Administrator can delete Member profiles.',
+      };
+    }
+
+    const all = this.getAllMemberProfiles();
+    const target = all.find((p) => p.uid === targetUid);
+    if (!target) {
+      return { success: false, error: 'Member profile not found.' };
+    }
+
+    const updated = all.filter((p) => p.uid !== targetUid);
+    writeStore(STORAGE_KEYS.MEMBER_PROFILES, updated, 'memberProfiles');
+
+    this.recordAuditLog({
+      actorUid: adminActor.uid,
+      actorEmail: adminActor.email,
+      actorRole: String(adminActor.role),
+      action: 'ADMIN_DELETED_MEMBER_PROFILE',
+      targetType: 'member_profile',
+      targetId: target.memberId,
+      details: `Deleted Member Profile ${target.fullName} (${target.email}, ID: ${target.memberId})`,
+    });
+
+    return { success: true };
+  },
+
+  adminCreateManualDonationRecord(
+    adminActor: { uid: string; email: string; role: UserRole | string },
+    params: {
+      uid: string;
+      amount: number;
+      frequency: DonationFrequency;
+      purpose: string;
+      paymentStatus: 'awaiting_payment' | 'submitted_for_verification' | 'verified';
+      transactionReference?: string;
+      paymentDate?: string;
+    }
+  ): { success: boolean; error?: string; donation?: DonationRecordItem } {
+    if (!canManageDonations(adminActor.role)) {
+      return {
+        success: false,
+        error: 'Unauthorized: Only an Administrator can create manual donation records.',
+      };
+    }
+
+    const member = this.getAllMemberProfiles().find((m) => m.uid === params.uid);
+    if (!member) {
+      return { success: false, error: 'Selected Member profile not found.' };
+    }
+
+    const cleanAmount = Math.round(Number(params.amount));
+    if (isNaN(cleanAmount) || cleanAmount <= 0) {
+      return { success: false, error: 'Please enter a valid positive donation amount in INR.' };
+    }
+
+    const settings = this.getPaymentSettings();
+    const nowIso = new Date().toISOString();
+    const todayStr = nowIso.split('T')[0];
+    const year = new Date().getFullYear();
+
+    const allDonations = this.getAllDonations();
+    const existingInvoiceNums = new Set(allDonations.map((d) => d.invoiceNumber));
+    const existingReceiptNums = new Set(
+      allDonations.map((d) => d.receiptNumber).filter(Boolean) as string[]
+    );
+
+    let invSeq = Math.max(settings.nextInvoiceSequence, 1001 + allDonations.length);
+    let invoiceNumber = `${settings.invoicePrefix}-${year}-${String(invSeq).padStart(6, '0')}`;
+    while (existingInvoiceNums.has(invoiceNumber)) {
+      invSeq += 1;
+      invoiceNumber = `${settings.invoicePrefix}-${year}-${String(invSeq).padStart(6, '0')}`;
+    }
+
+    let receiptNumber: string | undefined = undefined;
+    let rcpSeq = Math.max(settings.nextReceiptSequence, 1001);
+    if (params.paymentStatus === 'verified') {
+      receiptNumber = `${settings.receiptPrefix}-${year}-${String(rcpSeq).padStart(6, '0')}`;
+      while (existingReceiptNums.has(receiptNumber)) {
+        rcpSeq += 1;
+        receiptNumber = `${settings.receiptPrefix}-${year}-${String(rcpSeq).padStart(6, '0')}`;
+      }
+    }
+
+    writeStore(
+      STORAGE_KEYS.ORG_PAYMENT_SETTINGS,
+      {
+        ...settings,
+        nextInvoiceSequence: invSeq + 1,
+        nextReceiptSequence: params.paymentStatus === 'verified' ? rcpSeq + 1 : settings.nextReceiptSequence,
+      },
+      'organizationPaymentSettings'
+    );
+
+    const donationId = `MADEN-DON-${year}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const formattedAddress = [
+      member.houseAndStreet,
+      member.villageTownCity,
+      member.postOffice ? `P.O. ${member.postOffice}` : '',
+      member.district,
+      member.state,
+      member.pinCode,
+      member.country,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    const utr =
+      params.transactionReference?.trim().toUpperCase() ||
+      (params.paymentStatus === 'verified' ? `ADMIN-VERIFIED-${Date.now().toString().slice(-6)}` : undefined);
+
+    const newDonation: DonationRecordItem = {
+      donationId,
+      uid: member.uid,
+      memberId: member.memberId,
+      donorName: member.fullName,
+      donorEmail: member.email,
+      donorAddress: formattedAddress,
+      donorMobile: member.primaryMobile,
+      invoiceNumber,
+      receiptNumber,
+      amount: cleanAmount,
+      amountInWords: numberToIndianRupeeWords(cleanAmount),
+      currency: 'INR',
+      frequency: params.frequency,
+      purpose: params.purpose.trim() || 'Grassroots Youth Training & Player Scholarships',
+      paymentMethod: 'official_qr_upi',
+      transactionReference: utr,
+      paymentDate: params.paymentDate || todayStr,
+      paymentStatus: params.paymentStatus,
+      mobileVerificationStatus: member.verifiedContactMetadata?.isVerified ? 'verified' : 'unverified',
+      verifiedBy: params.paymentStatus === 'verified' ? adminActor.email : undefined,
+      verifiedAt: params.paymentStatus === 'verified' ? nowIso : undefined,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+
+    writeStore(STORAGE_KEYS.DONATIONS, [newDonation, ...allDonations], 'donations');
+
+    this.recordAuditLog({
+      actorUid: adminActor.uid,
+      actorEmail: adminActor.email,
+      actorRole: String(adminActor.role),
+      action: 'ADMIN_CREATED_DONATION_RECORD',
+      targetType: 'donation',
+      targetId: donationId,
+      details: `Created donation ${donationId} (₹${cleanAmount.toLocaleString('en-IN')}, Status: ${params.paymentStatus}${receiptNumber ? `, Receipt: ${receiptNumber}` : ''}) for Member ${member.fullName} (${member.memberId}).`,
+    });
+
+    this.createNotification({
+      uid: member.uid,
+      memberId: member.memberId,
+      title:
+        params.paymentStatus === 'verified'
+          ? `Official Donation Receipt Issued (${receiptNumber})`
+          : `New Contribution Invoice Recorded (${invoiceNumber})`,
+      message:
+        params.paymentStatus === 'verified'
+          ? `Your contribution of ₹${cleanAmount.toLocaleString('en-IN')} has been recorded and verified by MADEN FAF Administration. Official Receipt ${receiptNumber} is ready for download.`
+          : `A contribution record of ₹${cleanAmount.toLocaleString('en-IN')} (${params.frequency}) has been generated under Reference ${donationId}.`,
+      category: params.paymentStatus === 'verified' ? 'receipt' : 'payment',
+      relatedDonationId: donationId,
+    });
+
+    return { success: true, donation: newDonation };
+  },
+
+  adminUpdateDonationPlan(
+    adminActor: { uid: string; email: string; role: UserRole | string },
+    planId: string,
+    updates: {
+      amount?: number;
+      frequency?: DonationFrequency;
+      status?: 'active' | 'paused' | 'cancelled';
+      nextSuggestedPaymentDate?: string;
+      purpose?: string;
+      reminderEnabled?: boolean;
+    }
+  ): { success: boolean; error?: string; plan?: DonationPlanRecord } {
+    if (!canManageDonations(adminActor.role)) {
+      return {
+        success: false,
+        error: 'Unauthorized: Only an Administrator can modify Member contribution plans.',
+      };
+    }
+
+    const allPlans = this.getAllDonationPlans();
+    const idx = allPlans.findIndex((p) => p.planId === planId);
+    if (idx === -1) {
+      return { success: false, error: 'Contribution plan not found.' };
+    }
+
+    const current = allPlans[idx];
+    const updated: DonationPlanRecord = {
+      ...current,
+      amount: updates.amount !== undefined ? Math.round(Number(updates.amount)) : current.amount,
+      frequency: updates.frequency || current.frequency,
+      status: updates.status || current.status,
+      nextSuggestedPaymentDate:
+        updates.nextSuggestedPaymentDate || current.nextSuggestedPaymentDate,
+      purpose: updates.purpose !== undefined ? updates.purpose : current.purpose,
+      reminderEnabled:
+        updates.reminderEnabled !== undefined ? updates.reminderEnabled : current.reminderEnabled,
+      updatedAt: new Date().toISOString(),
+    };
+
+    allPlans[idx] = updated;
+    writeStore(STORAGE_KEYS.DONATION_PLANS, [...allPlans], 'donationPlans');
+
+    this.recordAuditLog({
+      actorUid: adminActor.uid,
+      actorEmail: adminActor.email,
+      actorRole: String(adminActor.role),
+      action: 'ADMIN_UPDATED_DONATION_PLAN',
+      targetType: 'donation',
+      targetId: planId,
+      details: `Updated Plan ${planId} for ${current.donorName} (${current.memberId}): ₹${updated.amount.toLocaleString('en-IN')} / ${updated.frequency} [${updated.status}]`,
+    });
+
+    return { success: true, plan: updated };
+  },
+
+  adminSendMemberNotification(
+    adminActor: { uid: string; email: string; role: UserRole | string },
+    params: {
+      targetUid: string | 'ALL_MEMBERS';
+      title: string;
+      message: string;
+      category?: DonorPortalNotification['category'];
+    }
+  ): { success: boolean; count: number; error?: string } {
+    if (!canManageDonations(adminActor.role)) {
+      return {
+        success: false,
+        count: 0,
+        error: 'Unauthorized: Only an Administrator can dispatch Member Portal notifications.',
+      };
+    }
+
+    if (!params.title.trim() || !params.message.trim()) {
+      return {
+        success: false,
+        count: 0,
+        error: 'Please enter both a notification title and message.',
+      };
+    }
+
+    const allMembers = this.getAllMemberProfiles();
+    const targets =
+      params.targetUid === 'ALL_MEMBERS'
+        ? allMembers
+        : allMembers.filter((m) => m.uid === params.targetUid);
+
+    if (targets.length === 0) {
+      return { success: false, count: 0, error: 'No target Member profiles found.' };
+    }
+
+    const allNotifs = readStore<DonorPortalNotification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+    const nowIso = new Date().toISOString();
+    const createdItems: DonorPortalNotification[] = targets.map((m, i) => ({
+      id: `notif-${Date.now()}-${i}-${Math.floor(100 + Math.random() * 900)}`,
+      uid: m.uid,
+      memberId: m.memberId,
+      title: params.title.trim(),
+      message: params.message.trim(),
+      category: params.category || 'profile',
+      isRead: false,
+      createdAt: nowIso,
+    }));
+
+    writeStore(STORAGE_KEYS.NOTIFICATIONS, [...createdItems, ...allNotifs], 'notifications');
+
+    this.recordAuditLog({
+      actorUid: adminActor.uid,
+      actorEmail: adminActor.email,
+      actorRole: String(adminActor.role),
+      action:
+        params.targetUid === 'ALL_MEMBERS'
+          ? 'ADMIN_BROADCAST_MEMBER_NOTIFICATION'
+          : 'ADMIN_SENT_MEMBER_NOTIFICATION',
+      targetType: 'member_profile',
+      targetId: params.targetUid,
+      details: `Sent notification "${params.title.trim()}" to ${targets.length} Member(s).`,
+    });
+
+    return { success: true, count: targets.length };
   },
 };
