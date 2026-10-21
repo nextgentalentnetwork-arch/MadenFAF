@@ -23,6 +23,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
+import { AdminDonationsManager } from '@/components/portal/AdminDonationsManager';
 
 interface AdminDashboardProps {
   profile: UserProfile;
@@ -84,7 +85,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ profile }) => {
               Executive Director: {profile.fullName}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-              Complete oversight of all campuses, licensed coaching staff, candidate enrollments, and system configurations.
+              Complete oversight of all campuses, licensed coaching staff, candidate enrollments, Donators Portal verifications, and system configurations.
             </p>
           </div>
 
@@ -112,13 +113,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ profile }) => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
           <div className="text-xs font-bold text-slate-500 uppercase">Registered Candidates</div>
-          <div className="text-2xl font-black text-slate-900">{candidates.length}</div>
+          <div className="text-2xl font-black text-slate-900 tabular-nums">{candidates.length}</div>
           <div className="text-[11px] text-amber-700 font-medium">Active admissions queue</div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
           <div className="text-xs font-bold text-slate-500 uppercase">Approved Enrolled</div>
-          <div className="text-2xl font-black text-emerald-600">
+          <div className="text-2xl font-black text-emerald-600 tabular-nums">
             {candidates.filter(c => c.status === 'enrolled').length}
           </div>
           <div className="text-[11px] text-emerald-700 font-medium">Passed trial criteria</div>
@@ -126,16 +127,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ profile }) => {
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
           <div className="text-xs font-bold text-slate-500 uppercase">Licensed Coaches</div>
-          <div className="text-2xl font-black text-slate-900">18</div>
+          <div className="text-2xl font-black text-slate-900 tabular-nums">18</div>
           <div className="text-[11px] text-slate-500 font-medium">AFC ‘A’, ‘B’, ‘C’ certified</div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
           <div className="text-xs font-bold text-slate-500 uppercase">Active Campuses</div>
-          <div className="text-2xl font-black text-blue-600">3</div>
+          <div className="text-2xl font-black text-blue-600 tabular-nums">3</div>
           <div className="text-[11px] text-slate-500 font-medium">Nadia & N24 Parganas</div>
         </div>
       </div>
+
+      {/* Donators Portal & Official QR Payment Governance */}
+      <AdminDonationsManager profile={profile} />
 
       {/* Candidate Approvals & Admissions Queue */}
       <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">

@@ -32,12 +32,17 @@ CREATE TABLE IF NOT EXISTS public.academy_registrations (
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   full_name TEXT NOT NULL,
-  role TEXT DEFAULT 'player' CHECK (role IN ('player', 'parent', 'coach', 'admin')),
+  role TEXT DEFAULT 'member' CHECK (role IN ('member', 'player', 'parent', 'coach', 'manager', 'staff1', 'staff2', 'admin', 'pending')),
   campus TEXT DEFAULT 'Gayeshpur Campus',
   phone TEXT,
   avatar_url TEXT,
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
+
+-- Ensure existing installations allow the expanded role set
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check
+  CHECK (role IN ('member', 'player', 'parent', 'coach', 'manager', 'staff1', 'staff2', 'admin', 'pending'));
 
 -- 3. Row Level Security (RLS) Configuration
 ALTER TABLE public.academy_registrations ENABLE ROW LEVEL SECURITY;
@@ -74,10 +79,15 @@ BEGIN
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
-    COALESCE(new.raw_user_meta_data->>'role', 'player'),
+    COALESCE(new.raw_user_meta_data->>'portal_role', new.raw_user_meta_data->>'role', 'member'),
     COALESCE(new.raw_user_meta_data->>'campus', 'Gayeshpur Campus')
-  );
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Never block auth.users creation if profile table constraint differs
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

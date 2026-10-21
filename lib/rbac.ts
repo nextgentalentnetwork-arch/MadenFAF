@@ -8,6 +8,7 @@ export type UserRole =
   | 'staff1'
   | 'staff2'
   | 'admin'
+  | 'member'
   | 'pending';
 
 export interface RoleDefinition {
@@ -24,6 +25,7 @@ export interface RoleDefinition {
   canEditCurriculum: boolean;
   canManageAttendance: boolean;
   canAccessBackendDeveloper: boolean;
+  canManageDonations?: boolean;
 }
 
 export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
@@ -41,6 +43,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     canEditCurriculum: false,
     canManageAttendance: false,
     canAccessBackendDeveloper: false,
+    canManageDonations: false,
   },
   parent: {
     id: 'parent',
@@ -56,6 +59,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     canEditCurriculum: false,
     canManageAttendance: false,
     canAccessBackendDeveloper: false,
+    canManageDonations: false,
   },
   coach: {
     id: 'coach',
@@ -71,6 +75,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     canEditCurriculum: true,
     canManageAttendance: true,
     canAccessBackendDeveloper: false,
+    canManageDonations: false,
   },
   manager: {
     id: 'manager',
@@ -86,6 +91,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     canEditCurriculum: true,
     canManageAttendance: true,
     canAccessBackendDeveloper: false,
+    canManageDonations: false,
   },
   staff1: {
     id: 'staff1',
@@ -101,6 +107,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     canEditCurriculum: false,
     canManageAttendance: false,
     canAccessBackendDeveloper: false,
+    canManageDonations: false,
   },
   staff2: {
     id: 'staff2',
@@ -116,21 +123,39 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     canEditCurriculum: false,
     canManageAttendance: true,
     canAccessBackendDeveloper: false,
+    canManageDonations: false,
   },
   admin: {
     id: 'admin',
     label: 'Executive Technical Director',
     portalTitle: 'Executive Academy Command',
-    portalSubtitle: 'Complete academy governance, candidate approvals, curriculum management, and developer settings.',
+    portalSubtitle: 'Complete academy governance, candidate approvals, donor management, curriculum, and developer settings.',
     badge: 'ADMIN',
     badgeColor: 'bg-rose-100 text-rose-900 border-rose-200',
     accentColor: 'rose',
     navLabel: 'Admin Command',
-    description: 'Executive director with full permissions across all dashboards, candidate approvals, and backend tools.',
+    description: 'Executive director with full permissions across all dashboards, donor management, candidate approvals, and backend tools.',
     canApproveCandidates: true,
     canEditCurriculum: true,
     canManageAttendance: true,
     canAccessBackendDeveloper: true,
+    canManageDonations: true,
+  },
+  member: {
+    id: 'member',
+    label: 'Foundation Member & Donor',
+    portalTitle: 'MADEN FAF Donators Portal',
+    portalSubtitle: 'Manage your Member profile, contribution plans, official QR payments, mobile verification, and tax/donation receipts.',
+    badge: 'MEMBER',
+    badgeColor: 'bg-indigo-100 text-indigo-900 border-indigo-200',
+    accentColor: 'indigo',
+    navLabel: 'Donators Portal',
+    description: 'Registered supporter and donor of MADEN Football Academy Foundation with access to contribution plans, invoices, and verified receipts.',
+    canApproveCandidates: false,
+    canEditCurriculum: false,
+    canManageAttendance: false,
+    canAccessBackendDeveloper: false,
+    canManageDonations: false,
   },
   pending: {
     id: 'pending',
@@ -146,8 +171,19 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     canEditCurriculum: false,
     canManageAttendance: false,
     canAccessBackendDeveloper: false,
+    canManageDonations: false,
   },
 };
+
+/**
+ * Roles that can be selected by a public user during self-registration.
+ * Privileged roles (admin, manager, coach, staff1, staff2) CANNOT be self-assigned.
+ */
+export const SELF_ASSIGNABLE_ROLES: UserRole[] = ['member', 'player', 'parent', 'pending'];
+
+export function canSelfAssignRole(role: any): role is UserRole {
+  return typeof role === 'string' && SELF_ASSIGNABLE_ROLES.includes(role as UserRole);
+}
 
 /**
  * Validates if a string is a recognized UserRole
@@ -157,7 +193,7 @@ export function isValidRole(role: any): role is UserRole {
 }
 
 /**
- * Returns role definition with safe fallback to 'player' or 'pending'
+ * Returns role definition with safe fallback to 'pending'
  */
 export function getRoleDefinition(role?: UserRole | string | null): RoleDefinition {
   if (role && isValidRole(role)) {
@@ -183,10 +219,18 @@ export function isRoleAuthorized(
 
 /**
  * Policy: Can this user approve or enroll candidate trial applications?
- * Phase 7 & RBAC Policy: Only Admin, Coach, and Manager can approve/enroll.
- * Staff 1 and Staff 2 are strictly restricted to pending_trial and waitlist.
+ * Only Admin, Coach, and Manager can approve/enroll.
  */
 export function canApproveCandidateStatus(role?: UserRole | string | null): boolean {
   if (!role || !isValidRole(role)) return false;
   return ROLE_DEFINITIONS[role].canApproveCandidates;
+}
+
+/**
+ * Policy: Can this user verify donor payments, issue receipts, record refunds, or modify official QR settings?
+ * Strictly restricted to Admin role.
+ */
+export function canManageDonations(role?: UserRole | string | null): boolean {
+  if (!role || !isValidRole(role)) return false;
+  return Boolean(ROLE_DEFINITIONS[role].canManageDonations);
 }

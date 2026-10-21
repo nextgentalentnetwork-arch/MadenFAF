@@ -31,7 +31,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<UserRole>('player');
+  const [role, setRole] = useState<UserRole>('member');
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -246,17 +246,17 @@ export default function LoginPage() {
               </label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as any)}
+                onChange={(e) => setRole(e.target.value as UserRole)}
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 outline-none transition-colors shadow-xs"
               >
+                <option value="member">Member (Foundation Supporter &amp; Donators Portal)</option>
                 <option value="player">Player (Academy Athlete)</option>
                 <option value="parent">Parent / Guardian</option>
-                <option value="coach">Technical Coach</option>
-                <option value="manager">Campus / Academy Manager</option>
-                <option value="staff1">Staff 1 (Admissions & Intake)</option>
-                <option value="staff2">Staff 2 (Campus Logistics & Attendance)</option>
-                <option value="pending">Applicant (Pending Role Assignment)</option>
+                <option value="pending">Applicant (Pending Staff / Coach Role Assignment)</option>
               </select>
+              <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">
+                Select <strong>Member</strong> to access the MADEN FAF Donators Portal. Admin, Manager, Coach, and Staff roles are assigned exclusively by Academy Administration.
+              </p>
             </div>
           )}
 

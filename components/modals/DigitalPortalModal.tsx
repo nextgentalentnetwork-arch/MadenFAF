@@ -26,6 +26,7 @@ import { Staff1Dashboard } from '@/components/portal/Staff1Dashboard';
 import { Staff2Dashboard } from '@/components/portal/Staff2Dashboard';
 import { AdminDashboard } from '@/components/portal/AdminDashboard';
 import { PendingDashboard } from '@/components/portal/PendingDashboard';
+import { MemberDashboard } from '@/components/membership/MemberDashboard';
 
 interface DigitalPortalModalProps {
   isOpen: boolean;
@@ -278,7 +279,9 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
               </div>
 
               {/* Strictly render the authorized dashboard for the user's role */}
-              {profile.role === 'pending' || profile.status === 'pending' ? (
+              {profile.role === 'member' ? (
+                <MemberDashboard profile={profile} />
+              ) : profile.role === 'pending' || profile.status === 'pending' ? (
                 <PendingDashboard profile={profile} />
               ) : profile.role === 'player' ? (
                 <PlayerDashboard profile={profile} />

@@ -23,9 +23,12 @@ import { Staff1Dashboard } from '@/components/portal/Staff1Dashboard';
 import { Staff2Dashboard } from '@/components/portal/Staff2Dashboard';
 import { AdminDashboard } from '@/components/portal/AdminDashboard';
 import { PendingDashboard } from '@/components/portal/PendingDashboard';
+import { MemberDashboard } from '@/components/membership/MemberDashboard';
+import { HeartHandshake } from 'lucide-react';
 
 export default function PortalPage() {
-  const { user, profile, isLoading, logout } = useAuth();
+  const { user, profile, isLoading, grantMemberAccess, logout } = useAuth();
+  const [viewMode, setViewMode] = React.useState<'primary' | 'member'>('primary');
 
   // 1. Loading State - prevent UI flash
   if (isLoading) {
@@ -59,8 +62,8 @@ export default function PortalPage() {
   if (!user || !profile) {
     return (
       <PublicPageShell
-        title="Member Digital Portal"
-        subtitle="Private authenticated platform for enrolled athletes, guardians, coaches, and staff."
+        title="Member Digital Portal & Donators Portal"
+        subtitle="Private authenticated platform for Foundation Members, Donors, Athletes, Guardians, Coaches, and Staff."
         badge="Protected Area"
         breadcrumbs={[{ label: 'Digital Portal' }]}
         accessLevel="public"
@@ -76,7 +79,7 @@ export default function PortalPage() {
               Sign In Required
             </h2>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Individual role options and academy dashboards are protected. Please sign in with your verified credentials to view your assigned portal.
+              The MADEN FAF Donators Portal and role-based academy dashboards are protected. Please sign in with your verified credentials or register as a Member to continue.
             </p>
           </div>
 
@@ -85,7 +88,7 @@ export default function PortalPage() {
               href="/login"
               className="w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-amber-200 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Sign In to Your Account</span>
+              <span>Sign In / Register as Member</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
 
@@ -102,8 +105,15 @@ export default function PortalPage() {
   }
 
   // 3. User is Authenticated: Retrieve verified role definition
-  const roleDef = getRoleDefinition(profile.role);
-  const isMasterDev = profile.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' ||
+  const hasMemberRole =
+    profile.role === 'member' || (Array.isArray(profile.roles) && profile.roles.includes('member'));
+  const effectiveRole =
+    profile.role === 'member' || (viewMode === 'member' && hasMemberRole)
+      ? 'member'
+      : profile.role;
+  const roleDef = getRoleDefinition(effectiveRole);
+  const isMasterDev =
+    profile.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' ||
     AcademyDataManager.isDeveloperAuthenticated();
 
   return (
@@ -114,6 +124,17 @@ export default function PortalPage() {
       breadcrumbs={[{ label: 'Digital Portal', href: '/portal' }, { label: roleDef.label }]}
       accessLevel="public"
       showPreFooterCta={false}
+      ctaText={effectiveRole === 'member' ? 'Visit Our Academy' : undefined}
+      secondaryCtaText={effectiveRole === 'member' ? 'See Your Digital Profile' : undefined}
+      secondaryCtaAction={
+        effectiveRole === 'member'
+          ? () => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('maden-open-member-profile'));
+              }
+            }
+          : undefined
+      }
     >
       <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         {/* User Identity Bar */}
@@ -125,6 +146,7 @@ export default function PortalPage() {
                 <img
                   src={profile.avatarUrl}
                   alt={profile.fullName}
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -154,6 +176,50 @@ export default function PortalPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Multi-role switcher for existing accounts that also want Donators Portal (Member) access */}
+            {profile.role !== 'member' && hasMemberRole && (
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('primary')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                    viewMode === 'primary'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {getRoleDefinition(profile.role).navLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('member')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                    viewMode === 'member'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Donators Portal (Member)
+                </button>
+              </div>
+            )}
+
+            {profile.role !== 'member' && !hasMemberRole && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await grantMemberAccess();
+                  if (res.success) {
+                    setViewMode('member');
+                  }
+                }}
+                className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <HeartHandshake className="w-3.5 h-3.5 text-amber-700" />
+                <span>Open Donators Portal</span>
+              </button>
+            )}
+
             <button
               onClick={() => logout()}
               className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
@@ -176,7 +242,9 @@ export default function PortalPage() {
         </div>
 
         {/* 4. Strictly render the assigned role dashboard */}
-        {profile.role === 'pending' || profile.status === 'pending' ? (
+        {effectiveRole === 'member' ? (
+          <MemberDashboard profile={profile} />
+        ) : profile.role === 'pending' || profile.status === 'pending' ? (
           <PendingDashboard profile={profile} />
         ) : profile.role === 'player' ? (
           <PlayerDashboard profile={profile} />

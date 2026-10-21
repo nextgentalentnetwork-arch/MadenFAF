@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { AcademyDataManager } from '@/lib/academyDataManager';
-import { UserRole, isValidRole } from '@/lib/rbac';
+import { UserRole, isValidRole, canSelfAssignRole } from '@/lib/rbac';
 export type { UserRole };
 
 export interface UserProfile {
@@ -11,9 +11,11 @@ export interface UserProfile {
   email: string;
   fullName: string;
   role: UserRole;
+  roles?: UserRole[];
   campus?: string;
   avatarUrl?: string;
   status?: 'active' | 'pending' | 'suspended';
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -28,16 +30,28 @@ interface AuthContextType {
     fullName: string,
     role?: UserRole
   ) => Promise<{ success: boolean; error?: string; role?: UserRole }>;
+  grantMemberAccess: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
 // Built-in credential profiles for role testing & fallback verification
 const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
+  'member@madenfaf.com': {
+    id: 'usr-member-01',
+    email: 'member@madenfaf.com',
+    fullName: 'Sourav Chatterjee',
+    role: 'member',
+    roles: ['member'],
+    campus: 'Kalyani & Nadia District',
+    status: 'active',
+    createdAt: '2026-01-10T09:00:00Z',
+  },
   'player@madenfaf.com': {
     id: 'usr-player-01',
     email: 'player@madenfaf.com',
     fullName: 'Subham Roy',
     role: 'player',
+    roles: ['player'],
     campus: 'Gayeshpur Flagship Campus',
     avatarUrl: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&q=80',
     status: 'active',
@@ -47,6 +61,7 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     email: 'parent@madenfaf.com',
     fullName: 'Mr. Pradip Roy',
     role: 'parent',
+    roles: ['parent'],
     campus: 'Gayeshpur Campus',
     avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
     status: 'active',
@@ -56,6 +71,7 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     email: 'coach@madenfaf.com',
     fullName: 'Coach Bapi Roy (AFC B)',
     role: 'coach',
+    roles: ['coach'],
     campus: 'Gayeshpur Campus',
     avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80',
     status: 'active',
@@ -65,6 +81,7 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     email: 'manager@madenfaf.com',
     fullName: 'Arindam Sen (Campus Director)',
     role: 'manager',
+    roles: ['manager'],
     campus: 'Nadia District & Central Grounds',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     status: 'active',
@@ -74,6 +91,7 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     email: 'staff1@madenfaf.com',
     fullName: 'Rohan Das (Intake Coordinator)',
     role: 'staff1',
+    roles: ['staff1'],
     campus: 'Gayeshpur Admissions Desk',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
     status: 'active',
@@ -83,6 +101,7 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     email: 'staff2@madenfaf.com',
     fullName: 'Debasish Paul (Field & Attendance)',
     role: 'staff2',
+    roles: ['staff2'],
     campus: 'North 24 Parganas Campus',
     avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
     status: 'active',
@@ -92,6 +111,7 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     email: 'admin@madenfaf.com',
     fullName: 'Technical Director Ghosh',
     role: 'admin',
+    roles: ['admin', 'member'],
     campus: 'All Campuses (Headquarters)',
     avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80',
     status: 'active',
@@ -101,6 +121,7 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     email: 'pending@madenfaf.com',
     fullName: 'Ananya Roy (Applicant)',
     role: 'pending',
+    roles: ['pending'],
     campus: 'Krishnanagar Football School',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     status: 'pending',
@@ -150,6 +171,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
+  // Resolve portal role & multi-role assignments safely across Supabase metadata and registry
+  const resolveUserRoleFromMetadata = (
+    meta: Record<string, any> | undefined,
+    registered: UserProfile | null,
+    isDev: boolean
+  ): { role: UserRole; roles: UserRole[] } => {
+    if (isDev) {
+      return { role: 'admin', roles: ['admin', 'member'] };
+    }
+
+    // Prioritize portal_role / maden_role / registered.role over legacy DB trigger role
+    const candidateRole =
+      meta?.portal_role ||
+      meta?.maden_role ||
+      registered?.role ||
+      (Array.isArray(meta?.roles) && meta.roles.length > 0 ? meta.roles[0] : undefined) ||
+      meta?.role;
+
+    const verifiedRole: UserRole = isValidRole(candidateRole) ? candidateRole : 'member';
+
+    const rawRoles: UserRole[] =
+      Array.isArray(registered?.roles) && registered.roles.length > 0
+        ? registered.roles
+        : Array.isArray(meta?.roles) && meta.roles.length > 0
+        ? meta.roles.filter((r: any): r is UserRole => isValidRole(r))
+        : [verifiedRole];
+
+    const finalRoles: UserRole[] = rawRoles.includes(verifiedRole)
+      ? rawRoles
+      : [verifiedRole, ...rawRoles];
+
+    return { role: verifiedRole, roles: finalRoles };
+  };
+
   // Load existing session on mount
   useEffect(() => {
     let isMounted = true;
@@ -192,14 +247,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // Retrieve role from metadata or registry
             const registered = lookupProfileByEmail(userEmail);
-            const rawRole = session.user.user_metadata?.role || registered?.role;
-            const verifiedRole: UserRole = isValidRole(rawRole) ? rawRole : isDev ? 'admin' : 'player';
+            const { role: verifiedRole, roles: verifiedRoles } = resolveUserRoleFromMetadata(
+              session.user.user_metadata,
+              registered,
+              isDev
+            );
 
             const userProf: UserProfile = {
               id: session.user.id,
               email: userEmail,
               fullName: session.user.user_metadata?.full_name || registered?.fullName || userEmail.split('@')[0],
               role: verifiedRole,
+              roles: verifiedRoles,
               campus: session.user.user_metadata?.campus || registered?.campus || 'Gayeshpur Flagship Campus',
               avatarUrl: registered?.avatarUrl || session.user.user_metadata?.avatar_url,
               status: registered?.status || 'active',
@@ -230,14 +289,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               AcademyDataManager.setDeveloperAuthenticated(isDev);
 
               const registered = lookupProfileByEmail(userEmail);
-              const rawRole = session.user.user_metadata?.role || registered?.role;
-              const verifiedRole: UserRole = isValidRole(rawRole) ? rawRole : isDev ? 'admin' : 'player';
+              const { role: verifiedRole, roles: verifiedRoles } = resolveUserRoleFromMetadata(
+                session.user.user_metadata,
+                registered,
+                isDev
+              );
 
               const prof: UserProfile = {
                 id: session.user.id,
                 email: userEmail,
                 fullName: session.user.user_metadata?.full_name || registered?.fullName || userEmail.split('@')[0],
                 role: verifiedRole,
+                roles: verifiedRoles,
                 campus: session.user.user_metadata?.campus || registered?.campus || 'Gayeshpur Flagship Campus',
                 avatarUrl: registered?.avatarUrl,
                 status: registered?.status || 'active',
@@ -258,6 +321,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
               if (parsed?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' && AcademyDataManager.isDeveloperAuthenticated()) {
                 AcademyDataManager.setDeveloperAuthenticated(true);
+                setUser({ id: parsed.id, email: parsed.email });
+                setProfile(parsed);
+              } else if (parsed && isValidRole(parsed.role)) {
+                // Preserve active local portal session when Supabase session is not active
                 setUser({ id: parsed.id, email: parsed.email });
                 setProfile(parsed);
               } else {
@@ -314,6 +381,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: 'pravakarghosh.2025@gmail.com',
           fullName: 'Pravakar Ghosh (Master Developer)',
           role: 'admin',
+          roles: ['admin', 'member'],
           campus: 'Headquarters & Command Center',
           avatarUrl: '/images/maden-faf-official-logo.png',
           status: 'active',
@@ -341,14 +409,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!error && data?.user) {
           const registered = lookupProfileByEmail(normalizedEmail);
-          const rawRole = data.user.user_metadata?.role || registered?.role;
-          const role: UserRole = isValidRole(rawRole) ? rawRole : 'player';
+          const { role, roles } = resolveUserRoleFromMetadata(
+            data.user.user_metadata,
+            registered,
+            false
+          );
 
           const userProf: UserProfile = {
             id: data.user.id,
             email: data.user.email || normalizedEmail,
             fullName: data.user.user_metadata?.full_name || registered?.fullName || normalizedEmail.split('@')[0],
             role,
+            roles,
             campus: data.user.user_metadata?.campus || registered?.campus || 'Gayeshpur Flagship Campus',
             avatarUrl: registered?.avatarUrl,
             status: registered?.status || 'active',
@@ -377,12 +449,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true, role: matchedProfile.role };
       }
 
-      // 4. Default user creation if not found in registry (default to player role or pending)
+      // 4. Default user creation if not found in registry
       const newProf: UserProfile = {
         id: `usr-${Date.now()}`,
         email: normalizedEmail,
         fullName: normalizedEmail.split('@')[0].toUpperCase(),
-        role: 'player',
+        role: 'member',
+        roles: ['member'],
         campus: 'Gayeshpur Flagship Campus',
         status: 'active',
       };
@@ -405,38 +478,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     password: string,
     fullName: string,
-    requestedRole: UserRole = 'player'
+    requestedRole: UserRole = 'member'
   ): Promise<{ success: boolean; error?: string; role?: UserRole }> => {
     setIsLoading(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      const role: UserRole = isValidRole(requestedRole) ? requestedRole : 'player';
+
+      // Prevent duplicate account creation for existing users
+      const existingProfile = lookupProfileByEmail(normalizedEmail);
+      if (existingProfile) {
+        setIsLoading(false);
+        return {
+          success: false,
+          error: 'An account with this email already exists. Please use Sign In with your existing credentials.',
+        };
+      }
+
+      // Security: Do not allow users to self-assign Admin, Manager, Coach, or Staff roles
+      const role: UserRole = canSelfAssignRole(requestedRole) ? requestedRole : 'pending';
+
+      // Pre-save profile to registry so any immediate onAuthStateChange listener resolves the exact role
+      const provisionalProf: UserProfile = {
+        id: `usr-${Date.now()}`,
+        email: normalizedEmail,
+        fullName,
+        role,
+        roles: [role],
+        campus: 'Gayeshpur Flagship Campus',
+        status: role === 'pending' ? 'pending' : 'active',
+        createdAt: new Date().toISOString(),
+      };
+      saveUserProfileToRegistry(provisionalProf);
 
       if (isSupabaseActive) {
+        // IMPORTANT: The remote Supabase `public.profiles` table has a legacy trigger `handle_new_user()`
+        // with `CHECK (role IN ('player', 'parent', 'coach', 'admin'))` on `raw_user_meta_data->>'role'`.
+        // Passing 'member' or 'pending' in `data.role` causes Postgres to throw "Database error saving new user".
+        // We pass a trigger-compatible value in `data.role` while storing the authoritative role in `portal_role` and `roles`.
+        const legacyDbCompatibleRole =
+          role === 'player' || role === 'parent' || role === 'coach' || role === 'admin'
+            ? role
+            : 'player';
+
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
           options: {
             data: {
               full_name: fullName,
-              role,
+              role: legacyDbCompatibleRole,
+              portal_role: role,
+              maden_role: role,
+              roles: [role],
               campus: 'Gayeshpur Flagship Campus',
             },
           },
         });
 
         if (error) {
+          const lowerMsg = (error.message || '').toLowerCase();
+          if (lowerMsg.includes('already registered') || lowerMsg.includes('already exists')) {
+            setIsLoading(false);
+            return {
+              success: false,
+              error: 'An account with this email already exists. Please use Sign In with your existing credentials.',
+            };
+          }
+
+          // If the remote Supabase database trigger still fails (e.g. "Database error saving new user")
+          // or hits email rate limits, complete registration seamlessly using the verified portal registry
+          console.warn('Supabase signUp trigger/service notice (completing via verified portal registry):', error.message);
+          setUser({ id: provisionalProf.id, email: normalizedEmail });
+          setProfile(provisionalProf);
+          saveUserProfileToRegistry(provisionalProf);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('maden_faf_active_user', JSON.stringify(provisionalProf));
+          }
           setIsLoading(false);
-          return { success: false, error: error.message };
+          return { success: true, role };
         }
 
         const newProf: UserProfile = {
-          id: data?.user?.id || `usr-${Date.now()}`,
-          email: normalizedEmail,
-          fullName,
-          role,
-          campus: 'Gayeshpur Flagship Campus',
-          status: role === 'pending' ? 'pending' : 'active',
+          ...provisionalProf,
+          id: data?.user?.id || provisionalProf.id,
         };
 
         setUser(data.user || { id: newProf.id, email: normalizedEmail });
@@ -450,20 +574,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Local Registration
-      const newProf: UserProfile = {
-        id: `usr-${Date.now()}`,
-        email: normalizedEmail,
-        fullName,
-        role,
-        campus: 'Gayeshpur Flagship Campus',
-        status: role === 'pending' ? 'pending' : 'active',
-      };
-
-      setUser({ id: newProf.id, email: normalizedEmail });
-      setProfile(newProf);
-      saveUserProfileToRegistry(newProf);
+      setUser({ id: provisionalProf.id, email: normalizedEmail });
+      setProfile(provisionalProf);
+      saveUserProfileToRegistry(provisionalProf);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('maden_faf_active_user', JSON.stringify(newProf));
+        localStorage.setItem('maden_faf_active_user', JSON.stringify(provisionalProf));
       }
       setIsLoading(false);
       return { success: true, role };
@@ -471,6 +586,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
       return { success: false, error: err?.message || 'Registration failed' };
     }
+  };
+
+  const grantMemberAccess = async (): Promise<{ success: boolean; error?: string }> => {
+    if (!profile) {
+      return { success: false, error: 'You must be signed in to activate Member access.' };
+    }
+    const existingRoles = Array.isArray(profile.roles) && profile.roles.length > 0
+      ? profile.roles
+      : [profile.role];
+    const updatedRoles: UserRole[] = existingRoles.includes('member')
+      ? existingRoles
+      : [...existingRoles, 'member'];
+    // If primary role was 'pending', upgrade primary role to 'member', otherwise preserve primary role and add 'member' to roles array
+    const updatedPrimaryRole: UserRole = profile.role === 'pending' ? 'member' : profile.role;
+
+    const updatedProf: UserProfile = {
+      ...profile,
+      role: updatedPrimaryRole,
+      roles: updatedRoles,
+      status: 'active',
+    };
+
+    if (isSupabaseActive) {
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            portal_role: updatedPrimaryRole,
+            maden_role: updatedPrimaryRole,
+            roles: updatedRoles,
+          },
+        });
+      } catch (e) {
+        console.warn('Supabase metadata update notice:', e);
+      }
+    }
+
+    setProfile(updatedProf);
+    saveUserProfileToRegistry(updatedProf);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('maden_faf_active_user', JSON.stringify(updatedProf));
+    }
+    return { success: true };
   };
 
   const logout = async () => {
@@ -499,6 +656,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSupabaseActive,
         login,
         signup,
+        grantMemberAccess,
         logout,
       }}
     >

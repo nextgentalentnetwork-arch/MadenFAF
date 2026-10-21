@@ -35,6 +35,8 @@ export interface PublicPageShellProps {
   showPreFooterCta?: boolean;
   ctaText?: string;
   ctaAction?: () => void;
+  secondaryCtaText?: string;
+  secondaryCtaAction?: () => void;
   // Access control
   accessLevel?: 'public' | 'login_required' | 'role_restricted';
   allowedRoles?: UserRole[];
@@ -49,10 +51,13 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
   showPreFooterCta = true,
   ctaText,
   ctaAction,
+  secondaryCtaText,
+  secondaryCtaAction,
   accessLevel = 'public',
   allowedRoles = ['player', 'parent', 'coach', 'admin', 'manager', 'staff1', 'staff2'],
 }) => {
   const { user, profile } = useAuth();
+  const isDonatorMemberLoggedIn = Boolean(user && profile && profile.role === 'member');
   const toggles = useSyncExternalStore(
     subscribeAcademyData,
     () => AcademyDataManager.getComponentToggles(),
@@ -95,7 +100,7 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
     !allowedRoles.includes(profile.role);
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-amber-500 selection:text-amber-950">
       {/* Sticky Public Header */}
       {toggles.header !== false && (
         <Header
@@ -166,15 +171,15 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
                 onClick={ctaAction || (() => handleOpenJoin())}
                 className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer active:scale-95"
               >
-                <span>{ctaText || 'Book an Evaluation Session'}</span>
+                <span>{ctaText || (isDonatorMemberLoggedIn ? 'Visit Our Academy' : 'Book an Evaluation Session')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <button
-                onClick={() => handleOpenPortal('player')}
+                onClick={secondaryCtaAction || (() => handleOpenPortal('player'))}
                 className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider border border-white/20 transition-all cursor-pointer"
               >
-                Digital Player Portal
+                {secondaryCtaText || (isDonatorMemberLoggedIn ? 'See Your Digital Profile' : 'Digital Player Portal')}
               </button>
             </div>
           </div>
@@ -249,7 +254,7 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
                   onClick={() => handleOpenJoin()}
                   className="w-full sm:w-auto px-8 py-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md shadow-amber-200 hover:shadow-lg flex items-center justify-center gap-2.5 cursor-pointer min-h-[48px]"
                 >
-                  <span>BOOK AN EVALUATION SESSION</span>
+                  <span>{isDonatorMemberLoggedIn ? 'VISIT OUR ACADEMY' : 'BOOK AN EVALUATION SESSION'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
@@ -257,7 +262,7 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
                   onClick={() => handleOpenPortal('player')}
                   className="w-full sm:w-auto px-6 py-4 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-300 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer min-h-[48px] shadow-xs text-center"
                 >
-                  EXPLORE DIGITAL PORTAL
+                  {isDonatorMemberLoggedIn ? 'SEE YOUR DIGITAL PROFILE' : 'EXPLORE DIGITAL PORTAL'}
                 </button>
               </div>
 
