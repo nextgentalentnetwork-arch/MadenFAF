@@ -497,12 +497,10 @@ export default function DeveloperPage() {
     const emailKey = devEmail.trim().toLowerCase();
     const key = devPasscode.trim();
 
-    // Authorized Master Developer Credentials:
-    // Email: pravakarghosh.2025@gmail.com
-    // Password: maden-dev-2026
+    // Authorized Master Developer & Admin Credentials:
     const isAuthorized =
-      emailKey === 'pravakarghosh.2025@gmail.com' &&
-      key === 'maden-dev-2026';
+      (emailKey === 'pravakarghosh.2025@gmail.com' && (key === 'maden-dev-2026' || key === 'madenAdmin2026!')) ||
+      (emailKey === 'admin@madenfaf.com' && (key === 'madenAdmin2026!' || key === 'maden-dev-2026'));
 
     if (isAuthorized) {
       AcademyDataManager.setDeveloperAuthenticated(true);
@@ -818,7 +816,7 @@ export default function DeveloperPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={devPasscode}
                   onChange={(e) => setDevPasscode(e.target.value)}
-                  placeholder="Enter developer password (maden-dev-2026)..."
+                  placeholder="Enter authorized master password..."
                   autoComplete="current-password"
                   className="w-full pl-10 pr-11 py-3 bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition-all font-mono"
                 />

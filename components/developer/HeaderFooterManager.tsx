@@ -1613,6 +1613,31 @@ export const HeaderFooterManager: React.FC<HeaderFooterManagerProps> = ({
                 <div className="bg-white w-4 h-4 rounded-full shadow-md" />
               </button>
             </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">
+                  Collaborating Partners Row
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  Display collaborating partner clubs row above the footer copyright.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setFooterConfig({
+                    ...footerConfig,
+                    showCollaboratingPartners: !footerConfig.showCollaboratingPartners,
+                  })
+                }
+                className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                  footerConfig.showCollaboratingPartners ? 'bg-amber-500 justify-end' : 'bg-slate-300 justify-start'
+                }`}
+              >
+                <div className="bg-white w-4 h-4 rounded-full shadow-md" />
+              </button>
+            </div>
           </div>
         </div>
       )}

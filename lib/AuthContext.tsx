@@ -690,7 +690,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           serverProfile.email,
           serverProfile.fullName
         );
-        DonatorsPortalService.saveMemberProfile(serverProfile.id, initialDossier, true);
+        DonatorsPortalService.saveMemberProfile(
+          serverProfile.id,
+          initialDossier,
+          true,
+          serverProfile.email,
+          serverProfile.role
+        );
       } catch {
         // Non-blocking
       }

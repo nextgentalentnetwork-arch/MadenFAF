@@ -125,11 +125,11 @@ function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string }) {
     setServerCheckError(null);
 
     if (!profile) {
-      const emailMap: Record<UserRole, string> = {
-        member: 'member@madenfaf.com',
-        admin: 'admin@madenfaf.com',
-      };
-      const res = await login(emailMap[targetRole], 'maden2026', targetRole);
+      if (targetRole === 'admin') {
+        router.replace('/admin');
+        return;
+      }
+      const res = await login('member@madenfaf.com', 'maden2026', 'member');
       if (res.success && res.role) {
         router.replace(getPortalPathForRole(res.role));
       } else {
@@ -238,7 +238,7 @@ function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string }) {
           </div>
         </div>
 
-        {/* Two-Role Portal Bar (Strictly Member & Admin Only) */}
+        {/* Portal Role Indicator & Admin Switcher */}
         <div className="bg-slate-900/90 border-t border-slate-800/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-amber-400 shrink-0">
@@ -250,43 +250,44 @@ function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string }) {
                         ? 'Admin Backend Management'
                         : 'Member Donation & Support Portal'
                     })`
-                  : 'Select Portal View (Member or Admin)'}
+                  : 'Foundation Member Portal'}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {(['member', 'admin'] as UserRole[]).map((r) => {
-                const isSelected =
-                  (requestedRoleParam === r && isUnauthorizedRoleRequest) ||
-                  (!isUnauthorizedRoleRequest && activeRole === r);
-                const isAuthorizedForUser = profile
-                  ? canUserAccessPortal(profile.role, r, authorizedRolesList)
-                  : true;
-                return (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => handlePortalSwitchAttempt(r)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                      isSelected
-                        ? isAuthorizedForUser
-                          ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
-                          : 'bg-rose-600 text-white shadow-xs font-black'
-                        : isAuthorizedForUser
-                          ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'
-                          : 'bg-slate-950/70 text-slate-500 border border-slate-800 hover:border-rose-800 hover:text-rose-300'
-                    }`}
-                  >
-                    {!isAuthorizedForUser && <Lock className="w-3 h-3 text-rose-400" />}
-                    <span>
-                      {r === 'member'
-                        ? 'Member — Donation & Support'
-                        : 'Admin — Backend Management'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Role switch tabs are strictly restricted to authenticated Admin users */}
+            {profile?.role === 'admin' && (
+              <div className="flex items-center gap-1.5">
+                {(['member', 'admin'] as UserRole[]).map((r) => {
+                  const isSelected =
+                    (requestedRoleParam === r && isUnauthorizedRoleRequest) ||
+                    (!isUnauthorizedRoleRequest && activeRole === r);
+                  const isAuthorizedForUser = canUserAccessPortal(profile.role, r, authorizedRolesList);
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => handlePortalSwitchAttempt(r)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? isAuthorizedForUser
+                            ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
+                            : 'bg-rose-600 text-white shadow-xs font-black'
+                          : isAuthorizedForUser
+                            ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'
+                            : 'bg-slate-950/70 text-slate-500 border border-slate-800 hover:border-rose-800 hover:text-rose-300'
+                      }`}
+                    >
+                      {!isAuthorizedForUser && <Lock className="w-3 h-3 text-rose-400" />}
+                      <span>
+                        {r === 'member'
+                          ? 'Member — Donation & Support'
+                          : 'Admin — Backend Management'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -314,10 +315,10 @@ function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string }) {
                 Authentication Required
               </span>
               <h1 className="text-xl sm:text-2xl font-black uppercase text-slate-900">
-                Sign In to Access Your Authorized Portal
+                Sign In to Access Member Portal
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
-                MADEN FAF enforces strict role-based access control across its two account roles: <strong>Member (Donation &amp; Support Portal)</strong> and <strong>Admin (Backend Management)</strong>.
+                Sign in with your verified Member credentials to manage donation records, view verified tax receipts, and access foundation benefits.
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -325,7 +326,7 @@ function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string }) {
                 href="/login"
                 className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider inline-flex items-center gap-2 shadow-sm"
               >
-                <span>Go to Sign In / Register</span>
+                <span>Sign In to Member Portal</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <button
@@ -334,13 +335,6 @@ function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string }) {
                 className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider cursor-pointer"
               >
                 Demo Member Sign-In
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePortalSwitchAttempt('admin')}
-                className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-xs uppercase tracking-wider cursor-pointer"
-              >
-                Demo Admin Sign-In
               </button>
             </div>
           </div>

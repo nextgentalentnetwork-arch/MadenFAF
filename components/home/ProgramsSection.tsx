@@ -218,7 +218,7 @@ export const ProgramsSection: React.FC<ProgramsSectionProps> = ({ onSelectProgra
               {filteredPrograms[activeSlide]?.name || 'Programs'}
             </div>
             
-            <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-slate-500 font-mono pl-3 border-l border-slate-200">
+            <span className="hidden" aria-hidden="true">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               PC 3-Column View
             </span>

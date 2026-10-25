@@ -37,6 +37,10 @@ const ROLE_TABS: { id: UserRole; label: string }[] = [
 
 export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({ isOpen, onClose }) => {
   const { profile, login, logout } = useAuth();
+  const isAdmin =
+    profile?.role === 'admin' ||
+    profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com';
+
   const [manualTabSelection, setManualTabSelection] = useState<{
     email: string | null;
     tab: UserRole;
@@ -49,7 +53,7 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({ isOpen, 
   const selectedRoleTab: UserRole =
     manualTabSelection && manualTabSelection.email === currentEmail
       ? manualTabSelection.tab
-      : profile?.role || 'member';
+      : (isAdmin ? (profile?.role || 'member') : 'member');
 
   const authorizedRolesList: UserRole[] =
     profile?.roles && profile.roles.length > 0 && profile.approvedByAdmin
@@ -61,7 +65,7 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({ isOpen, 
   const activeRole: UserRole =
     profile && canUserAccessPortal(profile.role, selectedRoleTab, authorizedRolesList)
       ? selectedRoleTab
-      : profile?.role || selectedRoleTab;
+      : (isAdmin ? (profile?.role || selectedRoleTab) : 'member');
 
   const isCurrentTabUnauthorized = Boolean(
     profile && !canUserAccessPortal(profile.role, selectedRoleTab, authorizedRolesList)
@@ -70,14 +74,11 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({ isOpen, 
   const roleDef = getRoleDefinition(activeRole);
 
   const handleSelectRoleTab = async (role: UserRole) => {
+    if (!isAdmin && role === 'admin') return;
     setManualTabSelection({ email: currentEmail, tab: role });
     if (!profile) {
       setDeniedBanner(null);
-      const emailMap: Record<UserRole, string> = {
-        member: 'member@madenfaf.com',
-        admin: 'admin@madenfaf.com',
-      };
-      await login(emailMap[role], 'maden2026', role);
+      await login('member@madenfaf.com', 'maden2026', 'member');
       return;
     }
 
@@ -128,7 +129,7 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({ isOpen, 
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
-                    Strictly Two Account Roles (Member &amp; Admin)
+                    {isAdmin ? 'Administrative & Executive Management' : 'Foundation Member Digital Portal'}
                   </span>
                   {profile && (
                     <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
@@ -152,34 +153,36 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({ isOpen, 
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 lg:pb-0">
-            {/* Two-Role Tabs (Member & Admin Only) */}
-            <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0 gap-1">
-              {ROLE_TABS.map((t) => {
-                const isAllowed = profile
-                  ? canUserAccessPortal(profile.role, t.id, authorizedRolesList)
-                  : true;
-                const isSelected = selectedRoleTab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => handleSelectRoleTab(t.id)}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
-                      isSelected
-                        ? isAllowed
-                          ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
-                          : 'bg-rose-600 text-white shadow-xs font-black'
-                        : isAllowed
-                          ? 'text-slate-300 hover:text-white hover:bg-slate-800'
-                          : 'text-slate-500 hover:text-rose-300'
-                    }`}
-                  >
-                    {!isAllowed && <Lock className="w-3 h-3 text-rose-400" />}
-                    <span>{t.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Admin-Only Role Switch Tabs */}
+            {isAdmin && (
+              <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0 gap-1">
+                {ROLE_TABS.map((t) => {
+                  const isAllowed = profile
+                    ? canUserAccessPortal(profile.role, t.id, authorizedRolesList)
+                    : true;
+                  const isSelected = selectedRoleTab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleSelectRoleTab(t.id)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
+                        isSelected
+                          ? isAllowed
+                            ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
+                            : 'bg-rose-600 text-white shadow-xs font-black'
+                          : isAllowed
+                            ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                            : 'text-slate-500 hover:text-rose-300'
+                      }`}
+                    >
+                      {!isAllowed && <Lock className="w-3 h-3 text-rose-400" />}
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             <Link
               href={getPortalPathForRole(profile?.role || activeRole)}
@@ -266,8 +269,15 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({ isOpen, 
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              Two-Role RBAC Active: <strong>Member (Donation &amp; Support)</strong> &amp;{' '}
-              <strong>Admin (Backend Management)</strong>
+              {isAdmin ? (
+                <>
+                  Administrative RBAC Active: <strong>Admin (Backend Management)</strong>
+                </>
+              ) : (
+                <>
+                  Verified Portal Active: <strong>Member (Donation &amp; Support)</strong>
+                </>
+              )}
             </span>
           </div>
           <div className="flex items-center gap-3">

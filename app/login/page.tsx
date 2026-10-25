@@ -46,13 +46,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [isSecretAdminRoute] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return (
+        params.get('secret') === 'admin' ||
+        params.get('access') === 'backend' ||
+        params.get('backend') === 'true' ||
+        params.get('role') === 'admin'
+      );
+    }
+    return false;
+  });
+
   const [targetPortalRole, setTargetPortalRole] = useState<UserRole | 'auto'>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const requestedRole = params.get('role');
       const normalized = normalizePortalRoleParam(requestedRole);
-      if (normalized) {
-        return normalized;
+      if (normalized === 'admin' && (params.get('secret') === 'admin' || params.get('access') === 'backend' || params.get('backend') === 'true')) {
+        return 'admin';
+      }
+      if (normalized === 'member') {
+        return 'member';
       }
     }
     return 'auto';
@@ -194,12 +210,16 @@ export default function LoginPage() {
           </div>
           <h1 className="text-xl sm:text-2xl font-black uppercase text-slate-900 tracking-tight">
             {mode === 'signin'
-              ? 'Member & Admin Portal Login'
+              ? isSecretAdminRoute
+                ? 'Administrative Backend Authentication'
+                : 'Member Portal Login'
               : 'Register Member Support Account'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             {mode === 'signin'
-              ? 'Sign in to the Member Donation & Support Portal or Admin Backend.'
+              ? isSecretAdminRoute
+                ? 'Authorized staff credentials required for MADEN FAF Executive Admin Dashboard.'
+                : 'Sign in to access your Member Donation & Support Portal and verified tax receipts.'
               : 'Create a Member account to support MADEN FAF, donate, and download verified receipts.'}
           </p>
         </div>
@@ -431,28 +451,19 @@ export default function LoginPage() {
             )}
           </div>
 
-          {mode === 'signin' && (
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Portal Destination
-              </label>
-              <select
-                value={targetPortalRole}
-                onChange={(e) => setTargetPortalRole(e.target.value as UserRole | 'auto')}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 outline-none transition-colors shadow-xs"
-              >
-                <option value="auto">
-                  Verify Role &amp; Auto-Redirect (Member or Admin)
-                </option>
-                <option value="member">
-                  Member — Donation &amp; Support Portal
-                </option>
-                <option value="admin">
-                  Admin — Backend Management
-                </option>
-              </select>
-              <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">
-                Members are redirected to the Member Donation &amp; Support Portal. Only authorized Admins can access the Admin Dashboard.
+          {mode === 'signin' && isSecretAdminRoute && (
+            <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-white space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Authorized Administrative Access</span>
+                </span>
+                <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold uppercase">
+                  RESTRICTED
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Administrative credentials will redirect to the MADEN FAF Executive Admin Dashboard.
               </p>
             </div>
           )}
@@ -469,7 +480,7 @@ export default function LoginPage() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 leading-snug">
-                Public registration creates a <strong>Member</strong> account for foundation supporters and donors. Admin accounts are never available through public self-registration.
+                Public registration creates a <strong>Member</strong> account for foundation supporters, donors, and alumni to access the Member Portal.
               </p>
             </div>
           )}
@@ -483,7 +494,7 @@ export default function LoginPage() {
               <span>Verifying Credentials...</span>
             ) : mode === 'signin' ? (
               <>
-                <span>Sign In to Portal</span>
+                <span>{isSecretAdminRoute ? 'Sign In to Admin Dashboard' : 'Sign In to Member Portal'}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (

@@ -294,7 +294,7 @@ function JoinPageContent() {
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 mt-1.5">
                 {applicationType === 'admission'
-                  ? 'Complete the official Academy Admission form below. Applications are saved with status Pending Review and reviewed directly by the Admin.'
+                  ? 'Complete the official Academy Admission form below. Applications are saved with status Pending Review and reviewed directly by the Academy Admissions Committee.'
                   : 'Book an on-pitch scouting Trial Session at your preferred venue and session date. No separate Player login account is required.'}
               </p>
 
@@ -790,7 +790,7 @@ function JoinPageContent() {
                 <div className="text-xs text-slate-500 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>
-                    Saved securely with status <strong>Pending Review</strong> for Admin verification
+                    Saved securely with status <strong>Pending Review</strong> for official verification
                   </span>
                 </div>
 
@@ -892,7 +892,7 @@ function JoinPageContent() {
                 <div>
                   <strong className="text-slate-900 block">Next Steps in Application Workflow:</strong>
                   <span>
-                    The Admin team will review your application in the Admin Dashboard and update its status (Under Review, Trial Scheduled, Approved, or Waitlisted). Trial date, time, venue, and reporting instructions will be communicated to {formData.phone} {formData.email ? `and ${formData.email}` : ''}.
+                    The Academy Admissions Committee will review your application and update its status (Under Review, Trial Scheduled, Approved, or Waitlisted). Trial date, time, venue, and reporting instructions will be communicated to {formData.phone} {formData.email ? `and ${formData.email}` : ''}.
                   </span>
                 </div>
               </div>

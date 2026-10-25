@@ -2175,6 +2175,7 @@ export interface FooterConfig {
   copyrightText: string;
   bottomNote: string;
   showScrollToTop: boolean;
+  showCollaboratingPartners?: boolean;
 }
 
 export const DEFAULT_FOOTER_CONFIG: FooterConfig = {
@@ -2273,7 +2274,7 @@ export const DEFAULT_FOOTER_CONFIG: FooterConfig = {
         },
         {
           id: 'f-a4',
-          label: 'Member / Admin Login & Registration',
+          label: 'Member Portal Login & Registration',
           href: '/login',
           desc: 'Sign in or register as a Foundation Member',
         },
@@ -2290,5 +2291,6 @@ export const DEFAULT_FOOTER_CONFIG: FooterConfig = {
   copyrightText: '© 2026 MADEN FAF. All rights reserved.',
   bottomNote: 'Maden Football Academy Foundation · Registered Non-Profit Youth Sports Development Initiative',
   showScrollToTop: true,
+  showCollaboratingPartners: false,
 };
 

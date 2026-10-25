@@ -769,23 +769,25 @@ export const DonatorsPortalService = {
     const found = all.find(
       (p) =>
         p &&
-        (p.uid === uid ||
+        ((uid && uid !== 'guest-member' && p.uid === uid) ||
           (safeEmail &&
             ((p.authEmail || '').toLowerCase() === safeEmail ||
               (p.email || '').toLowerCase() === safeEmail)))
     );
 
     const nowIso = new Date().toISOString();
+    // Prefer authoritative uid if provided; otherwise fallback to found.uid or guest-member
+    const resolvedUid = uid && uid !== 'guest-member' ? uid : found?.uid || uid || 'guest-member';
     const defaultScaffold: MemberProfileRecord = {
-      uid: found?.uid || uid,
+      uid: resolvedUid,
       memberId: found?.memberId || this.generateUniqueMemberId(),
-      authEmail: found?.authEmail || fallbackEmail || '',
+      authEmail: safeEmail || found?.authEmail || fallbackEmail || '',
       fullName: found?.fullName || fallbackName || 'Foundation Member',
       profilePhotograph: '',
       dob: '',
       gender: '',
       occupation: '',
-      email: found?.email || fallbackEmail || '',
+      email: found?.email || safeEmail || fallbackEmail || '',
       primaryMobile: '',
       alternateMobile: '',
       houseAndStreet: '',
@@ -825,7 +827,11 @@ export const DonatorsPortalService = {
     return {
       ...defaultScaffold,
       ...found,
-      fullName: found.fullName || fallbackName || 'Foundation Member',
+      // Never allow a stale/mismatched uid to overwrite the caller's authoritative uid
+      uid: resolvedUid,
+      authEmail: safeEmail || found.authEmail || defaultScaffold.authEmail,
+      email: found.email || safeEmail || defaultScaffold.email,
+      fullName: found.fullName || fallbackName || defaultScaffold.fullName,
       memberId: found.memberId || defaultScaffold.memberId,
       memberCategory: found.memberCategory || 'individual',
       preferredCommunicationMethod: found.preferredCommunicationMethod || 'email',
@@ -845,19 +851,55 @@ export const DonatorsPortalService = {
   saveMemberProfile(
     actorUid: string,
     profileInput: MemberProfileRecord,
-    asDraft: boolean = false
+    asDraft: boolean = false,
+    actorEmail?: string,
+    actorRole?: string
   ): { success: boolean; error?: string; profile?: MemberProfileRecord } {
-    if (actorUid !== profileInput.uid) {
-      return { success: false, error: 'Unauthorized: You can only edit your own Member profile.' };
+    if (!actorUid) {
+      return { success: false, error: 'Unauthorized: Session missing.' };
     }
 
     const all = this.getAllMemberProfiles();
-    const existingIdx = all.findIndex((p) => p.uid === profileInput.uid);
+    const cleanActorEmail = (actorEmail || profileInput.authEmail || profileInput.email || '').trim().toLowerCase();
+    const isAdmin =
+      actorRole === 'admin' ||
+      cleanActorEmail === 'admin@madenfaf.com' ||
+      cleanActorEmail === 'pravakarghosh.2025@gmail.com';
+
+    // Verify ownership:
+    // If not admin, check if the caller is attempting to overwrite another member's profile
+    if (!isAdmin && profileInput.uid && actorUid !== profileInput.uid && profileInput.uid !== 'guest-member') {
+      const targetOwner = all.find((p) => p.uid === profileInput.uid);
+      const isSameEmail =
+        targetOwner &&
+        cleanActorEmail &&
+        ((targetOwner.authEmail || '').trim().toLowerCase() === cleanActorEmail ||
+          (targetOwner.email || '').trim().toLowerCase() === cleanActorEmail);
+
+      // If the target profile belongs to an entirely different person, forbid the edit
+      if (targetOwner && !isSameEmail) {
+        return { success: false, error: 'Unauthorized: You can only edit your own Member profile.' };
+      }
+    }
+
+    // Always bind the saved profile to the actor's authoritative UID
+    const authoritativeUid = actorUid;
+
+    // Locate existing record by authoritativeUid, input uid, or verified email
+    const existingIdx = all.findIndex(
+      (p) =>
+        p &&
+        (p.uid === authoritativeUid ||
+          (profileInput.uid && p.uid === profileInput.uid) ||
+          (cleanActorEmail &&
+            ((p.authEmail || '').toLowerCase() === cleanActorEmail ||
+              (p.email || '').toLowerCase() === cleanActorEmail)))
+    );
     const existingRecord = existingIdx >= 0 ? all[existingIdx] : null;
 
     // Ensure Member ID is never duplicated across different UIDs
     let assignedMemberId = existingRecord?.memberId || profileInput.memberId || this.generateUniqueMemberId();
-    const duplicateOwner = all.find((p) => p.memberId === assignedMemberId && p.uid !== profileInput.uid);
+    const duplicateOwner = all.find((p) => p.memberId === assignedMemberId && p.uid !== authoritativeUid);
     if (duplicateOwner) {
       assignedMemberId = this.generateUniqueMemberId();
     }
@@ -904,9 +946,11 @@ export const DonatorsPortalService = {
     const nowIso = new Date().toISOString();
     const finalProfile: MemberProfileRecord = {
       ...profileInput,
+      uid: authoritativeUid,
       memberId: assignedMemberId,
       // Always preserve verified authEmail separately from editable profile.email
-      authEmail: existingRecord?.authEmail || profileInput.authEmail || profileInput.email,
+      authEmail: existingRecord?.authEmail || cleanActorEmail || profileInput.authEmail || profileInput.email,
+      email: profileInput.email || cleanActorEmail || existingRecord?.email || '',
       primaryMobile: cleanMobile,
       alternateMobile: cleanAltMobile,
       profileCompletionStatus: asDraft

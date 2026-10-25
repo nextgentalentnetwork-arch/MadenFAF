@@ -400,38 +400,51 @@ export const Footer: React.FC<FooterProps> = ({
           })}
         </div>
 
-        {/* Partners & Affiliations Bar */}
-        <div className="mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px]">
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 text-slate-500 text-center md:text-left">
-            <span className="font-semibold text-slate-700">Collaborating Partners:</span>
-            <span>Leninnagar Sporting Club (Ichapore)</span>
-            <span aria-hidden="true">·</span>
-            <span>United Red Star Club (Krishnanagar)</span>
-            <span aria-hidden="true">·</span>
-            <span>West Bengal Grassroots Network</span>
-          </div>
+        {/* Partners & Affiliations Bar (Hidden by default) */}
+        {footerConfig.showCollaboratingPartners && (
+          <div className="mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px]">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 text-slate-500 text-center md:text-left">
+              <span className="font-semibold text-slate-700">Collaborating Partners:</span>
+              <span>Leninnagar Sporting Club (Ichapore)</span>
+              <span aria-hidden="true">·</span>
+              <span>United Red Star Club (Krishnanagar)</span>
+              <span aria-hidden="true">·</span>
+              <span>West Bengal Grassroots Network</span>
+            </div>
 
-          {footerConfig.showScrollToTop !== false && (
-            <button
-              onClick={scrollToTop}
-              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer py-1"
-            >
-              <span>Back to top</span>
-              <ArrowUp className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+            {footerConfig.showScrollToTop !== false && (
+              <button
+                onClick={scrollToTop}
+                className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer py-1"
+              >
+                <span>Back to top</span>
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Bottom Copyright */}
-        <div className="mt-6 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-500 text-[11px] text-center sm:text-left">
+        <div className={`pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-500 text-[11px] text-center sm:text-left ${footerConfig.showCollaboratingPartners ? 'mt-6' : 'mt-10 sm:mt-12'}`}>
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <span>{footerConfig.copyrightText || `© ${new Date().getFullYear()} MADEN FAF. All Rights Reserved.`}</span>
           </div>
-          {footerConfig.bottomNote && (
-            <div className="text-slate-500">
-              {footerConfig.bottomNote}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-4">
+            {footerConfig.bottomNote && (
+              <div className="text-slate-500">
+                {footerConfig.bottomNote}
+              </div>
+            )}
+            {!footerConfig.showCollaboratingPartners && footerConfig.showScrollToTop !== false && (
+              <button
+                onClick={scrollToTop}
+                className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer py-1"
+              >
+                <span>Back to top</span>
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </footer>

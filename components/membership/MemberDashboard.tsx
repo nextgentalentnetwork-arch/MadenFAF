@@ -168,6 +168,21 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
     text: string;
   } | null>(null);
 
+  // Keep wizardForm synchronized when member profile or auth resolves
+  const [prevProfileId, setPrevProfileId] = useState(profile.id);
+  if (profile.id !== prevProfileId) {
+    setPrevProfileId(profile.id);
+    if (profile.id !== 'guest-member') {
+      setWizardForm({
+        ...memberRecord,
+        uid: profile.id,
+        authEmail: profile.email,
+        email: wizardForm?.email && wizardForm.email !== 'member@madenfaf.com' ? wizardForm.email : (memberRecord.email || profile.email),
+        fullName: wizardForm?.fullName && wizardForm.fullName !== 'Foundation Member' ? wizardForm.fullName : (memberRecord.fullName || profile.fullName),
+      });
+    }
+  }
+
   // Listen for "See Your Digital Profile" CTA click from portal header
   useEffect(() => {
     const handleOpenProfile = () => {
@@ -482,10 +497,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
 
   const handleSaveProfileDraft = () => {
     setProfileBanner(null);
+    const payload: MemberProfileRecord = {
+      ...wizardForm,
+      uid: profile.id,
+      authEmail: profile.email,
+      email: wizardForm.email || profile.email,
+      fullName: wizardForm.fullName || profile.fullName,
+      currentWizardStep: wizardStep,
+    };
     const res = DonatorsPortalService.saveMemberProfile(
       profile.id,
-      { ...wizardForm, currentWizardStep: wizardStep },
-      true
+      payload,
+      true,
+      profile.email,
+      profile.role
     );
     if (res.success) {
       setProfileBanner({
@@ -506,11 +531,21 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
       return;
     }
     const nextStep = Math.min(4, wizardStep + 1) as 1 | 2 | 3 | 4;
+    const payload: MemberProfileRecord = {
+      ...wizardForm,
+      uid: profile.id,
+      authEmail: profile.email,
+      email: wizardForm.email || profile.email,
+      fullName: wizardForm.fullName || profile.fullName,
+      currentWizardStep: nextStep,
+    };
     // Save progress as draft automatically when advancing
     DonatorsPortalService.saveMemberProfile(
       profile.id,
-      { ...wizardForm, currentWizardStep: nextStep },
-      true
+      payload,
+      true,
+      profile.email,
+      profile.role
     );
     setWizardStep(nextStep);
   };
@@ -528,10 +563,21 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
       }
     }
 
+    const payload: MemberProfileRecord = {
+      ...wizardForm,
+      uid: profile.id,
+      authEmail: profile.email,
+      email: wizardForm.email || profile.email,
+      fullName: wizardForm.fullName || profile.fullName,
+      currentWizardStep: 4,
+    };
+
     const res = DonatorsPortalService.saveMemberProfile(
       profile.id,
-      { ...wizardForm, currentWizardStep: 4 },
-      false
+      payload,
+      false,
+      profile.email,
+      profile.role
     );
     if (res.success) {
       setProfileBanner({
