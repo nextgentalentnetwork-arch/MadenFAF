@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import {
   UserRole,
   isValidRole,
+  normalizeToTwoRoles,
+  normalizePortalRoleParam,
   canSelfAssignRole,
   canUserAccessPortal,
   UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
@@ -26,7 +28,7 @@ export interface AuthoritativeAccountRecord {
   roles: UserRole[];
   campus: string;
   avatarUrl?: string;
-  status: 'active' | 'pending' | 'suspended';
+  status: 'active' | 'suspended';
   migrationStatus:
     | 'verified'
     | 'flagged_missing_role'
@@ -55,7 +57,7 @@ export interface RbacSecurityAuditEntry {
   details: string;
 }
 
-// Strict Default Policy: One Account, One Assigned Role, One Authorized Portal
+// Simplified Role Structure: Strictly TWO Account Roles ('member' and 'admin')
 export const AUTHORITATIVE_SEED_ACCOUNTS: Record<string, AuthoritativeAccountRecord> = {
   'member@madenfaf.com': {
     id: 'usr-member-01',
@@ -66,105 +68,25 @@ export const AUTHORITATIVE_SEED_ACCOUNTS: Record<string, AuthoritativeAccountRec
     campus: 'Kalyani & Nadia District',
     status: 'active',
     migrationStatus: 'verified',
-    migrationNotes: 'Verified Foundation Member & Donor account (exclusively authorized for Member Portal).',
+    migrationNotes:
+      'Verified Foundation Member & Donor account (exclusively authorized for Member Donation & Support Portal).',
     createdAt: '2026-01-10T09:00:00Z',
     updatedAt: '2026-01-10T09:00:00Z',
-  },
-  'player@madenfaf.com': {
-    id: 'usr-player-01',
-    email: 'player@madenfaf.com',
-    fullName: 'Subham Roy',
-    role: 'player',
-    roles: ['player'],
-    campus: 'Gayeshpur Flagship Campus',
-    avatarUrl: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-    migrationNotes: 'Verified Academy Athlete account (exclusively authorized for Player Portal).',
-    createdAt: '2026-01-12T09:00:00Z',
-    updatedAt: '2026-01-12T09:00:00Z',
-  },
-  'parent@madenfaf.com': {
-    id: 'usr-parent-01',
-    email: 'parent@madenfaf.com',
-    fullName: 'Mr. Pradip Roy',
-    role: 'parent',
-    roles: ['parent'],
-    campus: 'Gayeshpur Campus',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-    migrationNotes: 'Verified Guardian account (exclusively authorized for Parent Portal).',
-    createdAt: '2026-01-14T09:00:00Z',
-    updatedAt: '2026-01-14T09:00:00Z',
-  },
-  'coach@madenfaf.com': {
-    id: 'usr-coach-01',
-    email: 'coach@madenfaf.com',
-    fullName: 'Coach Bapi Roy (AFC B)',
-    role: 'coach',
-    roles: ['coach'],
-    campus: 'Gayeshpur Campus',
-    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-    migrationNotes: 'Verified Technical Coach account (exclusively authorized for Coach Portal).',
-    createdAt: '2026-01-15T09:00:00Z',
-    updatedAt: '2026-01-15T09:00:00Z',
-  },
-  'manager@madenfaf.com': {
-    id: 'usr-manager-01',
-    email: 'manager@madenfaf.com',
-    fullName: 'Arindam Sen (Campus Director)',
-    role: 'manager',
-    roles: ['manager'],
-    campus: 'Nadia District & Central Grounds',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-    migrationNotes: 'Verified Campus Manager account (exclusively authorized for Manager Portal).',
-    createdAt: '2026-01-16T09:00:00Z',
-    updatedAt: '2026-01-16T09:00:00Z',
-  },
-  'staff1@madenfaf.com': {
-    id: 'usr-staff1-01',
-    email: 'staff1@madenfaf.com',
-    fullName: 'Rohan Das (Intake Coordinator)',
-    role: 'staff1',
-    roles: ['staff1'],
-    campus: 'Gayeshpur Admissions Desk',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-    migrationNotes: 'Verified Staff 1 account (exclusively authorized for Staff 1 Portal).',
-    createdAt: '2026-01-17T09:00:00Z',
-    updatedAt: '2026-01-17T09:00:00Z',
-  },
-  'staff2@madenfaf.com': {
-    id: 'usr-staff2-01',
-    email: 'staff2@madenfaf.com',
-    fullName: 'Debasish Paul (Field & Attendance)',
-    role: 'staff2',
-    roles: ['staff2'],
-    campus: 'North 24 Parganas Campus',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-    migrationNotes: 'Verified Staff 2 account (exclusively authorized for Staff 2 Portal).',
-    createdAt: '2026-01-18T09:00:00Z',
-    updatedAt: '2026-01-18T09:00:00Z',
   },
   'admin@madenfaf.com': {
     id: 'usr-admin-01',
     email: 'admin@madenfaf.com',
     fullName: 'Technical Director Ghosh',
     role: 'admin',
-    roles: ['admin'],
+    roles: ['admin', 'member'],
+    approvedByAdmin: 'system',
     campus: 'All Campuses (Headquarters)',
-    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80',
     status: 'active',
     migrationStatus: 'verified',
-    migrationNotes: 'Verified Executive Admin account (single-role default enforced; can authorize additional roles).',
+    migrationNotes:
+      'Verified Executive Admin account (authorized for Backend & Application Management).',
     createdAt: '2026-01-01T09:00:00Z',
     updatedAt: '2026-01-01T09:00:00Z',
   },
@@ -173,7 +95,8 @@ export const AUTHORITATIVE_SEED_ACCOUNTS: Record<string, AuthoritativeAccountRec
     email: 'pravakarghosh.2025@gmail.com',
     fullName: 'Pravakar Ghosh (Master Developer)',
     role: 'admin',
-    roles: ['admin'],
+    roles: ['admin', 'member'],
+    approvedByAdmin: 'system',
     campus: 'Headquarters & Command Center',
     avatarUrl: '/images/maden-faf-official-logo.png',
     status: 'active',
@@ -182,25 +105,23 @@ export const AUTHORITATIVE_SEED_ACCOUNTS: Record<string, AuthoritativeAccountRec
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   },
-  'pending@madenfaf.com': {
-    id: 'usr-pending-01',
-    email: 'pending@madenfaf.com',
-    fullName: 'Ananya Roy (Applicant)',
-    role: 'pending',
-    roles: ['pending'],
-    campus: 'Krishnanagar Football School',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    status: 'pending',
-    migrationStatus: 'flagged_ambiguous_role',
-    migrationNotes: 'Account awaiting administrative role verification and assignment.',
-    createdAt: '2026-02-01T09:00:00Z',
-    updatedAt: '2026-02-01T09:00:00Z',
-  },
 };
+
+// Protected Admin emails that can never be downgraded to 'member'
+const PROTECTED_ADMIN_EMAILS = new Set([
+  'admin@madenfaf.com',
+  'pravakarghosh.2025@gmail.com',
+]);
+
+export function isProtectedAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  return PROTECTED_ADMIN_EMAILS.has(email.toLowerCase().trim());
+}
 
 // In-memory cache synchronized with Supabase cloud storage
 let inMemoryAccountsCache: Record<string, AuthoritativeAccountRecord> | null = null;
 let inMemoryAuditLogs: RbacSecurityAuditEntry[] = [];
+let hasBackedUpPreTwoRoleMigration = false;
 
 export function getSupabaseAdmin() {
   return createClient(supabaseUrl, supabaseServiceKey, {
@@ -260,7 +181,9 @@ export function verifyRbacToken(token?: string | null): {
   }
 }
 
-export async function recordRbacSecurityAudit(entry: Omit<RbacSecurityAuditEntry, 'id' | 'timestamp'>) {
+export async function recordRbacSecurityAudit(
+  entry: Omit<RbacSecurityAuditEntry, 'id' | 'timestamp'>
+) {
   const fullEntry: RbacSecurityAuditEntry = {
     id: `rbac-audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     timestamp: new Date().toISOString(),
@@ -300,26 +223,91 @@ export async function getRbacSecurityAuditLogs(): Promise<RbacSecurityAuditEntry
 }
 
 /**
- * Loads and migrates all existing accounts from Supabase & seed records into a single authoritative map.
+ * Loads and migrates all existing accounts from Supabase & seed records into the 2-role ('member' | 'admin') map.
  * Enforces:
- * - Preserving existing account credentials and user data
- * - Assigning the single authoritative role from trusted registration records
- * - Flagging accounts with missing, conflicting, or ambiguous role assignments for admin review
- * - Never automatically granting multiple roles to resolve conflicts
+ * - Keeping a backup before performing schema/role migration ('rbac_authoritative_accounts_backup_v1')
+ * - Preserving existing Member and Admin accounts and credentials
+ * - Converting any legacy player accounts into application records in academy_registrations if needed
+ * - Removing obsolete login roles ('player', 'parent', 'coach', 'manager', 'staff1', 'staff2', 'pending')
  */
+const LOCAL_RBAC_CACHE_FILE = '/tmp/maden_faf_rbac_accounts.json';
+
+function readLocalRbacFile(): Record<string, AuthoritativeAccountRecord> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('fs');
+    if (fs.existsSync(LOCAL_RBAC_CACHE_FILE)) {
+      const raw = fs.readFileSync(LOCAL_RBAC_CACHE_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore file read errors
+  }
+  return {};
+}
+
+function writeLocalRbacFile(map: Record<string, AuthoritativeAccountRecord>): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('fs');
+    fs.writeFileSync(LOCAL_RBAC_CACHE_FILE, JSON.stringify(map), 'utf8');
+  } catch {
+    // Ignore file write errors
+  }
+}
+
 export async function loadAuthoritativeAccountsMap(): Promise<
   Record<string, AuthoritativeAccountRecord>
 > {
   const supabase = getSupabaseAdmin();
   const map: Record<string, AuthoritativeAccountRecord> = {};
 
-  // 1. Seed accounts (baseline single-role accounts)
+  // 1. Seed accounts (baseline Member & Admin accounts)
   for (const [email, acc] of Object.entries(AUTHORITATIVE_SEED_ACCOUNTS)) {
     map[email.toLowerCase()] = { ...acc, roles: [...acc.roles] };
   }
 
-  // 2. Load persisted authoritative RBAC store from academy_content
+  // 1b. Merge local server file cache and in-memory cache so newly registered accounts are never wiped
+  const fileAccounts = readLocalRbacFile();
+  for (const [email, acc] of Object.entries(fileAccounts)) {
+    if (acc && typeof acc === 'object' && acc.email) {
+      const key = email.toLowerCase().trim();
+      const role: UserRole = isProtectedAdminEmail(key)
+        ? 'admin'
+        : normalizeToTwoRoles(acc.role);
+      map[key] = {
+        ...acc,
+        email: key,
+        role,
+        roles: [role],
+      };
+    }
+  }
+
+  if (inMemoryAccountsCache) {
+    for (const [email, acc] of Object.entries(inMemoryAccountsCache)) {
+      if (acc && typeof acc === 'object' && acc.email) {
+        const key = email.toLowerCase().trim();
+        const role: UserRole = isProtectedAdminEmail(key)
+          ? 'admin'
+          : normalizeToTwoRoles(acc.role);
+        map[key] = {
+          ...acc,
+          email: key,
+          role,
+          roles: [role],
+        };
+      }
+    }
+  }
+
+  // 2. Load persisted authoritative RBAC store from academy_content (or fallback academy_registrations) and migrate to 2-role model
   try {
+    let persistedAccountsObj: Record<string, any> | null = null;
+
     const { data } = await supabase
       .from('academy_content')
       .select('data')
@@ -327,28 +315,81 @@ export async function loadAuthoritativeAccountsMap(): Promise<
       .maybeSingle();
 
     if (data?.data && typeof data.data === 'object') {
-      for (const [email, rawAcc] of Object.entries(data.data as Record<string, any>)) {
+      persistedAccountsObj = data.data as Record<string, any>;
+    } else {
+      // Fallback: Read SYS-SYNC-RBAC-ACCOUNTS from academy_registrations
+      const { data: syncRow } = await supabase
+        .from('academy_registrations')
+        .select('message')
+        .eq('booking_ref', 'SYS-SYNC-RBAC-ACCOUNTS')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (syncRow?.message) {
+        try {
+          const parsedSync = JSON.parse(syncRow.message);
+          if (parsedSync && typeof parsedSync === 'object') {
+            persistedAccountsObj = parsedSync;
+          }
+        } catch {
+          // Ignore malformed JSON
+        }
+      }
+    }
+
+    if (persistedAccountsObj && typeof persistedAccountsObj === 'object') {
+      // Save one-time backup before migrating legacy roles
+      if (!hasBackedUpPreTwoRoleMigration) {
+        hasBackedUpPreTwoRoleMigration = true;
+        try {
+          await supabase.from('academy_content').upsert(
+            {
+              key: 'rbac_authoritative_accounts_backup_v1',
+              data: persistedAccountsObj,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'key' }
+          );
+        } catch {
+          // Ignore backup error
+        }
+      }
+
+      const legacyDemoEmailsToOmit = new Set([
+        'player@madenfaf.com',
+        'parent@madenfaf.com',
+        'coach@madenfaf.com',
+        'manager@madenfaf.com',
+        'staff1@madenfaf.com',
+        'staff2@madenfaf.com',
+        'pending@madenfaf.com',
+      ]);
+
+      for (const [email, rawAcc] of Object.entries(persistedAccountsObj)) {
         const key = email.toLowerCase().trim();
+        if (legacyDemoEmailsToOmit.has(key)) {
+          continue;
+        }
         if (rawAcc && typeof rawAcc === 'object') {
-          const validPrimary: UserRole = isValidRole(rawAcc.role) ? rawAcc.role : 'pending';
-          // Preserve multi-role ONLY if approvedByAdmin is explicitly recorded; otherwise enforce single role
-          const hasAdminMultiApproval = Boolean(rawAcc.approvedByAdmin);
-          const validRoles: UserRole[] =
-            hasAdminMultiApproval && Array.isArray(rawAcc.roles) && rawAcc.roles.length > 0
-              ? Array.from(new Set([validPrimary, ...rawAcc.roles.filter((r: any) => isValidRole(r))]))
-              : [validPrimary];
+          const isProtectedAdmin = isProtectedAdminEmail(key);
+          const normalizedRole: UserRole = isProtectedAdmin
+            ? 'admin'
+            : normalizeToTwoRoles(rawAcc.role);
+          const wasMigratedFromLegacy = !isValidRole(rawAcc.role);
 
           map[key] = {
             id: rawAcc.id || map[key]?.id || `usr-${Date.now()}`,
             email: key,
             fullName: rawAcc.fullName || map[key]?.fullName || key.split('@')[0],
-            role: validPrimary,
-            roles: validRoles,
+            role: normalizedRole,
+            roles: [normalizedRole],
             campus: rawAcc.campus || map[key]?.campus || 'Gayeshpur Flagship Campus',
             avatarUrl: rawAcc.avatarUrl || map[key]?.avatarUrl,
-            status: rawAcc.status || 'active',
-            migrationStatus: rawAcc.migrationStatus || 'verified',
-            migrationNotes: rawAcc.migrationNotes || 'Verified authoritative role record.',
+            status: rawAcc.status === 'suspended' ? 'suspended' : 'active',
+            migrationStatus: 'verified',
+            migrationNotes: wasMigratedFromLegacy
+              ? `Migrated from legacy '${String(rawAcc.role)}' role to '${normalizedRole}' under the 2-role (Member & Admin) system.`
+              : rawAcc.migrationNotes || 'Verified authoritative role record.',
             approvedByAdmin: rawAcc.approvedByAdmin,
             createdAt: rawAcc.createdAt || new Date().toISOString(),
             updatedAt: rawAcc.updatedAt || new Date().toISOString(),
@@ -383,14 +424,11 @@ export async function loadAuthoritativeAccountsMap(): Promise<
             campus: memberProf.district || 'Kalyani & Nadia District',
             status: 'active',
             migrationStatus: 'verified',
-            migrationNotes: 'Migrated from trusted Donators Portal member profile record (Member role locked).',
+            migrationNotes:
+              'Migrated from trusted Donators Portal member profile record (Member role locked).',
             createdAt: memberProf.createdAt || new Date().toISOString(),
             updatedAt: memberProf.updatedAt || new Date().toISOString(),
           };
-        } else if (existing.role !== 'member' && !existing.roles.includes('member')) {
-          // Flag conflict without automatically granting multiple roles!
-          existing.migrationStatus = 'flagged_conflicting_role';
-          existing.migrationNotes = `Conflict detected during migration: Account has primary role '${existing.role}' but also has a Donators Portal record. Multi-role access was NOT auto-granted; awaiting Admin review.`;
         }
       }
     }
@@ -398,30 +436,29 @@ export async function loadAuthoritativeAccountsMap(): Promise<
     // Ignore if table not present
   }
 
-  // 4. Migrate existing public.profiles from Supabase Auth
+  // 4. Migrate existing profiles from Supabase Auth into 'member' or 'admin'
   try {
-    const { data: dbProfiles } = await supabase.from('public.profiles').select('*');
+    const { data: dbProfiles } = await supabase.from('profiles').select('*');
     if (Array.isArray(dbProfiles)) {
       for (const row of dbProfiles) {
         const email = (row?.email || '').toLowerCase().trim();
         if (!email) continue;
-        const dbRole = row.role;
         const existing = map[email];
         if (!existing) {
-          const validRole = isValidRole(dbRole);
+          const normalizedRole: UserRole = isProtectedAdminEmail(email)
+            ? 'admin'
+            : normalizeToTwoRoles(row.role);
           map[email] = {
             id: row.id,
             email,
             fullName: row.full_name || email.split('@')[0],
-            role: validRole ? dbRole : 'pending',
-            roles: [validRole ? dbRole : 'pending'],
+            role: normalizedRole,
+            roles: [normalizedRole],
             campus: row.campus || 'Gayeshpur Flagship Campus',
             avatarUrl: row.avatar_url,
-            status: validRole ? 'active' : 'pending',
-            migrationStatus: validRole ? 'verified' : 'flagged_missing_role',
-            migrationNotes: validRole
-              ? 'Migrated from Supabase public.profiles table.'
-              : `Missing or unrecognized role '${String(dbRole)}' in public.profiles; flagged for Admin review.`,
+            status: 'active',
+            migrationStatus: 'verified',
+            migrationNotes: `Migrated from Supabase profiles table into '${normalizedRole}' role.`,
             createdAt: row.created_at || new Date().toISOString(),
             updatedAt: row.updated_at || new Date().toISOString(),
           };
@@ -429,17 +466,66 @@ export async function loadAuthoritativeAccountsMap(): Promise<
       }
     }
   } catch {
-    // Ignore if public.profiles query fails
+    // Ignore if profiles query fails
+  }
+
+  // 5. Re-apply local file cache and in-memory cache so newly registered accounts are never overwritten by stale DB snapshots
+  for (const [email, acc] of Object.entries(fileAccounts)) {
+    if (acc && typeof acc === 'object' && acc.email) {
+      const key = email.toLowerCase().trim();
+      const isProtected = isProtectedAdminEmail(key);
+      const role: UserRole = isProtected ? 'admin' : normalizeToTwoRoles(acc.role);
+      const roles: UserRole[] = isProtected ? ['admin', 'member'] : [role];
+      map[key] = {
+        ...map[key],
+        ...acc,
+        email: key,
+        role,
+        roles,
+        approvedByAdmin: isProtected ? 'system' : acc.approvedByAdmin,
+      };
+    }
+  }
+
+  if (inMemoryAccountsCache) {
+    for (const [email, acc] of Object.entries(inMemoryAccountsCache)) {
+      if (acc && typeof acc === 'object' && acc.email) {
+        const key = email.toLowerCase().trim();
+        const isProtected = isProtectedAdminEmail(key);
+        const role: UserRole = isProtected ? 'admin' : normalizeToTwoRoles(acc.role);
+        const roles: UserRole[] = isProtected ? ['admin', 'member'] : [role];
+        map[key] = {
+          ...map[key],
+          ...acc,
+          email: key,
+          role,
+          roles,
+          approvedByAdmin: isProtected ? 'system' : acc.approvedByAdmin,
+        };
+      }
+    }
   }
 
   inMemoryAccountsCache = map;
+  writeLocalRbacFile(map);
   return map;
 }
 
 export async function saveAuthoritativeAccountsMap(
   map: Record<string, AuthoritativeAccountRecord>
 ): Promise<void> {
+  // Ensure protected admin accounts are never downgraded before saving
+  for (const adminEmail of PROTECTED_ADMIN_EMAILS) {
+    if (map[adminEmail]) {
+      map[adminEmail].role = 'admin';
+      map[adminEmail].roles = ['admin', 'member'];
+      map[adminEmail].approvedByAdmin = 'system';
+      map[adminEmail].status = 'active';
+    }
+  }
+
   inMemoryAccountsCache = map;
+  writeLocalRbacFile(map);
   const supabase = getSupabaseAdmin();
   try {
     await supabase.from('academy_content').upsert(
@@ -473,7 +559,7 @@ export async function saveAuthoritativeAccountsMap(
         booking_ref: bookingRef,
         player_name: 'RBAC Authoritative Accounts Store',
         dob: '2000-01-01',
-        gender: 'system',
+        gender: 'other',
         parent_name: 'MADEN FAF Security Engine',
         phone: '+91 00000 00000',
         email: 'security@madenfaf.in',
@@ -483,7 +569,7 @@ export async function saveAuthoritativeAccountsMap(
         experience_level: 'cloud',
         program: 'rbac_authoritative_accounts',
         message: JSON.stringify(map),
-        status: 'cloud_persisted',
+        status: 'pending',
         created_at: new Date().toISOString(),
       });
     }
@@ -497,7 +583,10 @@ export async function getAuthoritativeAccountByEmail(
 ): Promise<AuthoritativeAccountRecord | null> {
   if (!email) return null;
   const key = email.toLowerCase().trim();
-  const map = inMemoryAccountsCache || (await loadAuthoritativeAccountsMap());
+  if (inMemoryAccountsCache && inMemoryAccountsCache[key]) {
+    return inMemoryAccountsCache[key];
+  }
+  const map = await loadAuthoritativeAccountsMap();
   return map[key] || null;
 }
 
@@ -505,5 +594,7 @@ export {
   canSelfAssignRole,
   canUserAccessPortal,
   isValidRole,
+  normalizeToTwoRoles,
+  normalizePortalRoleParam,
   UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
 };

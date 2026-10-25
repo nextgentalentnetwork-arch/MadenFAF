@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS public.academy_registrations (
     experience_level TEXT NOT NULL,
     program TEXT NOT NULL,
     message TEXT,
-    status TEXT DEFAULT 'pending_trial',
+    status TEXT DEFAULT 'pending_review',
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 ALTER TABLE public.academy_registrations ENABLE ROW LEVEL SECURITY;
@@ -105,12 +105,12 @@ CREATE POLICY "Allow read academy_registrations" ON public.academy_registrations
 CREATE POLICY "Allow update academy_registrations" ON public.academy_registrations FOR UPDATE TO public USING (true);
 CREATE POLICY "Allow delete academy_registrations" ON public.academy_registrations FOR DELETE TO public USING (true);
 
--- 2. User Profiles Table
+-- 2. User Profiles Table (Strictly Two Account Roles: 'member' and 'admin')
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     full_name TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'player' CHECK (role IN ('player', 'parent', 'coach', 'admin')),
+    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'admin')),
     phone TEXT,
     campus TEXT DEFAULT 'gayeshpur',
     avatar_url TEXT,
@@ -243,15 +243,20 @@ export default function DeveloperPage() {
     () => false
   );
 
-  const isMasterUser = profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com';
-  const isAuth = isDevSession || isMasterUser;
+  const isMasterUser =
+    profile?.role === 'admin' ||
+    profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com';
+  const isNonAdminUser = Boolean(profile && profile.role !== 'admin');
+  const isAuth = !isNonAdminUser && (isDevSession || isMasterUser);
 
-  // Auto-sync developer auth state if master user is detected
+  // Auto-sync developer auth state if admin user is detected
   useEffect(() => {
     if (isMasterUser && !isDevSession) {
       AcademyDataManager.setDeveloperAuthenticated(true);
+    } else if (isNonAdminUser && isDevSession) {
+      AcademyDataManager.setDeveloperAuthenticated(false);
     }
-  }, [isMasterUser, isDevSession]);
+  }, [isMasterUser, isNonAdminUser, isDevSession]);
 
   // Authentication State
   const [devEmail, setDevEmail] = useState('pravakarghosh.2025@gmail.com');

@@ -56,8 +56,8 @@ export { DEFAULT_HERO_CONFIG, DEFAULT_HEADER_CONFIG, DEFAULT_FOOTER_CONFIG };
 
 const STORAGE_KEYS = {
   HERO_CONFIG: 'maden_dev_hero_config',
-  HEADER_CONFIG: 'maden_dev_header_config_v1',
-  FOOTER_CONFIG: 'maden_dev_footer_config_v1',
+  HEADER_CONFIG: 'maden_dev_header_config_v2',
+  FOOTER_CONFIG: 'maden_dev_footer_config_v2',
   PROGRAMS: 'maden_dev_programs',
   CAMPUSES: 'maden_dev_campuses',
   COACHES: 'maden_dev_coaches',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
@@ -17,25 +17,42 @@ import {
   Eye,
   EyeOff,
   ShieldAlert,
+  HeartHandshake,
+  Trophy,
+  Calendar,
 } from 'lucide-react';
-import { UserRole, isValidRole, getPortalPathForRole } from '@/lib/rbac';
+import {
+  UserRole,
+  normalizePortalRoleParam,
+  getPortalPathForRole,
+} from '@/lib/rbac';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, signup, accessDeniedReason, clearAccessDenied } = useAuth();
+  const { login, signup, clearAccessDenied } = useAuth();
 
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const modeParam = params.get('mode')?.toLowerCase();
+      const tabParam = params.get('tab')?.toLowerCase();
+      if (modeParam === 'signup' || modeParam === 'register' || tabParam === 'register' || tabParam === 'signup') {
+        return 'signup';
+      }
+    }
+    return 'signin';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<UserRole>('member');
   const [targetPortalRole, setTargetPortalRole] = useState<UserRole | 'auto'>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const requestedRole = params.get('role');
-      if (requestedRole && isValidRole(requestedRole)) {
-        return requestedRole;
+      const normalized = normalizePortalRoleParam(requestedRole);
+      if (normalized) {
+        return normalized;
       }
     }
     return 'auto';
@@ -44,6 +61,46 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState<{
+    fullName: boolean;
+    email: boolean;
+    password: boolean;
+  }>({
+    fullName: false,
+    email: false,
+    password: false,
+  });
+
+  const isValidEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+
+  const fullNameError =
+    mode === 'signup' && touched.fullName
+      ? !fullName.trim()
+        ? 'Full name is required for registration.'
+        : fullName.trim().length < 2
+          ? 'Full name must be at least 2 characters.'
+          : ''
+      : '';
+
+  const emailError = touched.email
+    ? !email.trim()
+      ? 'Email address is required.'
+      : !isValidEmail(email)
+        ? 'Please enter a valid email address (e.g., name@example.com).'
+        : ''
+    : '';
+
+  const passwordError = touched.password
+    ? !password
+      ? 'Password is required.'
+      : password.length < 6
+        ? 'Password must be at least 6 characters long.'
+        : ''
+    : '';
+
+  const isFullNameValid = mode === 'signup' && fullName.trim().length >= 2;
+  const isEmailValid = isValidEmail(email);
+  const isPasswordValid = password.length >= 6;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,13 +108,24 @@ export default function LoginPage() {
     setSuccessMsg('');
     clearAccessDenied();
 
-    if (!email || !password) {
-      setErrorMsg('Please provide both email and password.');
+    setTouched({
+      fullName: true,
+      email: true,
+      password: true,
+    });
+
+    if (mode === 'signup' && (!fullName.trim() || fullName.trim().length < 2)) {
+      setErrorMsg('Please fix the highlighted errors before completing registration.');
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMsg('Password should be at least 6 characters long.');
+    if (!email.trim() || !isValidEmail(email)) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters long.');
       return;
     }
 
@@ -67,46 +135,32 @@ export default function LoginPage() {
       const res = await login(email, password, targetPortalRole);
       setIsSubmitting(false);
       if (res.success && res.role) {
-        const isDev =
-          email.trim().toLowerCase() === 'pravakarghosh.2025@gmail.com' &&
-          (targetPortalRole === 'auto' || targetPortalRole === 'admin');
-        if (isDev && targetPortalRole === 'auto') {
-          setSuccessMsg(
-            'Master Developer Authenticated! Redirecting to Backend Command Center...'
-          );
-          setTimeout(() => {
-            router.push('/developer');
-          }, 500);
+        clearAccessDenied();
+        if (res.role === 'admin' && targetPortalRole !== 'member') {
+          setSuccessMsg('Admin Authenticated! Redirecting to the Admin Dashboard...');
+          router.replace('/portal?role=admin');
         } else {
-          const destPortal = getPortalPathForRole(
-            targetPortalRole !== 'auto' ? targetPortalRole : res.role
-          );
+          const destPortal = getPortalPathForRole('member');
           setSuccessMsg(
-            `Role Verified (${res.role.toUpperCase()})! Redirecting to your authorized portal...`
+            'Member Verified! Redirecting to the Member Donation & Support Portal...'
           );
-          setTimeout(() => {
-            router.push(destPortal);
-          }, 500);
+          router.replace(destPortal);
         }
       } else {
         setErrorMsg(res.error || 'Invalid credentials. Please try again.');
       }
     } else {
-      if (!fullName.trim()) {
-        setIsSubmitting(false);
-        setErrorMsg('Please enter your full name for registration.');
-        return;
-      }
-      const res = await signup(email, password, fullName, role);
+      // Public self-registration is strictly for Member (Donation & Support Portal) accounts
+      const res = await signup(email, password, fullName, 'member');
       setIsSubmitting(false);
-      if (res.success && res.role) {
-        const destPortal = getPortalPathForRole(res.role);
+      if (res.success) {
+        clearAccessDenied();
+        setErrorMsg('');
+        const destPortal = getPortalPathForRole('member');
         setSuccessMsg(
-          `Account registered under ${res.role.toUpperCase()} role! Redirecting to your authorized portal...`
+          'Member Account Registered! Redirecting to the Member Donation & Support Portal...'
         );
-        setTimeout(() => {
-          router.push(destPortal);
-        }, 600);
+        router.replace(destPortal);
       } else {
         setErrorMsg(res.error || 'Failed to create account.');
       }
@@ -127,7 +181,7 @@ export default function LoginPage() {
           <span>Back to Home</span>
         </Link>
         <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-full bg-slate-900 text-amber-400 border border-slate-800">
-          Strict RBAC Enforced
+          Member &amp; Admin RBAC
         </span>
       </div>
 
@@ -139,10 +193,14 @@ export default function LoginPage() {
             <MadenLogo size="md" variant="horizontal" lightText={false} />
           </div>
           <h1 className="text-xl sm:text-2xl font-black uppercase text-slate-900 tracking-tight">
-            {mode === 'signin' ? 'Academy Portal Sign In' : 'Create Academy Account'}
+            {mode === 'signin'
+              ? 'Member & Admin Portal Login'
+              : 'Register Member Support Account'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            One account, one assigned role, one authorized portal.
+            {mode === 'signin'
+              ? 'Sign in to the Member Donation & Support Portal or Admin Backend.'
+              : 'Create a Member account to support MADEN FAF, donate, and download verified receipts.'}
           </p>
         </div>
 
@@ -154,6 +212,7 @@ export default function LoginPage() {
               setMode('signin');
               setErrorMsg('');
               setSuccessMsg('');
+              setTouched({ fullName: false, email: false, password: false });
             }}
             className={`py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
               mode === 'signin'
@@ -169,6 +228,7 @@ export default function LoginPage() {
               setMode('signup');
               setErrorMsg('');
               setSuccessMsg('');
+              setTouched({ fullName: false, email: false, password: false });
             }}
             className={`py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
               mode === 'signup'
@@ -176,7 +236,7 @@ export default function LoginPage() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Create Account
+            Register Member
           </button>
         </div>
 
@@ -207,58 +267,152 @@ export default function LoginPage() {
         )}
 
         {/* Login / Signup Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {mode === 'signup' && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Full Name
+                Full Name <span className="text-rose-600">*</span>
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <User
+                  className={`w-4 h-4 absolute left-3.5 top-3.5 ${
+                    fullNameError
+                      ? 'text-rose-500'
+                      : touched.fullName && isFullNameValid
+                        ? 'text-emerald-600'
+                        : 'text-slate-400'
+                  }`}
+                />
                 <input
                   type="text"
                   required
+                  aria-invalid={Boolean(fullNameError)}
                   placeholder="Enter your full name"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors shadow-xs"
+                  onBlur={() => setTouched((prev) => ({ ...prev, fullName: true }))}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    if (!touched.fullName) {
+                      setTouched((prev) => ({ ...prev, fullName: true }));
+                    }
+                  }}
+                  className={`w-full pl-10 pr-9 py-2.5 bg-white border rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors shadow-xs ${
+                    fullNameError
+                      ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                      : touched.fullName && isFullNameValid
+                        ? 'border-emerald-500 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500'
+                        : 'border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
+                  }`}
                 />
+                {touched.fullName && isFullNameValid && !fullNameError && (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 absolute right-3 top-3" />
+                )}
               </div>
+              {fullNameError && (
+                <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fullNameError}</span>
+                </p>
+              )}
             </div>
           )}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Email Address
+              Email Address <span className="text-rose-600">*</span>
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <Mail
+                className={`w-4 h-4 absolute left-3.5 top-3.5 ${
+                  emailError
+                    ? 'text-rose-500'
+                    : touched.email && isEmailValid
+                      ? 'text-emerald-600'
+                      : 'text-slate-400'
+                }`}
+              />
               <input
                 type="email"
                 required
+                aria-invalid={Boolean(emailError)}
                 placeholder="Enter your email address"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors shadow-xs"
+                onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (!touched.email) {
+                    setTouched((prev) => ({ ...prev, email: true }));
+                  }
+                }}
+                className={`w-full pl-10 pr-9 py-2.5 bg-white border rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors shadow-xs ${
+                  emailError
+                    ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                    : touched.email && isEmailValid
+                      ? 'border-emerald-500 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500'
+                      : 'border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
+                }`}
               />
+              {touched.email && isEmailValid && !emailError && (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 absolute right-3 top-3" />
+              )}
             </div>
+            {emailError && (
+              <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{emailError}</span>
+              </p>
+            )}
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Password
+                Password <span className="text-rose-600">*</span>
               </label>
+              {mode === 'signup' && (
+                <span
+                  className={`text-[10px] font-mono font-semibold ${
+                    isPasswordValid
+                      ? 'text-emerald-700'
+                      : touched.password
+                        ? 'text-rose-600'
+                        : 'text-slate-400'
+                  }`}
+                >
+                  {password.length}/6+ chars
+                </span>
+              )}
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <Lock
+                className={`w-4 h-4 absolute left-3.5 top-3.5 ${
+                  passwordError
+                    ? 'text-rose-500'
+                    : touched.password && isPasswordValid
+                      ? 'text-emerald-600'
+                      : 'text-slate-400'
+                }`}
+              />
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="Enter password..."
+                aria-invalid={Boolean(passwordError)}
+                placeholder="Enter password (min. 6 characters)..."
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors shadow-xs"
+                onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (!touched.password) {
+                    setTouched((prev) => ({ ...prev, password: true }));
+                  }
+                }}
+                className={`w-full pl-10 pr-10 py-2.5 bg-white border rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors shadow-xs ${
+                  passwordError
+                    ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                    : touched.password && isPasswordValid
+                      ? 'border-emerald-500 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500'
+                      : 'border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
+                }`}
               />
               <button
                 type="button"
@@ -269,12 +423,18 @@ export default function LoginPage() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {passwordError && (
+              <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{passwordError}</span>
+              </p>
+            )}
           </div>
 
           {mode === 'signin' && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Portal Verification Target
+                Portal Destination
               </label>
               <select
                 value={targetPortalRole}
@@ -282,47 +442,34 @@ export default function LoginPage() {
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 outline-none transition-colors shadow-xs"
               >
                 <option value="auto">
-                  Registered Account Role (Verify &amp; Auto-Redirect)
+                  Verify Role &amp; Auto-Redirect (Member or Admin)
                 </option>
                 <option value="member">
-                  Member Portal (Foundation Supporter &amp; Donators Portal)
+                  Member — Donation &amp; Support Portal
                 </option>
-                <option value="player">Player Portal (Academy Athlete)</option>
-                <option value="parent">Parent / Guardian Portal</option>
-                <option value="coach">Coach Portal (Technical Staff)</option>
-                <option value="manager">Manager Portal (Campus Operations)</option>
-                <option value="staff1">Staff 1 Portal (Admissions Desk)</option>
-                <option value="staff2">Staff 2 Portal (Field &amp; Attendance)</option>
-                <option value="admin">Admin Portal (Executive Command)</option>
+                <option value="admin">
+                  Admin — Backend Management
+                </option>
               </select>
               <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">
-                Your portal access is strictly determined by your server-registered account role. Attempting to sign in to another role&apos;s portal will be denied.
+                Members are redirected to the Member Donation &amp; Support Portal. Only authorized Admins can access the Admin Dashboard.
               </p>
             </div>
           )}
 
           {mode === 'signup' && (
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Assigned Account Role (Permanent)
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-xs text-slate-900 outline-none transition-colors shadow-xs"
-              >
-                <option value="member">
-                  Member (Foundation Supporter &amp; Donators Portal Only)
-                </option>
-                <option value="player">Player (Academy Athlete Portal Only)</option>
-                <option value="parent">Parent / Guardian (Parent Portal Only)</option>
-                <option value="pending">
-                  Applicant (Pending Admin Staff / Coach Role Assignment)
-                </option>
-              </select>
-              <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">
-                <strong>Strict Role Separation:</strong> Accounts registered as{' '}
-                <strong>Member</strong> are exclusively authorized for the Donators Portal and cannot access Player, Coach, Staff, or Admin portals.
+            <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
+                  <HeartHandshake className="w-4 h-4 text-indigo-700" />
+                  <span>Account Role: Member (Donation &amp; Support Portal)</span>
+                </span>
+                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-300">
+                  MEMBER
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-snug">
+                Public registration creates a <strong>Member</strong> account for foundation supporters and donors. Admin accounts are never available through public self-registration.
               </p>
             </div>
           )}
@@ -333,32 +480,47 @@ export default function LoginPage() {
             className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-amber-200 flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
           >
             {isSubmitting ? (
-              <span>Verifying Role &amp; Credentials...</span>
+              <span>Verifying Credentials...</span>
             ) : mode === 'signin' ? (
               <>
-                <span>Verify Role &amp; Sign In</span>
+                <span>Sign In to Portal</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                <span>Complete Registration</span>
+                <span>Create Member Account</span>
                 <ShieldCheck className="w-4 h-4" />
               </>
             )}
           </button>
         </form>
 
-        {/* Link to Join MADEN */}
-        <div className="mt-8 pt-6 border-t border-slate-200 text-center space-y-2">
-          <p className="text-xs text-slate-600">
-            Want to enroll a new youth athlete?{' '}
+        {/* Public Player Admission & Trial Pathways (No Player Account Needed) */}
+        <div className="mt-7 pt-6 border-t border-slate-200 space-y-3">
+          <div className="text-center">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800 block">
+              Applying as a Player or Parent? No Account Required
+            </span>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Submit a public Academy Admission or Trial Session application directly:
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Link
-              href="/join"
-              className="text-amber-700 hover:text-amber-800 font-bold transition-colors"
+              href="/join?type=admission"
+              className="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors"
             >
-              Book a Trial / Join MADEN
+              <Trophy className="w-3.5 h-3.5 shrink-0" />
+              <span>Apply for Admission</span>
             </Link>
-          </p>
+            <Link
+              href="/join?type=trial"
+              className="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-950 text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span>Apply for Trial</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

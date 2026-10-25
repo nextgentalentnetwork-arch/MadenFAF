@@ -7,6 +7,7 @@ import { DonatorsPortalService } from '@/lib/donatorsPortalService';
 import {
   UserRole,
   isValidRole,
+  normalizeToTwoRoles,
   canSelfAssignRole,
   canUserAccessPortal,
   UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
@@ -21,7 +22,7 @@ export interface UserProfile {
   roles?: UserRole[];
   campus?: string;
   avatarUrl?: string;
-  status?: 'active' | 'pending' | 'suspended';
+  status?: 'active' | 'suspended';
   migrationStatus?:
     | 'verified'
     | 'flagged_missing_role'
@@ -58,7 +59,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-// Strict Default Policy: One Account, One Assigned Role, One Authorized Portal
+// Simplified Role Structure: Strictly TWO Account Roles ('member' and 'admin')
 const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
   'member@madenfaf.com': {
     id: 'usr-member-01',
@@ -71,80 +72,16 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     migrationStatus: 'verified',
     createdAt: '2026-01-10T09:00:00Z',
   },
-  'player@madenfaf.com': {
-    id: 'usr-player-01',
-    email: 'player@madenfaf.com',
-    fullName: 'Subham Roy',
-    role: 'player',
-    roles: ['player'],
-    campus: 'Gayeshpur Flagship Campus',
-    avatarUrl: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-  },
-  'parent@madenfaf.com': {
-    id: 'usr-parent-01',
-    email: 'parent@madenfaf.com',
-    fullName: 'Mr. Pradip Roy',
-    role: 'parent',
-    roles: ['parent'],
-    campus: 'Gayeshpur Campus',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-  },
-  'coach@madenfaf.com': {
-    id: 'usr-coach-01',
-    email: 'coach@madenfaf.com',
-    fullName: 'Coach Bapi Roy (AFC B)',
-    role: 'coach',
-    roles: ['coach'],
-    campus: 'Gayeshpur Campus',
-    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-  },
-  'manager@madenfaf.com': {
-    id: 'usr-manager-01',
-    email: 'manager@madenfaf.com',
-    fullName: 'Arindam Sen (Campus Director)',
-    role: 'manager',
-    roles: ['manager'],
-    campus: 'Nadia District & Central Grounds',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-  },
-  'staff1@madenfaf.com': {
-    id: 'usr-staff1-01',
-    email: 'staff1@madenfaf.com',
-    fullName: 'Rohan Das (Intake Coordinator)',
-    role: 'staff1',
-    roles: ['staff1'],
-    campus: 'Gayeshpur Admissions Desk',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-  },
-  'staff2@madenfaf.com': {
-    id: 'usr-staff2-01',
-    email: 'staff2@madenfaf.com',
-    fullName: 'Debasish Paul (Field & Attendance)',
-    role: 'staff2',
-    roles: ['staff2'],
-    campus: 'North 24 Parganas Campus',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-    status: 'active',
-    migrationStatus: 'verified',
-  },
   'admin@madenfaf.com': {
     id: 'usr-admin-01',
     email: 'admin@madenfaf.com',
     fullName: 'Technical Director Ghosh',
     role: 'admin',
-    roles: ['admin'],
+    roles: ['admin', 'member'],
+    approvedByAdmin: 'system',
     campus: 'All Campuses (Headquarters)',
-    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80',
     status: 'active',
     migrationStatus: 'verified',
   },
@@ -153,22 +90,12 @@ const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
     email: 'pravakarghosh.2025@gmail.com',
     fullName: 'Pravakar Ghosh (Master Developer)',
     role: 'admin',
-    roles: ['admin'],
+    roles: ['admin', 'member'],
+    approvedByAdmin: 'system',
     campus: 'Headquarters & Command Center',
     avatarUrl: '/images/maden-faf-official-logo.png',
     status: 'active',
     migrationStatus: 'verified',
-  },
-  'pending@madenfaf.com': {
-    id: 'usr-pending-01',
-    email: 'pending@madenfaf.com',
-    fullName: 'Ananya Roy (Applicant)',
-    role: 'pending',
-    roles: ['pending'],
-    campus: 'Krishnanagar Football School',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    status: 'pending',
-    migrationStatus: 'flagged_ambiguous_role',
   },
 };
 
@@ -178,7 +105,29 @@ function getRegisteredUsersRegistry(): Record<string, UserProfile> {
   if (typeof window === 'undefined') return {};
   try {
     const data = localStorage.getItem('maden_faf_registered_users_registry');
-    return data ? JSON.parse(data) : {};
+    if (!data) return {};
+    const parsed = JSON.parse(data);
+    // Keep a one-time backup before normalizing legacy roles
+    if (!localStorage.getItem('maden_faf_registered_users_backup_v1')) {
+      localStorage.setItem('maden_faf_registered_users_backup_v1', data);
+    }
+    const normalized: Record<string, UserProfile> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, any>)) {
+      if (v && typeof v === 'object') {
+        const key = k.toLowerCase().trim();
+        const isProtectedAdmin =
+          key === 'admin@madenfaf.com' || key === 'pravakarghosh.2025@gmail.com';
+        const role: UserRole = isProtectedAdmin ? 'admin' : normalizeToTwoRoles(v.role);
+        normalized[key] = {
+          ...v,
+          email: key,
+          role,
+          roles: isProtectedAdmin ? ['admin', 'member'] : [role],
+          approvedByAdmin: isProtectedAdmin ? 'system' : v.approvedByAdmin,
+        };
+      }
+    }
+    return normalized;
   } catch {
     return {};
   }
@@ -197,12 +146,7 @@ function saveUserProfileToRegistry(prof: UserProfile) {
 
 function lookupProfileByEmail(email: string): UserProfile | null {
   const key = email.trim().toLowerCase();
-  // Seed profiles are authoritative over unverified localStorage edits
   if (SEED_ROLE_PROFILES[key]) {
-    const reg = getRegisteredUsersRegistry()[key];
-    if (reg && reg.approvedByAdmin) {
-      return reg;
-    }
     return SEED_ROLE_PROFILES[key];
   }
   const registry = getRegisteredUsersRegistry();
@@ -220,6 +164,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [accessDeniedReason, setAccessDeniedReason] = useState<string | null>(null);
   const isSupabaseActive = isSupabaseConfigured();
 
+  const profileRef = useRef<UserProfile | null>(null);
+  const rbacTokenRef = useRef<string | null>(null);
+
   // Immutable in-memory snapshot of server-verified role to detect localStorage tampering
   const verifiedRoleSnapshotRef = useRef<{
     email: string;
@@ -232,30 +179,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const persistVerifiedSession = useCallback((prof: UserProfile, token?: string | null) => {
-    const authoritativeRoles: UserRole[] =
-      Array.isArray(prof.roles) && prof.roles.length > 0 && prof.approvedByAdmin
-        ? prof.roles
-        : [prof.role];
+    const isProtectedAdmin =
+      prof.email?.toLowerCase().trim() === 'admin@madenfaf.com' ||
+      prof.email?.toLowerCase().trim() === 'pravakarghosh.2025@gmail.com';
+    const safeRole: UserRole = isProtectedAdmin ? 'admin' : normalizeToTwoRoles(prof.role);
+    const authoritativeRoles: UserRole[] = isProtectedAdmin
+      ? ['admin', 'member']
+      : Array.isArray(prof.roles) && prof.roles.length > 0 && prof.approvedByAdmin
+        ? prof.roles.filter((r): r is UserRole => isValidRole(r))
+        : [safeRole];
 
     const normalizedProf: UserProfile = {
       ...prof,
-      roles: authoritativeRoles,
+      role: safeRole,
+      roles: authoritativeRoles.length > 0 ? authoritativeRoles : [safeRole],
+      approvedByAdmin: isProtectedAdmin ? 'system' : prof.approvedByAdmin,
     };
 
     verifiedRoleSnapshotRef.current = {
       email: normalizedProf.email.toLowerCase(),
       role: normalizedProf.role,
-      roles: [...authoritativeRoles],
+      roles: [...(normalizedProf.roles || [normalizedProf.role])],
     };
 
-    setUser({ id: normalizedProf.id, email: normalizedProf.email });
-    setProfile(normalizedProf);
+    profileRef.current = normalizedProf;
+    setAccessDeniedReason(null);
+    setUser((prev: any) =>
+      prev?.id === normalizedProf.id && prev?.email === normalizedProf.email
+        ? prev
+        : { id: normalizedProf.id, email: normalizedProf.email }
+    );
+    setProfile((prev) => {
+      if (
+        prev &&
+        prev.id === normalizedProf.id &&
+        prev.email === normalizedProf.email &&
+        prev.fullName === normalizedProf.fullName &&
+        prev.role === normalizedProf.role &&
+        JSON.stringify(prev.roles) === JSON.stringify(normalizedProf.roles) &&
+        prev.status === normalizedProf.status &&
+        prev.campus === normalizedProf.campus
+      ) {
+        return prev;
+      }
+      return normalizedProf;
+    });
     saveUserProfileToRegistry(normalizedProf);
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('maden_faf_active_user', JSON.stringify(normalizedProf));
       if (token) {
-        setRbacToken(token);
+        rbacTokenRef.current = token;
+        setRbacToken((prev) => (prev === token ? prev : token));
         localStorage.setItem('maden_faf_rbac_token', token);
       }
     }
@@ -270,9 +245,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { authorized: false, error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE };
       }
 
+      const currentProfile = profileRef.current;
       const rawActive = localStorage.getItem('maden_faf_active_user');
-      const storedToken = localStorage.getItem('maden_faf_rbac_token') || rbacToken;
-      if (!rawActive && !verifiedRoleSnapshotRef.current) {
+      const storedToken =
+        localStorage.getItem('maden_faf_rbac_token') || rbacTokenRef.current;
+      if (!rawActive && !verifiedRoleSnapshotRef.current && !currentProfile) {
         return { authorized: false, error: 'Not authenticated' };
       }
 
@@ -287,7 +264,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const emailToCheck = (
         snapshot?.email ||
         parsedLocal?.email ||
-        profile?.email ||
+        currentProfile?.email ||
         ''
       )
         .toLowerCase()
@@ -297,22 +274,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { authorized: false, error: 'Not authenticated' };
       }
 
-      // 1. Immediate client-side tamper detection against in-memory verified snapshot
-      if (snapshot && parsedLocal) {
-        const localRoleChanged = parsedLocal.role !== snapshot.role;
-        const localRolesChanged =
-          Array.isArray(parsedLocal.roles) &&
-          parsedLocal.roles.some((r) => !snapshot.roles.includes(r));
+      // 1. Immediate client-side tamper detection: block only if a non-admin account tampered localStorage to claim 'admin'
+      if (snapshot && parsedLocal && parsedLocal.email?.toLowerCase().trim() === snapshot.email) {
+        const isSnapshotAdmin =
+          snapshot.role === 'admin' || snapshot.roles.includes('admin');
+        const localClaimsAdmin =
+          (typeof parsedLocal.role === 'string' &&
+            parsedLocal.role.trim().toLowerCase() === 'admin') ||
+          (Array.isArray(parsedLocal.roles) &&
+            parsedLocal.roles.some(
+              (r) => typeof r === 'string' && r.trim().toLowerCase() === 'admin'
+            ));
 
-        if (localRoleChanged || localRolesChanged) {
+        if (!isSnapshotAdmin && localClaimsAdmin) {
           setAccessDeniedReason(UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
           // Restore true role in localStorage so manipulation cannot persist
           const restored: UserProfile = {
-            ...(profile || parsedLocal),
+            ...(currentProfile || parsedLocal),
             email: snapshot.email,
             role: snapshot.role,
             roles: [...snapshot.roles],
           };
+          profileRef.current = restored;
           setProfile(restored);
           localStorage.setItem('maden_faf_active_user', JSON.stringify(restored));
           saveUserProfileToRegistry(restored);
@@ -350,9 +333,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'validateSession',
+            uid: parsedLocal?.id || currentProfile?.id,
             email: emailToCheck,
-            clientRole: parsedLocal?.role || profile?.role,
-            clientRoles: parsedLocal?.roles || profile?.roles,
+            fullName: parsedLocal?.fullName || currentProfile?.fullName,
+            clientRole: parsedLocal?.role || currentProfile?.role || 'member',
+            clientRoles: parsedLocal?.roles || currentProfile?.roles || ['member'],
             targetPortalRole: targetPortalRole || undefined,
             rbacToken: storedToken,
           }),
@@ -373,14 +358,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
         }
 
+        setAccessDeniedReason(null);
         return {
           authorized: true,
           authoritativeRole: data?.authoritativeProfile?.role || snapshot?.role,
         };
       } catch {
         // Fallback to local verified snapshot if offline
-        const authRole = snapshot?.role || parsedLocal?.role;
-        const authRoles = snapshot?.roles || parsedLocal?.roles || (authRole ? [authRole] : []);
+        const authRole = snapshot?.role || parsedLocal?.role || 'member';
+        const authRoles = snapshot?.roles || parsedLocal?.roles || [authRole];
         if (targetPortalRole && authRole) {
           const ok = canUserAccessPortal(authRole, targetPortalRole, authRoles);
           if (!ok) {
@@ -392,10 +378,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
           }
         }
+        setAccessDeniedReason(null);
         return { authorized: true, authoritativeRole: authRole };
       }
     },
-    [persistVerifiedSession, profile, rbacToken]
+    [persistVerifiedSession]
   );
 
   // Listen for browser storage tampering in real time (DevTools Application -> LocalStorage edits)
@@ -409,11 +396,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsed = JSON.parse(raw);
         const snap = verifiedRoleSnapshotRef.current;
-        if (
-          parsed.role !== snap.role ||
-          (Array.isArray(parsed.roles) &&
-            parsed.roles.some((r: UserRole) => !snap.roles.includes(r)))
-        ) {
+        const isSnapAdmin = snap.role === 'admin' || snap.roles.includes('admin');
+        const claimsAdmin =
+          parsed.role === 'admin' ||
+          (Array.isArray(parsed.roles) && parsed.roles.includes('admin'));
+        if (!isSnapAdmin && claimsAdmin) {
           void revalidateSession();
         }
       } catch {
@@ -442,7 +429,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           storedToken = localStorage.getItem('maden_faf_rbac_token');
           if (saved) {
             try {
-              localUser = JSON.parse(saved);
+              const rawParsed = JSON.parse(saved);
+              if (rawParsed && rawParsed.email) {
+                const normRole = normalizeToTwoRoles(rawParsed.role);
+                localUser = {
+                  ...rawParsed,
+                  role: normRole,
+                  roles: Array.isArray(rawParsed.roles) ? rawParsed.roles : [normRole],
+                };
+              }
             } catch {
               localUser = null;
             }
@@ -456,7 +451,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 action: 'validateSession',
+                uid: localUser.id,
                 email: localUser.email,
+                fullName: localUser.fullName,
                 clientRole: localUser.role,
                 clientRoles: localUser.roles,
                 rbacToken: storedToken,
@@ -465,8 +462,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const data = await res.json();
             if (isMounted && data?.authoritativeProfile) {
               const authProf: UserProfile = data.authoritativeProfile;
-              const isDev = authProf.email.toLowerCase() === 'pravakarghosh.2025@gmail.com';
-              AcademyDataManager.setDeveloperAuthenticated(isDev);
+              const isAdminUser = authProf.role === 'admin';
+              AcademyDataManager.setDeveloperAuthenticated(isAdminUser);
               persistVerifiedSession(authProf, data.rbacToken || storedToken);
               if (data.tampered) {
                 setAccessDeniedReason(UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
@@ -486,7 +483,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } = await supabase.auth.getSession();
           if (session?.user && isMounted) {
             const userEmail = (session.user.email || '').toLowerCase();
-            const isDev = userEmail === 'pravakarghosh.2025@gmail.com';
+            const isDev =
+              userEmail === 'pravakarghosh.2025@gmail.com' ||
+              userEmail === 'admin@madenfaf.com';
             AcademyDataManager.setDeveloperAuthenticated(isDev);
 
             try {
@@ -519,11 +518,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 registered?.fullName ||
                 userEmail.split('@')[0],
               role: fallbackRole,
-              roles: registered?.approvedByAdmin && registered.roles ? registered.roles : [fallbackRole],
+              roles: [fallbackRole],
               campus:
                 session.user.user_metadata?.campus ||
                 registered?.campus ||
-                'Gayeshpur Flagship Campus',
+                'Kalyani & Nadia District',
               avatarUrl: registered?.avatarUrl,
               status: registered?.status || 'active',
             };
@@ -531,25 +530,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else if (localUser && isMounted) {
             const authoritative = lookupProfileByEmail(localUser.email);
             if (authoritative && isValidRole(authoritative.role)) {
-              if (localUser.role !== authoritative.role) {
-                setAccessDeniedReason(UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
-              }
               persistVerifiedSession(authoritative, storedToken);
             } else {
-              localStorage.removeItem('maden_faf_active_user');
-              localStorage.removeItem('maden_faf_rbac_token');
+              persistVerifiedSession(localUser, storedToken);
             }
           }
         } else if (localUser && isMounted) {
           const authoritative = lookupProfileByEmail(localUser.email);
           if (authoritative && isValidRole(authoritative.role)) {
-            if (localUser.role !== authoritative.role) {
-              setAccessDeniedReason(UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
-            }
             persistVerifiedSession(authoritative, storedToken);
           } else {
-            localStorage.removeItem('maden_faf_active_user');
-            localStorage.removeItem('maden_faf_rbac_token');
+            persistVerifiedSession(localUser, storedToken);
           }
         }
       } catch (err) {
@@ -614,7 +605,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const rbacData = await rbacRes.json();
 
       if (!rbacRes.ok || !rbacData.success) {
-        // If user logged into Supabase Auth but attempted an unauthorized role portal, sign out immediately!
         if (isSupabaseActive && supabaseUser) {
           try {
             await supabase.auth.signOut();
@@ -631,7 +621,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const verifiedProfile: UserProfile = rbacData.authoritativeProfile;
-      if (normalizedEmail === 'pravakarghosh.2025@gmail.com') {
+      if (verifiedProfile.role === 'admin') {
         AcademyDataManager.setDeveloperAuthenticated(true);
       }
 
@@ -655,7 +645,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      // Security: Never allow self-assigning privileged roles
+      // Security: Public registration is strictly for 'member' accounts only
       if (!canSelfAssignRole(requestedRole)) {
         setIsLoading(false);
         setAccessDeniedReason(UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
@@ -665,9 +655,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
-      const role: UserRole = requestedRole;
+      const role: UserRole = 'member';
 
-      // 1. Register in server-side authoritative RBAC store first (prevents duplicate or cross-role registration)
+      // 1. Register in server-side authoritative RBAC store first
       const rbacRegRes = await fetch('/api/auth/rbac', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -676,7 +666,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: normalizedEmail,
           fullName: fullName.trim(),
           requestedRole: role,
-          campus: 'Gayeshpur Flagship Campus',
+          campus: 'Kalyani & Nadia District',
         }),
       });
 
@@ -687,76 +677,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           success: false,
           error:
             rbacRegData?.error ||
-            'An account with this email already exists. Please sign in using your registered account role.',
+            'Unable to complete registration. Please check your details and try again.',
         };
       }
 
       const serverProfile: UserProfile = rbacRegData.authoritativeProfile;
 
-      // 2. Also register in Supabase Auth if active (non-blocking if trigger/network fails)
-      if (isSupabaseActive) {
-        try {
-          const legacyDbCompatibleRole =
-            role === 'player' || role === 'parent' ? role : 'player';
+      // 2. Ensure an initial draft Member dossier is created for the new Member
+      try {
+        const initialDossier = DonatorsPortalService.getMemberProfileByUid(
+          serverProfile.id,
+          serverProfile.email,
+          serverProfile.fullName
+        );
+        DonatorsPortalService.saveMemberProfile(serverProfile.id, initialDossier, true);
+      } catch {
+        // Non-blocking
+      }
 
-          await supabase.auth.signUp({
+      // 3. Persist verified session immediately so AuthContext state and localStorage are ready before route transition
+      persistVerifiedSession(serverProfile, rbacRegData.rbacToken);
+
+      // 4. Also register in Supabase Auth non-blockingly in the background
+      if (isSupabaseActive) {
+        void supabase.auth
+          .signUp({
             email: normalizedEmail,
             password,
             options: {
               data: {
                 full_name: fullName.trim(),
-                role: legacyDbCompatibleRole,
-                portal_role: role,
-                maden_role: role,
-                roles: [role],
-                campus: 'Gayeshpur Flagship Campus',
+                role: 'player', // legacy Supabase column check compatibility
+                portal_role: 'member',
+                maden_role: 'member',
+                roles: ['member'],
+                campus: 'Kalyani & Nadia District',
               },
             },
+          })
+          .catch(() => {
+            // Non-blocking: authoritative account is persisted in server RBAC store
           });
-        } catch {
-          // Non-blocking: authoritative account is persisted in server RBAC store
-        }
       }
 
-      // 3. If registered as a Member, ensure an initial draft Member dossier is created
-      if (serverProfile.role === 'member') {
-        try {
-          const initialDossier = DonatorsPortalService.getMemberProfileByUid(
-            serverProfile.id,
-            serverProfile.email,
-            serverProfile.fullName
-          );
-          DonatorsPortalService.saveMemberProfile(serverProfile.id, initialDossier, true);
-        } catch {
-          // Non-blocking
-        }
-      }
-
-      persistVerifiedSession(serverProfile, rbacRegData.rbacToken);
       setIsLoading(false);
-      return { success: true, role: serverProfile.role };
+      // Always return 'member' as target portal role for Donator Member signup so the caller redirects to /portal?role=member
+      return { success: true, role: 'member' };
     } catch (err: any) {
       setIsLoading(false);
       return { success: false, error: err?.message || 'Registration failed' };
     }
   };
 
-  // Self-service role escalation is strictly prohibited under the One Account, One Assigned Role policy
+  // If a signed-in user requests Member portal access, ensure their session is validated for 'member'
   const grantMemberAccess = async (): Promise<{ success: boolean; error?: string }> => {
-    try {
-      await fetch('/api/auth/rbac', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'selfModifyRoleAttempt',
-          email: profile?.email || 'unknown',
-          attemptedRole: 'member',
-        }),
-      });
-    } catch {
-      // Ignore
+    if (profileRef.current) {
+      setAccessDeniedReason(null);
+      return { success: true };
     }
-    setAccessDeniedReason(UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
     return {
       success: false,
       error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
@@ -766,6 +744,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     AcademyDataManager.setDeveloperAuthenticated(false);
     verifiedRoleSnapshotRef.current = null;
+    profileRef.current = null;
+    rbacTokenRef.current = null;
     setAccessDeniedReason(null);
     setRbacToken(null);
     if (isSupabaseActive) {

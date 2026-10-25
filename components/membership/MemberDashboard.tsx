@@ -68,7 +68,7 @@ export type MemberDashboardSection =
   | 'account_settings';
 
 interface MemberDashboardProps {
-  profile: UserProfile;
+  profile?: UserProfile;
 }
 
 const FOOTBALL_INTEREST_AREAS = [
@@ -80,8 +80,17 @@ const FOOTBALL_INTEREST_AREAS = [
   'Youth Tournament & Exposure Travel',
 ];
 
-export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => {
-  const { logout } = useAuth();
+export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propProfile }) => {
+  const { profile: authProfile, logout } = useAuth();
+  const profile: UserProfile = propProfile || authProfile || {
+    id: 'guest-member',
+    email: 'member@madenfaf.com',
+    fullName: 'Foundation Member',
+    role: 'member',
+    roles: ['member'],
+    campus: 'gayeshpur',
+    approvedByAdmin: true,
+  };
 
   // Hydrate cloud state once on mount
   useEffect(() => {
@@ -332,6 +341,99 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
     reader.readAsDataURL(file);
   };
 
+  const [wizardTouched, setWizardTouched] = useState<Record<string, boolean>>({});
+
+  const markWizardFieldTouched = (field: string) => {
+    setWizardTouched((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
+  };
+
+  const getWizardFieldError = (field: string): string => {
+    if (!wizardTouched[field]) return '';
+    switch (field) {
+      case 'fullName':
+        return !wizardForm.fullName.trim()
+          ? 'Full Name is required.'
+          : wizardForm.fullName.trim().length < 2
+            ? 'Full Name must be at least 2 characters.'
+            : '';
+      case 'dob':
+        return !wizardForm.dob.trim() ? 'Date of Birth is required.' : '';
+      case 'occupation':
+        return !wizardForm.occupation.trim() ? 'Occupation is required.' : '';
+      case 'email':
+        return !wizardForm.email.trim()
+          ? 'Email Address is required.'
+          : !isValidEmailAddress(wizardForm.email)
+            ? 'Please enter a valid Email Address (e.g., supporter@example.com).'
+            : '';
+      case 'primaryMobile':
+        return !wizardForm.primaryMobile.trim()
+          ? 'Primary Mobile Number is required.'
+          : !isValidIndianMobile(wizardForm.primaryMobile)
+            ? 'Enter a valid 10-digit Indian mobile number starting with 6–9.'
+            : '';
+      case 'alternateMobile':
+        return wizardForm.alternateMobile?.trim() && !isValidIndianMobile(wizardForm.alternateMobile)
+          ? 'Alternate number must be a valid 10-digit Indian mobile number.'
+          : '';
+      case 'houseAndStreet':
+        return !wizardForm.houseAndStreet.trim() ? 'House Number and Street is required.' : '';
+      case 'villageTownCity':
+        return !wizardForm.villageTownCity.trim() ? 'Village / Town / City is required.' : '';
+      case 'postOffice':
+        return !wizardForm.postOffice.trim() ? 'Post Office is required.' : '';
+      case 'district':
+        return !wizardForm.district.trim() ? 'District is required.' : '';
+      case 'state':
+        return !wizardForm.state.trim() ? 'State is required.' : '';
+      case 'pinCode':
+        return !wizardForm.pinCode.trim()
+          ? 'PIN Code is required.'
+          : !isValidIndianPinCode(wizardForm.pinCode)
+            ? 'Enter a valid 6-digit Indian PIN Code (e.g., 741235).'
+            : '';
+      case 'country':
+        return !wizardForm.country.trim() ? 'Country is required.' : '';
+      case 'accuracyConfirmed':
+        return !wizardForm.accuracyConfirmed
+          ? 'Please confirm that the submitted information is accurate.'
+          : '';
+      case 'dataProcessingConsent':
+        return !wizardForm.dataProcessingConsent
+          ? 'Consent is required for membership & donation administration.'
+          : '';
+      default:
+        return '';
+    }
+  };
+
+  const getWizardInputClass = (field: string, extra = '') => {
+    const err = getWizardFieldError(field);
+    const isTouched = Boolean(wizardTouched[field]);
+    const borderClass = err
+      ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
+      : isTouched
+        ? 'border-emerald-500 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500'
+        : 'border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500';
+    return `w-full px-3.5 py-2.5 rounded-xl border text-xs text-slate-900 outline-none transition-colors ${borderClass} ${extra}`;
+  };
+
+  const touchStepFields = (step: 1 | 2 | 3 | 4) => {
+    const stepMap: Record<1 | 2 | 3 | 4, string[]> = {
+      1: ['fullName', 'dob', 'occupation', 'email', 'primaryMobile', 'alternateMobile'],
+      2: ['houseAndStreet', 'villageTownCity', 'postOffice', 'district', 'state', 'pinCode', 'country'],
+      3: ['memberCategory', 'preferredCommunicationMethod'],
+      4: ['accuracyConfirmed', 'dataProcessingConsent'],
+    };
+    setWizardTouched((prev) => {
+      const next = { ...prev };
+      stepMap[step].forEach((f) => {
+        next[f] = true;
+      });
+      return next;
+    });
+  };
+
   const validateWizardStep = (step: 1 | 2 | 3 | 4): string | null => {
     if (step === 1) {
       if (!wizardForm.fullName.trim()) return 'Full Name is required.';
@@ -397,6 +499,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
 
   const handleNextWizardStep = () => {
     setProfileBanner(null);
+    touchStepFields(wizardStep);
     const err = validateWizardStep(wizardStep);
     if (err) {
       setProfileBanner({ type: 'error', text: err });
@@ -416,6 +519,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
     e.preventDefault();
     setProfileBanner(null);
     for (const s of [1, 2, 3, 4] as const) {
+      touchStepFields(s);
       const err = validateWizardStep(s);
       if (err) {
         setWizardStep(s);
@@ -1235,7 +1339,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                 </div>
               )}
 
-              <form onSubmit={handleCompleteProfile} className="space-y-5">
+              <form onSubmit={handleCompleteProfile} noValidate className="space-y-5">
                 {/* STEP 1 — PERSONAL INFORMATION */}
                 {wizardStep === 1 && (
                   <div className="space-y-4">
@@ -1252,12 +1356,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="text"
                           required
                           value={wizardForm.fullName}
-                          onChange={(e) =>
-                            setWizardForm({ ...wizardForm, fullName: e.target.value })
-                          }
+                          onBlur={() => markWizardFieldTouched('fullName')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, fullName: e.target.value });
+                            markWizardFieldTouched('fullName');
+                          }}
                           placeholder="Enter your full legal name"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('fullName')}
                         />
+                        {getWizardFieldError('fullName') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('fullName')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1268,9 +1380,19 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="date"
                           required
                           value={wizardForm.dob}
-                          onChange={(e) => setWizardForm({ ...wizardForm, dob: e.target.value })}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 font-mono"
+                          onBlur={() => markWizardFieldTouched('dob')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, dob: e.target.value });
+                            markWizardFieldTouched('dob');
+                          }}
+                          className={getWizardInputClass('dob', 'font-mono')}
                         />
+                        {getWizardFieldError('dob') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('dob')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1300,12 +1422,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="text"
                           required
                           value={wizardForm.occupation}
-                          onChange={(e) =>
-                            setWizardForm({ ...wizardForm, occupation: e.target.value })
-                          }
+                          onBlur={() => markWizardFieldTouched('occupation')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, occupation: e.target.value });
+                            markWizardFieldTouched('occupation');
+                          }}
                           placeholder="e.g. Engineer, Educator, Business Owner"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('occupation')}
                         />
+                        {getWizardFieldError('occupation') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('occupation')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1316,14 +1446,25 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="email"
                           required
                           value={wizardForm.email}
-                          onChange={(e) => setWizardForm({ ...wizardForm, email: e.target.value })}
+                          onBlur={() => markWizardFieldTouched('email')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, email: e.target.value });
+                            markWizardFieldTouched('email');
+                          }}
                           placeholder="your.email@example.com"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('email')}
                         />
-                        <div className="text-[11px] text-slate-500 mt-1">
-                          Authenticated Login Email (preserved):{' '}
-                          <span className="font-mono">{wizardForm.authEmail || profile.email}</span>
-                        </div>
+                        {getWizardFieldError('email') ? (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('email')}</span>
+                          </p>
+                        ) : (
+                          <div className="text-[11px] text-slate-500 mt-1">
+                            Authenticated Login Email (preserved):{' '}
+                            <span className="font-mono">{wizardForm.authEmail || profile.email}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -1335,15 +1476,23 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           required
                           maxLength={10}
                           value={wizardForm.primaryMobile}
-                          onChange={(e) =>
+                          onBlur={() => markWizardFieldTouched('primaryMobile')}
+                          onChange={(e) => {
                             setWizardForm({
                               ...wizardForm,
                               primaryMobile: e.target.value.replace(/\D/g, '').slice(0, 10),
-                            })
-                          }
+                            });
+                            markWizardFieldTouched('primaryMobile');
+                          }}
                           placeholder="9830XXXXXX"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 font-mono tabular-nums"
+                          className={getWizardInputClass('primaryMobile', 'font-mono tabular-nums')}
                         />
+                        {getWizardFieldError('primaryMobile') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('primaryMobile')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1354,15 +1503,23 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="tel"
                           maxLength={10}
                           value={wizardForm.alternateMobile || ''}
-                          onChange={(e) =>
+                          onBlur={() => markWizardFieldTouched('alternateMobile')}
+                          onChange={(e) => {
                             setWizardForm({
                               ...wizardForm,
                               alternateMobile: e.target.value.replace(/\D/g, '').slice(0, 10),
-                            })
-                          }
+                            });
+                            markWizardFieldTouched('alternateMobile');
+                          }}
                           placeholder="Optional 10-digit number"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 font-mono tabular-nums"
+                          className={getWizardInputClass('alternateMobile', 'font-mono tabular-nums')}
                         />
+                        {getWizardFieldError('alternateMobile') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('alternateMobile')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1407,12 +1564,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="text"
                           required
                           value={wizardForm.houseAndStreet}
-                          onChange={(e) =>
-                            setWizardForm({ ...wizardForm, houseAndStreet: e.target.value })
-                          }
+                          onBlur={() => markWizardFieldTouched('houseAndStreet')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, houseAndStreet: e.target.value });
+                            markWizardFieldTouched('houseAndStreet');
+                          }}
                           placeholder="House/Flat No., Street, Locality"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('houseAndStreet')}
                         />
+                        {getWizardFieldError('houseAndStreet') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('houseAndStreet')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1423,12 +1588,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="text"
                           required
                           value={wizardForm.villageTownCity}
-                          onChange={(e) =>
-                            setWizardForm({ ...wizardForm, villageTownCity: e.target.value })
-                          }
+                          onBlur={() => markWizardFieldTouched('villageTownCity')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, villageTownCity: e.target.value });
+                            markWizardFieldTouched('villageTownCity');
+                          }}
                           placeholder="e.g. Kalyani"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('villageTownCity')}
                         />
+                        {getWizardFieldError('villageTownCity') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('villageTownCity')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1439,12 +1612,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="text"
                           required
                           value={wizardForm.postOffice}
-                          onChange={(e) =>
-                            setWizardForm({ ...wizardForm, postOffice: e.target.value })
-                          }
+                          onBlur={() => markWizardFieldTouched('postOffice')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, postOffice: e.target.value });
+                            markWizardFieldTouched('postOffice');
+                          }}
                           placeholder="Post Office name"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('postOffice')}
                         />
+                        {getWizardFieldError('postOffice') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('postOffice')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1470,12 +1651,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="text"
                           required
                           value={wizardForm.district}
-                          onChange={(e) =>
-                            setWizardForm({ ...wizardForm, district: e.target.value })
-                          }
+                          onBlur={() => markWizardFieldTouched('district')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, district: e.target.value });
+                            markWizardFieldTouched('district');
+                          }}
                           placeholder="e.g. Nadia"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('district')}
                         />
+                        {getWizardFieldError('district') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('district')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1486,10 +1675,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="text"
                           required
                           value={wizardForm.state}
-                          onChange={(e) => setWizardForm({ ...wizardForm, state: e.target.value })}
+                          onBlur={() => markWizardFieldTouched('state')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, state: e.target.value });
+                            markWizardFieldTouched('state');
+                          }}
                           placeholder="e.g. West Bengal"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('state')}
                         />
+                        {getWizardFieldError('state') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('state')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1501,15 +1700,23 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           required
                           maxLength={6}
                           value={wizardForm.pinCode}
-                          onChange={(e) =>
+                          onBlur={() => markWizardFieldTouched('pinCode')}
+                          onChange={(e) => {
                             setWizardForm({
                               ...wizardForm,
                               pinCode: e.target.value.replace(/\D/g, '').slice(0, 6),
-                            })
-                          }
+                            });
+                            markWizardFieldTouched('pinCode');
+                          }}
                           placeholder="741235"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 font-mono tabular-nums"
+                          className={getWizardInputClass('pinCode', 'font-mono tabular-nums')}
                         />
+                        {getWizardFieldError('pinCode') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('pinCode')}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1520,12 +1727,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                           type="text"
                           required
                           value={wizardForm.country}
-                          onChange={(e) =>
-                            setWizardForm({ ...wizardForm, country: e.target.value })
-                          }
+                          onBlur={() => markWizardFieldTouched('country')}
+                          onChange={(e) => {
+                            setWizardForm({ ...wizardForm, country: e.target.value });
+                            markWizardFieldTouched('country');
+                          }}
                           placeholder="India"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900"
+                          className={getWizardInputClass('country')}
                         />
+                        {getWizardFieldError('country') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('country')}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1710,50 +1925,84 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile }) => 
                     </h3>
 
                     <div className="space-y-3">
-                      <label className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={wizardForm.accuracyConfirmed}
-                          onChange={(e) =>
-                            setWizardForm({
-                              ...wizardForm,
-                              accuracyConfirmed: e.target.checked,
-                            })
-                          }
-                          className="mt-0.5 rounded text-slate-900"
-                        />
-                        <div>
-                          <div className="font-semibold text-slate-900">
-                            Confirmation of Accuracy <span className="text-rose-600">*</span>
+                      <div>
+                        <label
+                          className={`flex items-start gap-3 p-4 rounded-xl border text-xs text-slate-800 cursor-pointer transition-colors ${
+                            getWizardFieldError('accuracyConfirmed')
+                              ? 'bg-rose-50/40 border-rose-300'
+                              : wizardForm.accuracyConfirmed
+                                ? 'bg-emerald-50/30 border-emerald-300'
+                                : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={wizardForm.accuracyConfirmed}
+                            onChange={(e) => {
+                              setWizardForm({
+                                ...wizardForm,
+                                accuracyConfirmed: e.target.checked,
+                              });
+                              markWizardFieldTouched('accuracyConfirmed');
+                            }}
+                            className="mt-0.5 rounded text-slate-900"
+                          />
+                          <div>
+                            <div className="font-semibold text-slate-900">
+                              Confirmation of Accuracy <span className="text-rose-600">*</span>
+                            </div>
+                            <p className="text-slate-600 mt-0.5 leading-relaxed">
+                              I confirm that the personal, address, and contact information submitted in this profile is accurate and belongs to me.
+                            </p>
                           </div>
-                          <p className="text-slate-600 mt-0.5 leading-relaxed">
-                            I confirm that the personal, address, and contact information submitted in this profile is accurate and belongs to me.
+                        </label>
+                        {getWizardFieldError('accuracyConfirmed') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('accuracyConfirmed')}</span>
                           </p>
-                        </div>
-                      </label>
+                        )}
+                      </div>
 
-                      <label className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={wizardForm.dataProcessingConsent}
-                          onChange={(e) =>
-                            setWizardForm({
-                              ...wizardForm,
-                              dataProcessingConsent: e.target.checked,
-                            })
-                          }
-                          className="mt-0.5 rounded text-slate-900"
-                        />
-                        <div>
-                          <div className="font-semibold text-slate-900">
-                            Membership &amp; Donation Administration Consent{' '}
-                            <span className="text-rose-600">*</span>
+                      <div>
+                        <label
+                          className={`flex items-start gap-3 p-4 rounded-xl border text-xs text-slate-800 cursor-pointer transition-colors ${
+                            getWizardFieldError('dataProcessingConsent')
+                              ? 'bg-rose-50/40 border-rose-300'
+                              : wizardForm.dataProcessingConsent
+                                ? 'bg-emerald-50/30 border-emerald-300'
+                                : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={wizardForm.dataProcessingConsent}
+                            onChange={(e) => {
+                              setWizardForm({
+                                ...wizardForm,
+                                dataProcessingConsent: e.target.checked,
+                              });
+                              markWizardFieldTouched('dataProcessingConsent');
+                            }}
+                            className="mt-0.5 rounded text-slate-900"
+                          />
+                          <div>
+                            <div className="font-semibold text-slate-900">
+                              Membership &amp; Donation Administration Consent{' '}
+                              <span className="text-rose-600">*</span>
+                            </div>
+                            <p className="text-slate-600 mt-0.5 leading-relaxed">
+                              I consent to MADEN Football Academy Foundation processing my information for membership registration, payment verification, statutory compliance, and official receipt issuance.
+                            </p>
                           </div>
-                          <p className="text-slate-600 mt-0.5 leading-relaxed">
-                            I consent to MADEN Football Academy Foundation processing my information for membership registration, payment verification, statutory compliance, and official receipt issuance.
+                        </label>
+                        {getWizardFieldError('dataProcessingConsent') && (
+                          <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{getWizardFieldError('dataProcessingConsent')}</span>
                           </p>
-                        </div>
-                      </label>
+                        )}
+                      </div>
 
                       <label className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 cursor-pointer">
                         <input

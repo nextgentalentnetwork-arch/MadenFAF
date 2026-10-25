@@ -43,17 +43,7 @@ interface SecurityAuditItem {
   details: string;
 }
 
-const ALL_ROLES: UserRole[] = [
-  'member',
-  'player',
-  'parent',
-  'coach',
-  'manager',
-  'staff1',
-  'staff2',
-  'admin',
-  'pending',
-];
+const ALL_ROLES: UserRole[] = ['member', 'admin'];
 
 export const AdminRbacGovernanceManager: React.FC<{ profile: UserProfile }> = ({
   profile,
@@ -316,7 +306,7 @@ export const AdminRbacGovernanceManager: React.FC<{ profile: UserProfile }> = ({
                 Explicitly Authorized Portals (Admin Multi-Role Grant)
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {ALL_ROLES.filter((r) => r !== 'pending').map((r) => {
+                {ALL_ROLES.map((r) => {
                   const isPrimary = r === selectedPrimaryRole;
                   const isChecked = isPrimary || selectedAuthorizedRoles.includes(r);
                   return (

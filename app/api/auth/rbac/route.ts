@@ -10,6 +10,9 @@ import {
   canSelfAssignRole,
   canUserAccessPortal,
   isValidRole,
+  normalizeToTwoRoles,
+  normalizePortalRoleParam,
+  isProtectedAdminEmail,
   UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
   AuthoritativeAccountRecord,
 } from '@/lib/serverRbac';
@@ -18,7 +21,10 @@ import { UserRole } from '@/lib/rbac';
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const email = searchParams.get('email')?.toLowerCase().trim();
-  const targetPortalRole = searchParams.get('targetPortalRole');
+  const rawTargetPortalRole = searchParams.get('targetPortalRole');
+  const targetPortalRole = rawTargetPortalRole
+    ? normalizePortalRoleParam(rawTargetPortalRole)
+    : null;
   const adminView = searchParams.get('adminView') === 'true';
   const authHeader = req.headers.get('authorization');
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : searchParams.get('token');
@@ -58,7 +64,26 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const account = accountsMap[email];
+    let account = accountsMap[email];
+    if (!account && !isProtectedAdminEmail(email)) {
+      const now = new Date().toISOString();
+      account = {
+        id: `usr-member-${Date.now()}`,
+        email,
+        fullName: email.split('@')[0],
+        role: 'member',
+        roles: ['member'],
+        campus: 'Kalyani & Nadia District',
+        status: 'active',
+        migrationStatus: 'verified',
+        migrationNotes: 'Auto-synced Member account.',
+        createdAt: now,
+        updatedAt: now,
+      };
+      accountsMap[email] = account;
+      await saveAuthoritativeAccountsMap(accountsMap);
+    }
+
     if (!account) {
       return NextResponse.json(
         {
@@ -70,7 +95,18 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (targetPortalRole && isValidRole(targetPortalRole)) {
+    if (rawTargetPortalRole) {
+      if (!targetPortalRole) {
+        return NextResponse.json(
+          {
+            success: false,
+            authorized: false,
+            error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+            authoritativeProfile: account,
+          },
+          { status: 403 }
+        );
+      }
       const allowed = canUserAccessPortal(account.role, targetPortalRole, account.roles);
       if (!allowed) {
         await recordRbacSecurityAudit({
@@ -119,11 +155,11 @@ export async function POST(req: NextRequest) {
     const { action } = body;
     const accountsMap = await loadAuthoritativeAccountsMap();
 
-    // 1. REGISTRATION: Lock one assigned role on the server
+    // 1. REGISTRATION: Public users can only register as 'member'. Never overwrite or downgrade an Admin account.
     if (action === 'register') {
       const email = (body.email || '').toLowerCase().trim();
       const fullName = (body.fullName || '').trim();
-      const requestedRole = body.requestedRole;
+      const requestedRole = body.requestedRole ?? 'member';
       const uid = body.uid || `usr-${Date.now()}`;
 
       if (!email || !fullName) {
@@ -133,22 +169,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (accountsMap[email]) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `An account with this email is already registered under the '${accountsMap[email].role.toUpperCase()}' role. Please sign in using your registered account role.`,
-          },
-          { status: 409 }
-        );
-      }
-
       if (!canSelfAssignRole(requestedRole)) {
         await recordRbacSecurityAudit({
           eventType: 'SELF_ROLE_MODIFICATION_BLOCKED',
           actorEmail: email,
           targetPortalOrRole: String(requestedRole),
-          details: `Blocked attempt to self-register with privileged role '${String(requestedRole)}'.`,
+          details: `Blocked attempt to self-register with privileged or invalid role '${String(requestedRole)}'. Only 'member' is permitted for self-registration.`,
         });
         return NextResponse.json(
           {
@@ -159,19 +185,58 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const assignedRole: UserRole = requestedRole;
       const now = new Date().toISOString();
+
+      // If a protected Admin account registers on the Member Portal form, preserve Admin role AND grant Member portal access
+      if (isProtectedAdminEmail(email) || accountsMap[email]?.role === 'admin') {
+        const existingAdmin = accountsMap[email];
+        const adminRecord: AuthoritativeAccountRecord = {
+          id: existingAdmin?.id || uid,
+          email,
+          fullName: fullName || existingAdmin?.fullName || email.split('@')[0],
+          role: 'admin',
+          roles: ['admin', 'member'],
+          approvedByAdmin: 'system',
+          campus: body.campus || existingAdmin?.campus || 'All Campuses (Headquarters)',
+          avatarUrl: existingAdmin?.avatarUrl,
+          status: 'active',
+          migrationStatus: 'verified',
+          migrationNotes:
+            'Verified Executive Admin account with Member Donation & Support Portal access enabled.',
+          createdAt: existingAdmin?.createdAt || now,
+          updatedAt: now,
+        };
+
+        accountsMap[email] = adminRecord;
+        await saveAuthoritativeAccountsMap(accountsMap);
+
+        const rbacToken = signRbacToken({
+          id: adminRecord.id,
+          email: adminRecord.email,
+          role: adminRecord.role,
+          roles: adminRecord.roles,
+        });
+
+        return NextResponse.json({
+          success: true,
+          authoritativeProfile: adminRecord,
+          rbacToken,
+        });
+      }
+
+      const assignedRole: UserRole = 'member';
+      const existingMember = accountsMap[email];
       const newRecord: AuthoritativeAccountRecord = {
-        id: uid,
+        id: existingMember?.id || uid,
         email,
-        fullName,
+        fullName: fullName || existingMember?.fullName || email.split('@')[0],
         role: assignedRole,
-        roles: [assignedRole], // Strict policy: 1 account = 1 assigned role
-        campus: body.campus || 'Gayeshpur Flagship Campus',
-        status: assignedRole === 'pending' ? 'pending' : 'active',
-        migrationStatus: assignedRole === 'pending' ? 'flagged_ambiguous_role' : 'verified',
-        migrationNotes: `Registered via MADEN FAF Portal with locked primary role '${assignedRole}'.`,
-        createdAt: now,
+        roles: [assignedRole],
+        campus: body.campus || existingMember?.campus || 'Kalyani & Nadia District',
+        status: 'active',
+        migrationStatus: 'verified',
+        migrationNotes: `Registered via MADEN FAF Portal with locked Member (Donation & Support Portal) role.`,
+        createdAt: existingMember?.createdAt || now,
         updatedAt: now,
       };
 
@@ -183,7 +248,7 @@ export async function POST(req: NextRequest) {
         actorEmail: email,
         actorRole: assignedRole,
         targetPortalOrRole: assignedRole,
-        details: `Registered new account exclusively authorized for '${assignedRole}' portal.`,
+        details: `Registered Member account authorized for the Member Donation & Support Portal.`,
       });
 
       const rbacToken = signRbacToken({
@@ -203,7 +268,11 @@ export async function POST(req: NextRequest) {
     // 2. LOGIN VERIFICATION: Never trust browser role; verify against server store & target portal
     if (action === 'loginVerify') {
       const email = (body.email || '').toLowerCase().trim();
-      const requestedPortalRole = body.requestedPortalRole;
+      const rawRequestedPortalRole = body.requestedPortalRole;
+      const requestedPortalRole =
+        rawRequestedPortalRole && rawRequestedPortalRole !== 'auto'
+          ? normalizePortalRoleParam(rawRequestedPortalRole)
+          : 'auto';
 
       if (!email) {
         return NextResponse.json(
@@ -214,22 +283,45 @@ export async function POST(req: NextRequest) {
 
       let account = accountsMap[email];
 
-      // If account exists in Supabase Auth metadata (passed when a prior Supabase user logs in), migrate it safely
+      // If account exists in Supabase Auth metadata (passed when a prior Supabase user logs in), migrate it safely into 'member' or 'admin'
       if (!account && body.supabaseUser) {
         const sbMeta = body.supabaseUser.user_metadata || {};
         const candidate = sbMeta.portal_role || sbMeta.maden_role || sbMeta.role;
-        const migratedRole: UserRole = isValidRole(candidate) ? candidate : 'member';
+        const migratedRole: UserRole = isProtectedAdminEmail(email)
+          ? 'admin'
+          : normalizeToTwoRoles(candidate);
         const now = new Date().toISOString();
         account = {
           id: body.supabaseUser.id || `usr-${Date.now()}`,
           email,
           fullName: sbMeta.full_name || email.split('@')[0],
           role: migratedRole,
-          roles: [migratedRole],
-          campus: sbMeta.campus || 'Gayeshpur Flagship Campus',
+          roles: migratedRole === 'admin' ? ['admin', 'member'] : ['member'],
+          approvedByAdmin: migratedRole === 'admin' ? 'system' : undefined,
+          campus: sbMeta.campus || 'Kalyani & Nadia District',
           status: 'active',
-          migrationStatus: isValidRole(candidate) ? 'verified' : 'flagged_missing_role',
-          migrationNotes: 'Migrated from authenticated Supabase user metadata.',
+          migrationStatus: 'verified',
+          migrationNotes: `Migrated from authenticated Supabase user metadata to '${migratedRole}'.`,
+          createdAt: now,
+          updatedAt: now,
+        };
+        accountsMap[email] = account;
+        await saveAuthoritativeAccountsMap(accountsMap);
+      }
+
+      // If a registered Member is signing in and the server cache was reset, restore as 'member' (never 'admin')
+      if (!account && !isProtectedAdminEmail(email) && requestedPortalRole !== 'admin') {
+        const now = new Date().toISOString();
+        account = {
+          id: `usr-member-${Date.now()}`,
+          email,
+          fullName: body.fullName || email.split('@')[0],
+          role: 'member',
+          roles: ['member'],
+          campus: 'Kalyani & Nadia District',
+          status: 'active',
+          migrationStatus: 'verified',
+          migrationNotes: 'Verified Member account restored on sign-in.',
           createdAt: now,
           updatedAt: now,
         };
@@ -241,7 +333,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: 'No registered account found for this email address. Please register an account first.',
+            error:
+              'No registered account found for this email address. Please register a Member account first.',
           },
           { status: 401 }
         );
@@ -258,11 +351,18 @@ export async function POST(req: NextRequest) {
       }
 
       // If user selected or attempted to log into a specific portal role, enforce strict role match!
-      if (
-        requestedPortalRole &&
-        requestedPortalRole !== 'auto' &&
-        isValidRole(requestedPortalRole)
-      ) {
+      if (rawRequestedPortalRole && rawRequestedPortalRole !== 'auto') {
+        if (!requestedPortalRole) {
+          return NextResponse.json(
+            {
+              success: false,
+              authorized: false,
+              registeredRole: account.role,
+              error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+            },
+            { status: 403 }
+          );
+        }
         const isAllowed = canUserAccessPortal(
           account.role,
           requestedPortalRole,
@@ -316,10 +416,59 @@ export async function POST(req: NextRequest) {
       const email = (body.email || '').toLowerCase().trim();
       const clientRole = body.clientRole;
       const clientRoles: string[] | undefined = body.clientRoles;
-      const targetPortalRole = body.targetPortalRole;
+      const rawTargetPortalRole = body.targetPortalRole;
+      const targetPortalRole = rawTargetPortalRole
+        ? normalizePortalRoleParam(rawTargetPortalRole)
+        : null;
       const rbacToken = body.rbacToken;
 
-      const account = await getAuthoritativeAccountByEmail(email);
+      let account = accountsMap[email] || (await getAuthoritativeAccountByEmail(email));
+
+      // If account is not yet in accountsMap, check if the client holds a valid server-signed HMAC rbacToken
+      const tokenCheck = rbacToken ? verifyRbacToken(rbacToken) : { valid: false };
+      if (!account && tokenCheck.valid && tokenCheck.payload?.email === email) {
+        const verifiedRole: UserRole = isProtectedAdminEmail(email)
+          ? 'admin'
+          : normalizeToTwoRoles(tokenCheck.payload.role);
+        const now = new Date().toISOString();
+        account = {
+          id: tokenCheck.payload.id || `usr-${Date.now()}`,
+          email,
+          fullName: body.fullName || email.split('@')[0],
+          role: verifiedRole,
+          roles: verifiedRole === 'admin' ? ['admin', 'member'] : ['member'],
+          approvedByAdmin: verifiedRole === 'admin' ? 'system' : undefined,
+          campus: 'Kalyani & Nadia District',
+          status: 'active',
+          migrationStatus: 'verified',
+          migrationNotes: 'Restored from verified HMAC RBAC session token.',
+          createdAt: now,
+          updatedAt: now,
+        };
+        accountsMap[email] = account;
+        await saveAuthoritativeAccountsMap(accountsMap);
+      }
+
+      // If still not found and user is a non-admin Member session, register as 'member' (never 'admin')
+      if (!account && email && !isProtectedAdminEmail(email)) {
+        const now = new Date().toISOString();
+        account = {
+          id: body.uid || `usr-member-${Date.now()}`,
+          email,
+          fullName: body.fullName || email.split('@')[0],
+          role: 'member',
+          roles: ['member'],
+          campus: 'Kalyani & Nadia District',
+          status: 'active',
+          migrationStatus: 'verified',
+          migrationNotes: 'Auto-synced Member session into authoritative store.',
+          createdAt: now,
+          updatedAt: now,
+        };
+        accountsMap[email] = account;
+        await saveAuthoritativeAccountsMap(accountsMap);
+      }
+
       if (!account) {
         return NextResponse.json(
           {
@@ -332,27 +481,23 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Check if client tampered with role or roles array in localStorage / memory
-      const roleMismatch = Boolean(clientRole && clientRole !== account.role);
-      const rolesArrayMismatch = Boolean(
-        Array.isArray(clientRoles) &&
-          clientRoles.some((r) => !account.roles.includes(r as UserRole))
-      );
-      const tokenCheck = rbacToken ? verifyRbacToken(rbacToken) : { valid: true };
-      const tokenMismatch = Boolean(
-        rbacToken &&
-          (!tokenCheck.valid ||
-            tokenCheck.payload?.email !== account.email ||
-            tokenCheck.payload?.role !== account.role)
-      );
+      // Check if a non-admin client tampered with role or roles array in localStorage to claim 'admin'
+      const isAccountAdmin =
+        account.role === 'admin' || account.roles.includes('admin');
+      const clientClaimsAdmin =
+        (typeof clientRole === 'string' && clientRole.trim().toLowerCase() === 'admin') ||
+        (Array.isArray(clientRoles) &&
+          clientRoles.some(
+            (r) => typeof r === 'string' && r.trim().toLowerCase() === 'admin'
+          ));
 
-      if (roleMismatch || rolesArrayMismatch || tokenMismatch) {
+      if (!isAccountAdmin && clientClaimsAdmin) {
         await recordRbacSecurityAudit({
           eventType: 'ROLE_TAMPER_BLOCKED',
           actorEmail: account.email,
           actorRole: account.role,
-          targetPortalOrRole: String(clientRole || targetPortalRole || 'unknown'),
-          details: `Blocked client-side role/storage tampering for '${account.email}'. Client claimed role='${String(
+          targetPortalOrRole: String(clientRole || rawTargetPortalRole || 'admin'),
+          details: `Blocked client-side privilege escalation attempt for '${account.email}'. Client claimed role='${String(
             clientRole
           )}' roles='${JSON.stringify(clientRoles)}', server authoritative role='${account.role}'.`,
         });
@@ -378,7 +523,19 @@ export async function POST(req: NextRequest) {
       }
 
       // Check target portal authorization if specified
-      if (targetPortalRole && isValidRole(targetPortalRole)) {
+      if (rawTargetPortalRole) {
+        if (!targetPortalRole) {
+          return NextResponse.json(
+            {
+              success: false,
+              authorized: false,
+              tampered: false,
+              error: UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
+              authoritativeProfile: account,
+            },
+            { status: 403 }
+          );
+        }
         const allowed = canUserAccessPortal(
           account.role,
           targetPortalRole,
@@ -441,7 +598,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. ADMIN-ONLY ROLE ASSIGNMENT & MIGRATION CONFLICT RESOLUTION
+    // 5. ADMIN-ONLY ROLE ASSIGNMENT (Strictly between 'member' and 'admin'; protected Admins cannot be downgraded)
     if (action === 'adminUpdateUserRoles') {
       const adminToken = body.adminToken;
       const callerEmail = (body.adminEmail || '').toLowerCase().trim();
@@ -481,8 +638,18 @@ export async function POST(req: NextRequest) {
 
       if (!isValidRole(newPrimaryRole)) {
         return NextResponse.json(
-          { success: false, error: 'Invalid primary role specified.' },
+          { success: false, error: 'Only Member and Admin roles are permitted.' },
           { status: 400 }
+        );
+      }
+
+      if (isProtectedAdminEmail(targetEmail) && newPrimaryRole !== 'admin') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Primary Admin accounts are protected and cannot be downgraded.',
+          },
+          { status: 403 }
         );
       }
 
@@ -499,7 +666,7 @@ export async function POST(req: NextRequest) {
         ...targetAccount,
         role: newPrimaryRole,
         roles: sanitizedRoles,
-        status: newPrimaryRole === 'pending' ? 'pending' : 'active',
+        status: 'active',
         migrationStatus: 'verified',
         migrationNotes: `Verified & authorized by Admin (${adminAccount.email}) on ${new Date().toLocaleDateString()}. Authorized roles: [${sanitizedRoles.join(', ')}].`,
         approvedByAdmin: adminAccount.email,

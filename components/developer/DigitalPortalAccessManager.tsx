@@ -284,44 +284,14 @@ export const DigitalPortalAccessManager: React.FC<DigitalPortalAccessManagerProp
 
         {/* Right Column: Role Permissions & Student Roster */}
         <div className="lg:col-span-6 space-y-4">
-          {/* Role Permissions Toggles */}
+          {/* Role Permissions Toggles (Strictly Member & Admin Only) */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold uppercase text-slate-900 tracking-wider">
               <Shield className="w-4 h-4 text-amber-600" />
-              <span>Active Role Tabs in Portal</span>
+              <span>Active Role Portals (Member &amp; Admin Only)</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100">
-                <input
-                  type="checkbox"
-                  checked={config.playerPortalEnabled !== false}
-                  onChange={(e) => handleSaveConfig({ playerPortalEnabled: e.target.checked })}
-                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
-                />
-                <span className="font-bold text-slate-800">Player Portal</span>
-              </label>
-
-              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100">
-                <input
-                  type="checkbox"
-                  checked={config.parentPortalEnabled !== false}
-                  onChange={(e) => handleSaveConfig({ parentPortalEnabled: e.target.checked })}
-                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
-                />
-                <span className="font-bold text-slate-800">Parent Portal</span>
-              </label>
-
-              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100">
-                <input
-                  type="checkbox"
-                  checked={config.coachPortalEnabled !== false}
-                  onChange={(e) => handleSaveConfig({ coachPortalEnabled: e.target.checked })}
-                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
-                />
-                <span className="font-bold text-slate-800">Coach Planner</span>
-              </label>
-
+            <div className="grid grid-cols-1 gap-2 text-xs">
               <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100">
                 <input
                   type="checkbox"
@@ -329,10 +299,17 @@ export const DigitalPortalAccessManager: React.FC<DigitalPortalAccessManagerProp
                   onChange={(e) => handleSaveConfig({ adminPortalEnabled: e.target.checked })}
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                 />
-                <span className="font-bold text-slate-800">Admin Operations</span>
+                <div>
+                  <span className="font-bold text-slate-800 block">
+                    Admin — Backend Management
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Website CMS, Admission &amp; Trial Applications, Member &amp; Donation Verification
+                  </span>
+                </div>
               </label>
 
-              <label className="col-span-2 flex items-center justify-between gap-2.5 p-3 rounded-xl bg-amber-50/70 border border-amber-200 cursor-pointer hover:bg-amber-50">
+              <label className="flex items-center justify-between gap-2.5 p-3 rounded-xl bg-amber-50/70 border border-amber-200 cursor-pointer hover:bg-amber-50">
                 <div className="flex items-center gap-2.5">
                   <input
                     type="checkbox"
@@ -342,10 +319,10 @@ export const DigitalPortalAccessManager: React.FC<DigitalPortalAccessManagerProp
                   />
                   <div>
                     <div className="font-bold text-slate-900">
-                      Member (Foundation Supporter &amp; Donators Portal Only)
+                      Member — Donation &amp; Support Portal
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      Restricted Donor &amp; Supporter Portal · 4-Step Dossier, UPI QR &amp; 80G Receipts
+                      Registered Supporter &amp; Donor Portal · Profile, Monthly/Quarterly/Yearly Plans, Official QR &amp; Verified Receipts
                     </div>
                   </div>
                 </div>

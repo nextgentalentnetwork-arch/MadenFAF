@@ -1,225 +1,261 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserProfile } from '@/lib/AuthContext';
-import {
-  AcademyRegistrationData,
-  getRegistrations,
-  updateRegistrationStatus,
-} from '@/lib/supabaseClient';
-import {
-  ArrowRight,
-  Award,
-  CheckCircle2,
-  Clock,
-  Crown,
-  Database,
-  Lock,
-  Shield,
-  Sparkles,
-  TrendingUp,
-  UserCheck,
-  Users,
-  XCircle,
-} from 'lucide-react';
 import Link from 'next/link';
-import { AdminDonationsManager } from '@/components/portal/AdminDonationsManager';
-import { AdminRbacGovernanceManager } from '@/components/portal/AdminRbacGovernanceManager';
+import {
+  ShieldCheck,
+  Database,
+  CheckCircle2,
+  ArrowRight,
+  Building2,
+  Code2,
+  HeartHandshake,
+  Shield,
+  Trophy,
+  LayoutGrid,
+} from 'lucide-react';
+import {
+  getRegistrations,
+  AcademyRegistrationData,
+  normalizeApplicationStatus,
+} from '@/lib/supabaseClient';
+import { ACADEMY_CAMPUSES, ACADEMY_PROGRAMS } from '@/data/academyData';
+import { useAuth } from '@/lib/AuthContext';
+import { AdminDonationsManager } from './AdminDonationsManager';
+import { AdminRbacGovernanceManager } from './AdminRbacGovernanceManager';
+import { TrialManager } from '@/components/developer/TrialManager';
 
-interface AdminDashboardProps {
-  profile: UserProfile;
-}
-
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ profile }) => {
+export const AdminDashboard: React.FC = () => {
+  const { profile } = useAuth();
   const [candidates, setCandidates] = useState<AcademyRegistrationData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [activeAdminSection, setActiveAdminSection] = useState<
+    'applications' | 'donations' | 'rbac' | 'content'
+  >('applications');
+  const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
-    let isMounted = true;
-    const fetchAll = async () => {
-      setIsLoading(true);
-      try {
-        const list = await getRegistrations();
-        if (isMounted) setCandidates(list);
-      } catch (err) {
-        console.warn('Error fetching all registrations:', err);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    fetchAll();
+    let active = true;
+    getRegistrations()
+      .then((data) => {
+        if (active) setCandidates(data);
+      })
+      .catch(() => {});
     return () => {
-      isMounted = false;
+      active = false;
     };
-  }, []);
+  }, [activeAdminSection]);
 
-  const handleAdminStatusChange = async (
-    bookingRef: string,
-    status: 'enrolled' | 'confirmed' | 'waitlist' | 'rejected'
-  ) => {
-    try {
-      const res = await updateRegistrationStatus(bookingRef, status, 'Approved by Technical Director');
-      if (res.success) {
-        setCandidates(prev =>
-          prev.map(c => (c.bookingRef === bookingRef ? { ...c, status } : c))
-        );
-        setMsg({ type: 'success', text: `Candidate ${bookingRef} updated to ${status.toUpperCase()}!` });
-        setTimeout(() => setMsg(null), 3000);
-      }
-    } catch (e: any) {
-      setMsg({ type: 'error', text: e?.message || 'Update failed' });
-    }
-  };
+  const admissionCount = candidates.filter(
+    (c) => (c.applicationType || 'admission') === 'admission'
+  ).length;
+  const trialCount = candidates.filter((c) => c.applicationType === 'trial').length;
+  const pendingReviewCount = candidates.filter(
+    (c) => normalizeApplicationStatus(c.status) === 'pending_review'
+  ).length;
+  const approvedCount = candidates.filter(
+    (c) => normalizeApplicationStatus(c.status) === 'approved'
+  ).length;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden border border-amber-500/20">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider">
-              <Crown className="w-3.5 h-3.5" />
-              <span>Executive Academy Command · Full Director Authorization</span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight">
-              Executive Director: {profile.fullName}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-              Complete oversight of all campuses, licensed coaching staff, candidate enrollments, Donators Portal verifications, and system configurations.
+      {feedback && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{feedback}</span>
+        </div>
+      )}
+
+      {/* Executive Admin Command Banner */}
+      <div className="bg-slate-950 text-white rounded-3xl p-5 sm:p-6 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-400 shrink-0">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+              Admin — Backend Management
+            </span>
+            <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight mt-1">
+              MADEN FAF Executive Admin Dashboard
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5 max-w-2xl">
+              Manage player admission &amp; trial applications, member accounts, donation verification, official QR settings, receipts, schedules, and website content.
             </p>
           </div>
+        </div>
 
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/developer"
-            className="px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer transition-all shrink-0"
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors shadow-sm"
           >
-            <Shield className="w-4 h-4 text-slate-950" />
-            <span>Backend Command Center</span>
-            <ArrowRight className="w-4 h-4 text-slate-950" />
+            <Code2 className="w-4 h-4" />
+            <span>Open Website CMS &amp; Backend Console</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>
 
-      {msg && (
-        <div className={`p-3.5 rounded-2xl border text-xs font-semibold flex items-center gap-2 ${
-          msg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
-        }`}>
-          <CheckCircle2 className="w-4 h-4" />
-          <span>{msg.text}</span>
+      {/* System Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <span className="text-[10px] font-mono uppercase text-slate-400 block">
+            Total Applications
+          </span>
+          <div className="text-xl font-black text-slate-900 mt-1">{candidates.length}</div>
+          <span className="text-[11px] text-slate-600 font-semibold">
+            {admissionCount} Admission · {trialCount} Trial
+          </span>
         </div>
-      )}
-
-      {/* High Level Executive Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="text-xs font-bold text-slate-500 uppercase">Registered Candidates</div>
-          <div className="text-2xl font-black text-slate-900 tabular-nums">{candidates.length}</div>
-          <div className="text-[11px] text-amber-700 font-medium">Active admissions queue</div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="text-xs font-bold text-slate-500 uppercase">Approved Enrolled</div>
-          <div className="text-2xl font-black text-emerald-600 tabular-nums">
-            {candidates.filter(c => c.status === 'enrolled').length}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <span className="text-[10px] font-mono uppercase text-slate-400 block">
+            Pending Review
+          </span>
+          <div className="text-xl font-black text-amber-600 mt-1">
+            {pendingReviewCount}
           </div>
-          <div className="text-[11px] text-emerald-700 font-medium">Passed trial criteria</div>
+          <span className="text-[11px] text-amber-700 font-semibold">
+            Awaiting Admin Action
+          </span>
         </div>
-
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="text-xs font-bold text-slate-500 uppercase">Licensed Coaches</div>
-          <div className="text-2xl font-black text-slate-900 tabular-nums">18</div>
-          <div className="text-[11px] text-slate-500 font-medium">AFC ‘A’, ‘B’, ‘C’ certified</div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <span className="text-[10px] font-mono uppercase text-slate-400 block">
+            Approved Applicants
+          </span>
+          <div className="text-xl font-black text-emerald-700 mt-1">{approvedCount}</div>
+          <span className="text-[11px] text-emerald-700 font-semibold">
+            Verified &amp; Approved
+          </span>
         </div>
-
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="text-xs font-bold text-slate-500 uppercase">Active Campuses</div>
-          <div className="text-2xl font-black text-blue-600 tabular-nums">3</div>
-          <div className="text-[11px] text-slate-500 font-medium">Nadia & N24 Parganas</div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <span className="text-[10px] font-mono uppercase text-slate-400 block">
+            Active Campuses &amp; Programs
+          </span>
+          <div className="text-xl font-black text-slate-900 mt-1">
+            {ACADEMY_CAMPUSES.length} Campuses / {ACADEMY_PROGRAMS.length} Squads
+          </div>
+          <span className="text-[11px] text-indigo-700 font-semibold">
+            Member &amp; Admin RBAC Enforced
+          </span>
         </div>
       </div>
 
-      {/* Strict RBAC Account Role Separation & Migration Governance */}
-      <AdminRbacGovernanceManager profile={profile} />
+      {/* Admin Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 rounded-2xl p-2 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setActiveAdminSection('applications')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            activeAdminSection === 'applications'
+              ? 'bg-slate-900 text-amber-400 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <Trophy className="w-4 h-4" />
+          <span>1. Admission &amp; Trial Applications ({candidates.length})</span>
+        </button>
 
-      {/* Donators Portal & Official QR Payment Governance */}
-      <AdminDonationsManager profile={profile} />
+        <button
+          type="button"
+          onClick={() => setActiveAdminSection('donations')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            activeAdminSection === 'donations'
+              ? 'bg-slate-900 text-amber-400 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <HeartHandshake className="w-4 h-4" />
+          <span>2. Member Accounts, Donations, QR &amp; Receipts</span>
+        </button>
 
-      {/* Candidate Approvals & Admissions Queue */}
-      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-amber-600" />
-            <span>Master Candidate Registry & Final Approval Action</span>
-          </h3>
-          <span className="text-[11px] font-mono text-slate-400">Executive Authorization Level</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => setActiveAdminSection('rbac')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            activeAdminSection === 'rbac'
+              ? 'bg-slate-900 text-amber-400 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <Shield className="w-4 h-4" />
+          <span>3. Role Access &amp; Security Audit</span>
+        </button>
 
-        {isLoading ? (
-          <div className="p-8 text-center text-xs text-slate-500">Loading registrations...</div>
-        ) : candidates.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl">
-            No applicant records available in the central database.
+        <button
+          type="button"
+          onClick={() => setActiveAdminSection('content')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            activeAdminSection === 'content'
+              ? 'bg-slate-900 text-amber-400 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <LayoutGrid className="w-4 h-4" />
+          <span>4. Website Content &amp; Campuses</span>
+        </button>
+      </div>
+
+      {/* Section 1: Player Admission & Trial Session Applications */}
+      {activeAdminSection === 'applications' && (
+        <TrialManager
+          onNotify={(msg) => {
+            setFeedback(msg.text);
+            setTimeout(() => setFeedback(''), 4000);
+          }}
+        />
+      )}
+
+      {/* Section 2: Member Accounts, Donations, QR Code & Receipts */}
+      {activeAdminSection === 'donations' && profile && (
+        <AdminDonationsManager profile={profile} />
+      )}
+
+      {/* Section 3: Strict Two-Role Access Governance & Security Audit */}
+      {activeAdminSection === 'rbac' && profile && (
+        <AdminRbacGovernanceManager profile={profile} />
+      )}
+
+      {/* Section 4: Website Content, Banners, Announcements & Campuses */}
+      {activeAdminSection === 'content' && (
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <Database className="w-4 h-4 text-rose-600" />
+                <span>Website Content, Banners, Announcements &amp; Public Pages</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Manage hero banners, training centres, coaches, match fixtures, news stories, events, and section visibility.
+              </p>
+            </div>
+            <Link
+              href="/developer"
+              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-1.5"
+            >
+              <span>Launch Full Content Manager</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {candidates.map((c) => (
-              <div key={c.bookingRef} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">{c.playerName}</span>
-                    <span className="text-[10px] font-mono text-slate-400">({c.bookingRef})</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      c.status === 'enrolled'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : c.status === 'confirmed'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {c.status || 'Pending Trial'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Parent: {c.parentName} · Phone: {c.phone} · Campus: {c.preferredCampus} · Pos: {c.position} · Program: {c.program}
-                  </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+            {ACADEMY_CAMPUSES.map((c) => (
+              <div
+                key={c.id}
+                className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between"
+              >
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">{c.name}</span>
+                  <span className="text-[11px] text-slate-500">{c.trainingDays}</span>
+                  <span className="text-[10px] font-mono text-amber-800 block mt-0.5">
+                    {c.timings}
+                  </span>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleAdminStatusChange(c.bookingRef, 'enrolled')}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Approve & Enroll</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleAdminStatusChange(c.bookingRef, 'confirmed')}
-                    className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold text-xs cursor-pointer transition-colors"
-                  >
-                    Confirm Trial
-                  </button>
-
-                  <button
-                    onClick={() => handleAdminStatusChange(c.bookingRef, 'waitlist')}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs cursor-pointer transition-colors"
-                  >
-                    Waitlist
-                  </button>
-
-                  <button
-                    onClick={() => handleAdminStatusChange(c.bookingRef, 'rejected')}
-                    className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                    title="Reject Application"
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </button>
-                </div>
+                <Building2 className="w-5 h-5 text-slate-400" />
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

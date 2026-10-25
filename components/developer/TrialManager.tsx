@@ -9,7 +9,9 @@ import {
   deleteRegistration,
   submitRegistration,
   AcademyRegistrationData,
-  checkSupabaseHealth,
+  APPLICATION_STATUS_META,
+  normalizeApplicationStatus,
+  ApplicationStatus,
 } from '@/lib/supabaseClient';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import {
@@ -19,36 +21,43 @@ import {
   MapPin,
   Users,
   Search,
-  Filter,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
   Plus,
   Trash2,
   Edit3,
   Download,
-  Printer,
   RefreshCw,
-  ExternalLink,
-  ShieldAlert,
   Award,
-  ChevronDown,
   X,
   Save,
-  Check,
-  Sparkles,
   Phone,
   Mail,
+  Send,
+  FileText,
+  Eye,
+  Trophy,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface TrialManagerProps {
   onNotify: (msg: { type: 'success' | 'error'; text: string }) => void;
 }
 
+const OFFICIAL_STATUS_KEYS: (keyof typeof APPLICATION_STATUS_META)[] = [
+  'pending_review',
+  'under_review',
+  'additional_info_required',
+  'trial_scheduled',
+  'waitlisted',
+  'approved',
+  'rejected',
+  'completed',
+];
+
 export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   const [activeSubTab, setActiveSubTab] = useState<'candidates' | 'slots'>('candidates');
+  const [pathwayFilter, setPathwayFilter] = useState<'all' | 'admission' | 'trial'>('all');
 
-  // Candidate Registrations State
+  // Applications State
   const [candidates, setCandidates] = useState<AcademyRegistrationData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
@@ -56,31 +65,51 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   const [campusFilter, setCampusFilter] = useState<string>('all');
 
   // Trial Slots State
-  const [trialSlots, setTrialSlots] = useState<TrialSlot[]>(() => AcademyDataManager.getTrialSlots());
+  const [trialSlots, setTrialSlots] = useState<TrialSlot[]>(() =>
+    AcademyDataManager.getTrialSlots()
+  );
   const [editingSlot, setEditingSlot] = useState<TrialSlot | null>(null);
-  const [isAddSlotOpen, setIsAddSlotOpen] = useState<boolean>(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'candidate' | 'slot'; id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'candidate' | 'slot';
+    id: string;
+    name: string;
+  } | null>(null);
 
-  // Candidate Scheduling / Evaluation Modal
-  const [editingCandidate, setEditingCandidate] = useState<AcademyRegistrationData | null>(null);
-  const [candidateNotes, setCandidateNotes] = useState<string>('');
-  const [candidateTrialDate, setCandidateTrialDate] = useState<string>('May 16, 2026');
-  const [candidateEvaluator, setCandidateEvaluator] = useState<string>('Coach Bapi Roy (AFC ‘B’)');
+  // Application Review, Remarks, Trial Scheduling & Applicant Notification Modal
+  const [editingCandidate, setEditingCandidate] = useState<AcademyRegistrationData | null>(
+    null
+  );
+  const [adminRemarks, setAdminRemarks] = useState<string>('');
+  const [scheduleDate, setScheduleDate] = useState<string>('May 16, 2026');
+  const [scheduleTime, setScheduleTime] = useState<string>('07:30 AM – 09:30 AM');
+  const [scheduleVenue, setScheduleVenue] = useState<string>(
+    'Gayeshpur Central Ground, Nadia'
+  );
+  const [scheduleEvaluator, setScheduleEvaluator] = useState<string>(
+    'Coach Bapi Roy (AFC ‘B’)'
+  );
+  const [reportingInstructions, setReportingInstructions] = useState<string>(
+    'Report 30 minutes prior in training kit with football boots, shin guards, water bottle, and original age proof.'
+  );
+  const [notificationChannel, setNotificationChannel] = useState<'email' | 'sms'>('sms');
+  const [sendApplicantNotification, setSendApplicantNotification] = useState<boolean>(true);
 
-  // Add Manual Candidate Modal
+  // Add Manual Application Modal
   const [isAddCandidateOpen, setIsAddCandidateOpen] = useState<boolean>(false);
   const [newCandidateForm, setNewCandidateForm] = useState({
+    applicationType: 'admission' as 'admission' | 'trial',
     playerName: '',
     parentName: '',
     email: '',
     phone: '',
     dob: '2012-05-10',
     gender: 'male',
+    location: '',
     preferredCampus: 'gayeshpur',
     position: 'midfielder',
-    experienceLevel: 'intermediate',
+    experienceLevel: 'school-team',
+    currentClubOrAcademy: '',
     program: 'development',
-    status: 'pending_trial',
     message: '',
   });
 
@@ -90,7 +119,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
       const data = await getRegistrations();
       setCandidates(data);
     } catch (e) {
-      console.warn('Failed to load candidate registrations:', e);
+      console.warn('Failed to load applications:', e);
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +132,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
         if (isMounted) setCandidates(data);
       })
       .catch((e) => {
-        console.warn('Failed to load candidate registrations:', e);
+        console.warn('Failed to load applications:', e);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -117,39 +146,58 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
     setTrialSlots(AcademyDataManager.getTrialSlots());
   };
 
-  const [operatorRole, setOperatorRole] = useState<'admin' | 'coach' | 'staff1' | 'staff2'>('admin');
-  const isStaffRole = operatorRole === 'staff1' || operatorRole === 'staff2';
+  const openApplicationReviewModal = (c: AcademyRegistrationData) => {
+    setEditingCandidate({
+      ...c,
+      status: normalizeApplicationStatus(c.status),
+    });
+    setAdminRemarks(c.adminRemarks || '');
+    setScheduleDate(
+      c.scheduledTrialDetails?.date || c.preferredTrialDate || 'May 16, 2026'
+    );
+    setScheduleTime(c.scheduledTrialDetails?.time || '07:30 AM – 09:30 AM');
+    setScheduleVenue(
+      c.scheduledTrialDetails?.venue ||
+        c.preferredVenue ||
+        'Gayeshpur Central Ground, Nadia'
+    );
+    setScheduleEvaluator(
+      c.scheduledTrialDetails?.evaluator || 'Coach Bapi Roy (AFC ‘B’)'
+    );
+    setReportingInstructions(
+      c.scheduledTrialDetails?.reportingInstructions ||
+        'Report 30 minutes prior in training kit with football boots, shin guards, water bottle, and original age proof.'
+    );
+  };
 
-  // Status update handler with Staff 1 & Staff 2 permissions enforcement
+  // Status update handler (Admin-only)
   const handleStatusChange = async (
     bookingRef: string,
-    newStatus: 'pending_trial' | 'confirmed' | 'attended' | 'enrolled' | 'waitlist' | 'rejected',
-    notes?: string
+    newStatus: ApplicationStatus,
+    existingCandidate?: AcademyRegistrationData
   ) => {
-    // Phase 7 Policy: Staff 1 & Staff 2 can only save candidates as Pending or Waitlisted
-    if (isStaffRole && !['pending_trial', 'waitlist'].includes(newStatus)) {
-      onNotify({
-        type: 'error',
-        text: `Staff Permission Restriction (${operatorRole.toUpperCase()}): Staff users may only save player profiles as Pending Trial or Waitlist. Approval and enrollment requires Admin, Coach, or Manager review.`,
-      });
-      return;
-    }
-
+    const normalized = normalizeApplicationStatus(newStatus);
     try {
-      await updateRegistrationStatus(bookingRef, newStatus, notes);
+      await updateRegistrationStatus(bookingRef, normalized, {
+        adminRemarks: existingCandidate?.adminRemarks,
+        scheduledTrialDetails: existingCandidate?.scheduledTrialDetails,
+        notificationLog: existingCandidate?.notificationLog,
+        message: existingCandidate?.message,
+      });
       setCandidates((prev) =>
-        prev.map((c) => (c.bookingRef === bookingRef ? { ...c, status: newStatus as any } : c))
+        prev.map((c) =>
+          c.bookingRef === bookingRef ? { ...c, status: normalized } : c
+        )
       );
       onNotify({
         type: 'success',
-        text: `Candidate (${bookingRef}) updated to "${newStatus.replace('_', ' ')}". Persisted to Supabase!`,
+        text: `Application (${bookingRef}) status updated to "${APPLICATION_STATUS_META[normalized].label}".`,
       });
     } catch (err: any) {
       onNotify({ type: 'error', text: err?.message || 'Failed to update status' });
     }
   };
 
-  // Delete candidate
   const handleDeleteCandidate = (bookingRef: string, name: string) => {
     setDeleteTarget({ type: 'candidate', id: bookingRef, name });
   };
@@ -162,7 +210,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
         setCandidates((prev) => prev.filter((c) => c.bookingRef !== deleteTarget.id));
         onNotify({
           type: 'success',
-          text: `Registration for ${deleteTarget.name} removed from Supabase and local storage.`,
+          text: `Application for ${deleteTarget.name} removed.`,
         });
       } else if (deleteTarget.type === 'slot') {
         AcademyDataManager.deleteTrialSlot(deleteTarget.id);
@@ -176,73 +224,116 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
     }
   };
 
-  // Save Candidate Assessment Notes & Schedule
+  // Save Application Review, Remarks, Trial Schedule & Optional Applicant Notification
   const handleSaveEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCandidate) return;
 
-    const fullNotes = `[Trial: ${candidateTrialDate} | Evaluator: ${candidateEvaluator}] ${candidateNotes}`;
-    await updateRegistrationStatus(
-      editingCandidate.bookingRef,
-      (editingCandidate.status as any) || 'confirmed',
-      fullNotes
-    );
+    const normalizedStatus = normalizeApplicationStatus(editingCandidate.status);
+    const updatedSchedule = {
+      date: scheduleDate,
+      time: scheduleTime,
+      venue: scheduleVenue,
+      reportingInstructions,
+      evaluator: scheduleEvaluator,
+    };
+
+    const existingLogs = editingCandidate.notificationLog || [];
+    const newLogs = [...existingLogs];
+
+    if (sendApplicantNotification) {
+      const statusLabel = APPLICATION_STATUS_META[normalizedStatus].label;
+      const msgSummary =
+        normalizedStatus === 'trial_scheduled'
+          ? `Trial Scheduled for ${editingCandidate.playerName} (${editingCandidate.bookingRef}) on ${scheduleDate} (${scheduleTime}) at ${scheduleVenue}. Instructions: ${reportingInstructions}`
+          : `Application ${editingCandidate.bookingRef} for ${editingCandidate.playerName} updated to "${statusLabel}". ${adminRemarks ? `Note: ${adminRemarks}` : ''}`;
+
+      newLogs.unshift({
+        id: `notif-${Date.now()}`,
+        sentAt: new Date().toISOString(),
+        channel: notificationChannel,
+        status: statusLabel,
+        message: msgSummary,
+      });
+    }
+
+    await updateRegistrationStatus(editingCandidate.bookingRef, normalizedStatus, {
+      adminRemarks,
+      scheduledTrialDetails: updatedSchedule,
+      notificationLog: newLogs,
+      message: editingCandidate.message,
+    });
+
     setCandidates((prev) =>
       prev.map((c) =>
         c.bookingRef === editingCandidate.bookingRef
-          ? { ...c, message: fullNotes, status: (editingCandidate.status as any) || 'confirmed' }
+          ? {
+              ...c,
+              status: normalizedStatus,
+              adminRemarks,
+              scheduledTrialDetails: updatedSchedule,
+              notificationLog: newLogs,
+            }
           : c
       )
     );
     setEditingCandidate(null);
     onNotify({
       type: 'success',
-      text: `Scout assessment and schedule saved for ${editingCandidate.playerName}.`,
+      text: `Application ${editingCandidate.bookingRef} updated (${APPLICATION_STATUS_META[normalizedStatus].label})${sendApplicantNotification ? ` & applicant notified via ${notificationChannel.toUpperCase()}` : ''}.`,
     });
   };
 
-  // Add Manual Candidate Submit
+  // Add Manual Application Submit
   const handleAddCandidate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCandidateForm.playerName.trim() || !newCandidateForm.phone.trim()) {
-      alert('Please provide player name and phone number.');
+      onNotify({
+        type: 'error',
+        text: 'Please provide player name and mobile phone number.',
+      });
       return;
     }
     const res = await submitRegistration({
-      playerName: newCandidateForm.playerName,
-      parentName: newCandidateForm.parentName,
-      email: newCandidateForm.email,
-      phone: newCandidateForm.phone,
+      applicationType: newCandidateForm.applicationType,
+      playerName: newCandidateForm.playerName.trim(),
+      parentName: newCandidateForm.parentName.trim() || 'Guardian on File',
+      email: newCandidateForm.email.trim(),
+      phone: newCandidateForm.phone.trim(),
       dob: newCandidateForm.dob,
       gender: newCandidateForm.gender,
-      location: '',
+      location: newCandidateForm.location.trim(),
       preferredCampus: newCandidateForm.preferredCampus,
       position: newCandidateForm.position,
       experienceLevel: newCandidateForm.experienceLevel,
+      currentClubOrAcademy: newCandidateForm.currentClubOrAcademy.trim(),
       program: newCandidateForm.program,
-      message: newCandidateForm.message,
+      minorConsentConfirmed: true,
+      message: newCandidateForm.message.trim(),
     });
 
     if (res.success) {
       await loadCandidates();
       setIsAddCandidateOpen(false);
       setNewCandidateForm({
+        applicationType: 'admission',
         playerName: '',
         parentName: '',
         email: '',
         phone: '',
         dob: '2012-05-10',
         gender: 'male',
+        location: '',
         preferredCampus: 'gayeshpur',
         position: 'midfielder',
-        experienceLevel: 'intermediate',
+        experienceLevel: 'school-team',
+        currentClubOrAcademy: '',
         program: 'development',
-        status: 'pending_trial',
         message: '',
       });
       onNotify({
         type: 'success',
-        text: `New trial candidate registered with Ref: ${res.bookingRef}!`,
+        text: `New application recorded with Reference: ${res.bookingRef} (Pending Review)!`,
       });
     }
   };
@@ -267,44 +358,71 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   // CSV Export
   const exportCandidatesCSV = () => {
     const headers = [
-      'Booking Ref',
+      'Application Ref',
+      'Pathway',
       'Player Name',
       'DOB',
+      'Age',
       'Gender',
-      'Parent Name',
-      'Phone',
+      'Parent/Guardian',
+      'Mobile',
       'Email',
-      'Campus',
+      'Address',
+      'Campus / Venue',
       'Position',
-      'Program',
+      'Experience',
+      'Current Club',
       'Status',
-      'Notes',
+      'Admin Remarks',
+      'Scheduled Trial',
     ];
-    const rows = candidates.map((c) => [
-      c.bookingRef,
-      `"${c.playerName}"`,
-      c.dob,
-      c.gender,
-      `"${c.parentName}"`,
-      c.phone,
-      c.email,
-      c.preferredCampus,
-      c.position,
-      c.program,
-      c.status || 'pending_trial',
-      `"${(c.message || '').replace(/"/g, '""')}"`,
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const rows = candidates.map((c) => {
+      const normStatus = normalizeApplicationStatus(c.status);
+      return [
+        c.bookingRef,
+        c.applicationType || 'admission',
+        `"${(c.playerName || '').replace(/"/g, '""')}"`,
+        c.dob,
+        c.age ?? '',
+        c.gender,
+        `"${(c.parentName || '').replace(/"/g, '""')}"`,
+        c.phone,
+        c.email,
+        `"${(c.location || '').replace(/"/g, '""')}"`,
+        c.preferredVenue || c.preferredCampus,
+        c.position,
+        c.experienceLevel,
+        `"${(c.currentClubOrAcademy || '').replace(/"/g, '""')}"`,
+        APPLICATION_STATUS_META[normStatus].label,
+        `"${(c.adminRemarks || '').replace(/"/g, '""')}"`,
+        `"${
+          c.scheduledTrialDetails
+            ? `${c.scheduledTrialDetails.date} ${c.scheduledTrialDetails.time} @ ${c.scheduledTrialDetails.venue}`
+            : ''
+        }"`,
+      ];
+    });
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `MADEN_FAF_Trial_Candidates_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute(
+      'download',
+      `MADEN_FAF_Admission_And_Trial_Applications_${new Date().toISOString().split('T')[0]}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Filtering candidates
+  const admissionCount = candidates.filter(
+    (c) => (c.applicationType || 'admission') === 'admission'
+  ).length;
+  const trialCount = candidates.filter((c) => c.applicationType === 'trial').length;
+
+  // Filtering applications
   const filteredCandidates = candidates.filter((c) => {
     const q = search.toLowerCase();
     const matchesSearch =
@@ -314,10 +432,15 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
       (c.phone || '').includes(q) ||
       (c.email || '').toLowerCase().includes(q);
 
-    const matchesStatus = statusFilter === 'all' || (c.status || 'pending_trial') === statusFilter;
-    const matchesCampus = campusFilter === 'all' || (c.preferredCampus || '').toLowerCase() === campusFilter.toLowerCase();
+    const normStatus = normalizeApplicationStatus(c.status);
+    const matchesStatus = statusFilter === 'all' || normStatus === statusFilter;
+    const matchesCampus =
+      campusFilter === 'all' ||
+      (c.preferredCampus || '').toLowerCase().includes(campusFilter.toLowerCase());
+    const matchesPathway =
+      pathwayFilter === 'all' || (c.applicationType || 'admission') === pathwayFilter;
 
-    return matchesSearch && matchesStatus && matchesCampus;
+    return matchesSearch && matchesStatus && matchesCampus && matchesPathway;
   });
 
   return (
@@ -331,10 +454,10 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black uppercase text-slate-900 tracking-tight">
-                Trial Management & Scouting Intake
+                Admin Admission &amp; Trial Applications Management
               </h2>
               <p className="text-xs text-slate-500">
-                Manage player scouting trials, assessment scores, intake sessions, and trial statuses across all campuses.
+                Review player admission &amp; trial applications, update workflow statuses, add internal remarks, schedule trial sessions, and notify applicants.
               </p>
             </div>
           </div>
@@ -346,18 +469,22 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
             <button
               onClick={() => setActiveSubTab('candidates')}
               className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activeSubTab === 'candidates' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeSubTab === 'candidates'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Candidates ({candidates.length})
+              Applications ({candidates.length})
             </button>
             <button
               onClick={() => setActiveSubTab('slots')}
               className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activeSubTab === 'slots' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeSubTab === 'slots'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Intake Sessions ({trialSlots.length})
+              Schedules &amp; Venues ({trialSlots.length})
             </button>
           </div>
 
@@ -366,13 +493,13 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
             className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Candidate</span>
+            <span>New Application</span>
           </button>
 
           <button
             onClick={exportCandidatesCSV}
             className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Export CSV Roster"
+            title="Export Applications CSV"
           >
             <Download className="w-3.5 h-3.5 text-amber-400" />
             <span className="hidden sm:inline">Export CSV</span>
@@ -390,13 +517,58 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
 
       {activeSubTab === 'candidates' ? (
         <div className="space-y-3">
-          {/* Search & Filter Bar */}
+          {/* Pathway Filter Tabs (All / Academy Admission / Trial Sessions) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-200 rounded-2xl p-3 shadow-xs">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPathwayFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors ${
+                  pathwayFilter === 'all'
+                    ? 'bg-slate-900 text-amber-400'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                All Applications ({candidates.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPathwayFilter('admission')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors ${
+                  pathwayFilter === 'admission'
+                    ? 'bg-slate-900 text-amber-400'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                <span>Academy Admission ({admissionCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPathwayFilter('trial')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors ${
+                  pathwayFilter === 'trial'
+                    ? 'bg-amber-500 text-slate-950'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Trial Sessions ({trialCount})</span>
+              </button>
+            </div>
+
+            <span className="text-[11px] font-mono text-slate-500">
+              Admin-Only Access · Minor Data Protected
+            </span>
+          </div>
+
+          {/* Search & Status Filter Bar */}
           <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs flex flex-col md:flex-row gap-2.5">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search candidate name, parent, phone, booking ref..."
+                placeholder="Search player name, parent/guardian, mobile, email, reference..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
@@ -409,13 +581,12 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-amber-500"
               >
-                <option value="all">All Statuses</option>
-                <option value="pending_trial">Pending Trial</option>
-                <option value="confirmed">Trial Confirmed</option>
-                <option value="attended">Attended Trial</option>
-                <option value="enrolled">Enrolled in Academy</option>
-                <option value="waitlist">Waitlist</option>
-                <option value="rejected">Not Selected</option>
+                <option value="all">All 8 Workflow Statuses</option>
+                {OFFICIAL_STATUS_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {APPLICATION_STATUS_META[key].label}
+                  </option>
+                ))}
               </select>
 
               <select
@@ -423,63 +594,80 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                 onChange={(e) => setCampusFilter(e.target.value)}
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-amber-500"
               >
-                <option value="all">All Campuses</option>
+                <option value="all">All Campuses / Venues</option>
                 <option value="gayeshpur">Gayeshpur Campus</option>
-                <option value="ichapore">Ichapore Campus</option>
+                <option value="north24parganas">North 24 Parganas / Ichapore</option>
                 <option value="krishnanagar">Krishnanagar Football School</option>
               </select>
-              {/* Staff 1 / Staff 2 Permission Mode Selector */}
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-xl text-xs">
-                <span className="text-[10px] font-bold uppercase text-amber-800 shrink-0">Operator:</span>
-                <select
-                  value={operatorRole}
-                  onChange={(e) => setOperatorRole(e.target.value as any)}
-                  className="bg-transparent font-bold text-amber-950 text-xs focus:outline-none cursor-pointer"
-                >
-                  <option value="admin">Technical Admin (Full Approvals)</option>
-                  <option value="coach">Head Coach (Full Approvals)</option>
-                  <option value="staff1">Staff 1 (Intake & Waitlist Only)</option>
-                  <option value="staff2">Staff 2 (Intake & Waitlist Only)</option>
-                </select>
-              </div>
             </div>
           </div>
 
-          {/* Candidates Table */}
+          {/* Applications Table */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-4">Booking Ref</th>
-                    <th className="py-3 px-4">Candidate & Age</th>
-                    <th className="py-3 px-4">Parent & Contact</th>
-                    <th className="py-3 px-4">Campus & Position</th>
-                    <th className="py-3 px-4">Current Status</th>
-                    <th className="py-3 px-4">Evaluation / Notes</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4">Reference &amp; Pathway</th>
+                    <th className="py-3 px-4">Player, DOB &amp; Age</th>
+                    <th className="py-3 px-4">Guardian &amp; Contact</th>
+                    <th className="py-3 px-4">Campus / Venue &amp; Position</th>
+                    <th className="py-3 px-4">Application Status</th>
+                    <th className="py-3 px-4">Internal Remarks &amp; Docs</th>
+                    <th className="py-3 px-4 text-right">Admin Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredCandidates.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-slate-400">
-                        {isLoading ? 'Querying candidate applications...' : 'No candidate trial registrations match your search.'}
+                        {isLoading
+                          ? 'Loading admission and trial applications...'
+                          : 'No admission or trial applications match your current filter.'}
                       </td>
                     </tr>
                   ) : (
                     filteredCandidates.map((c) => {
-                      const status = c.status || 'pending_trial';
+                      const normStatus = normalizeApplicationStatus(c.status);
+                      const statusMeta = APPLICATION_STATUS_META[normStatus];
+                      const isTrial = c.applicationType === 'trial';
                       return (
-                        <tr key={c.id || c.bookingRef} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                            {c.bookingRef}
+                        <tr
+                          key={c.id || c.bookingRef}
+                          className="hover:bg-slate-50/80 transition-colors"
+                        >
+                          <td className="py-3 px-4">
+                            <div className="font-mono font-bold text-slate-900">
+                              {c.bookingRef}
+                            </div>
+                            <span
+                              className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase border ${
+                                isTrial
+                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                  : 'bg-slate-900 text-amber-400 border-slate-800'
+                              }`}
+                            >
+                              {isTrial ? 'Trial Session' : 'Academy Admission'}
+                            </span>
                           </td>
 
                           <td className="py-3 px-4">
-                            <div className="font-black text-slate-900">{c.playerName}</div>
-                            <div className="text-[11px] text-slate-500">
-                              DOB: {c.dob} · <span className="capitalize">{c.gender}</span>
+                            <div className="flex items-center gap-2">
+                              {c.playerPhotoUrl && (
+                                <img
+                                  src={c.playerPhotoUrl}
+                                  alt={c.playerName}
+                                  className="w-8 h-8 rounded-full object-cover border border-amber-300 shrink-0"
+                                />
+                              )}
+                              <div>
+                                <div className="font-black text-slate-900">{c.playerName}</div>
+                                <div className="text-[11px] text-slate-500">
+                                  DOB: {c.dob}
+                                  {c.age !== undefined ? ` (${c.age} yrs)` : ''} ·{' '}
+                                  <span className="capitalize">{c.gender}</span>
+                                </div>
+                              </div>
                             </div>
                           </td>
 
@@ -490,7 +678,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                               <span>{c.phone}</span>
                             </div>
                             {c.email && (
-                              <div className="text-[10px] text-slate-500 truncate max-w-[140px] flex items-center gap-1">
+                              <div className="text-[10px] text-slate-500 truncate max-w-[150px] flex items-center gap-1">
                                 <Mail className="w-3 h-3 text-slate-400" />
                                 <span>{c.email}</span>
                               </div>
@@ -499,64 +687,86 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
 
                           <td className="py-3 px-4">
                             <div className="font-bold text-amber-800 capitalize">
-                              {c.preferredCampus}
+                              {c.preferredVenue || c.preferredCampus}
                             </div>
                             <div className="text-[10px] text-slate-500 capitalize">
-                              {c.position} · {c.program}
+                              {c.position} · {c.experienceLevel}
                             </div>
+                            {c.scheduledTrialDetails?.date && (
+                              <div className="text-[10px] font-mono text-indigo-700 mt-0.5">
+                                Scheduled: {c.scheduledTrialDetails.date}
+                              </div>
+                            )}
                           </td>
 
                           <td className="py-3 px-4">
                             <select
-                              value={status}
+                              value={normStatus}
                               onChange={(e) =>
-                                handleStatusChange(c.bookingRef, e.target.value as any, c.message)
+                                handleStatusChange(
+                                  c.bookingRef,
+                                  e.target.value as ApplicationStatus,
+                                  c
+                                )
                               }
-                              className={`text-[10px] font-bold font-mono uppercase px-2 py-1 rounded-lg border cursor-pointer outline-none ${
-                                status === 'enrolled'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : status === 'attended'
-                                  ? 'bg-sky-50 text-sky-800 border-sky-300'
-                                  : status === 'confirmed'
-                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
-                                  : status === 'rejected'
-                                  ? 'bg-rose-50 text-rose-800 border-rose-300'
-                                  : 'bg-slate-100 text-slate-700 border-slate-300'
-                              }`}
+                              className={`text-[10px] font-bold font-mono uppercase px-2.5 py-1 rounded-lg border cursor-pointer outline-none ${statusMeta.badgeClass}`}
                             >
-                              <option value="pending_trial">Pending Trial</option>
-                              <option value="confirmed">Confirmed</option>
-                              <option value="attended">Attended</option>
-                              <option value="enrolled">Enrolled</option>
-                              <option value="waitlist">Waitlist</option>
-                              <option value="rejected">Not Selected</option>
+                              {OFFICIAL_STATUS_KEYS.map((key) => (
+                                <option key={key} value={key}>
+                                  {APPLICATION_STATUS_META[key].label}
+                                </option>
+                              ))}
                             </select>
                           </td>
 
                           <td className="py-3 px-4">
-                            {c.message ? (
-                              <div className="text-[11px] text-slate-600 line-clamp-2 max-w-[200px]" title={c.message}>
+                            {c.adminRemarks ? (
+                              <div
+                                className="text-[11px] text-slate-700 font-medium line-clamp-2 max-w-[200px]"
+                                title={c.adminRemarks}
+                              >
+                                {c.adminRemarks}
+                              </div>
+                            ) : c.message ? (
+                              <div
+                                className="text-[11px] text-slate-500 line-clamp-2 max-w-[200px]"
+                                title={c.message}
+                              >
                                 {c.message}
                               </div>
                             ) : (
-                              <span className="text-[10px] text-slate-400 italic">No notes</span>
+                              <span className="text-[10px] text-slate-400 italic">
+                                No remarks yet
+                              </span>
                             )}
+                            <div className="flex items-center gap-1.5 mt-1">
+                              {c.supportingDocumentName && (
+                                <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-800 text-[9px] font-mono">
+                                  Doc: {c.supportingDocumentName}
+                                </span>
+                              )}
+                              {c.notificationLog && c.notificationLog.length > 0 && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[9px] font-mono">
+                                  Notified ({c.notificationLog.length})
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => {
-                                  setEditingCandidate(c);
-                                  setCandidateNotes(c.message || '');
-                                }}
-                                className="p-1.5 text-slate-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
-                                title="Schedule / Add Assessment"
+                                onClick={() => openApplicationReviewModal(c)}
+                                className="px-2.5 py-1.5 text-slate-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors cursor-pointer text-[11px] font-bold inline-flex items-center gap-1"
+                                title="Review Application, Schedule Trial & Notify Applicant"
                               >
-                                <Edit3 className="w-3.5 h-3.5" />
+                                <Eye className="w-3.5 h-3.5 text-amber-700" />
+                                <span>Review</span>
                               </button>
                               <button
-                                onClick={() => handleDeleteCandidate(c.bookingRef, c.playerName)}
+                                onClick={() =>
+                                  handleDeleteCandidate(c.bookingRef, c.playerName)
+                                }
                                 className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                                 title="Delete application"
                               >
@@ -585,15 +795,15 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-mono uppercase font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                      Intake Session
+                      Admission &amp; Trial Schedule
                     </span>
                     <span
                       className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full border ${
                         slot.status === 'Open'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : slot.status === 'Filling Fast'
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : 'bg-rose-50 text-rose-800 border-rose-200'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-rose-50 text-rose-800 border-rose-200'
                       }`}
                     >
                       {slot.status}
@@ -626,21 +836,26 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                   {/* Slot progress bar */}
                   <div className="mt-4 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center justify-between text-[11px] font-mono mb-1">
-                      <span className="text-slate-500">Intake Capacity</span>
+                      <span className="text-slate-500">Available Slots</span>
                       <span className="font-bold text-slate-900">
-                        {slot.slotsBooked} / {slot.slotsTotal} Slots
+                        {slot.slotsBooked} / {slot.slotsTotal} Booked
                       </span>
                     </div>
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                       <div
                         className="bg-amber-500 h-full rounded-full transition-all"
-                        style={{ width: `${Math.min(100, (slot.slotsBooked / slot.slotsTotal) * 100)}%` }}
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            (slot.slotsBooked / slot.slotsTotal) * 100
+                          )}%`,
+                        }}
                       />
                     </div>
                   </div>
 
                   <p className="text-[11px] text-slate-500 mt-2.5 italic">
-                    Requirements: {slot.requirements}
+                    Reporting Instructions: {slot.requirements}
                   </p>
                 </div>
 
@@ -650,7 +865,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                     className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Edit Session</span>
+                    <span>Edit Schedule / Slots</span>
                   </button>
                   <button
                     onClick={() => handleDeleteSlot(slot.id, slot.campusName)}
@@ -665,100 +880,288 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
         </div>
       )}
 
-      {/* Edit Evaluation & Scheduling Modal */}
+      {/* Comprehensive Application Review, Trial Scheduling & Applicant Notification Modal */}
       {editingCandidate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
-                <h3 className="text-base font-black uppercase text-slate-900 tracking-tight">
-                  Scout Evaluation & Trial Scheduling
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-900 text-amber-400 font-bold">
+                    {editingCandidate.applicationType === 'trial'
+                      ? 'Trial Session Application'
+                      : 'Academy Admission Application'}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-slate-500">
+                    {editingCandidate.bookingRef}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black uppercase text-slate-900 tracking-tight mt-1">
+                  Review Application: {editingCandidate.playerName}
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Candidate: <span className="font-bold text-slate-800">{editingCandidate.playerName}</span> ({editingCandidate.bookingRef})
-                </p>
               </div>
               <button
                 onClick={() => setEditingCandidate(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEvaluation} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                    Scheduled Trial Date
-                  </label>
-                  <input
-                    type="text"
-                    value={candidateTrialDate}
-                    onChange={(e) => setCandidateTrialDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                    Assigned Evaluator Coach
-                  </label>
-                  <input
-                    type="text"
-                    value={candidateEvaluator}
-                    onChange={(e) => setCandidateEvaluator(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                  />
-                </div>
+            {/* Submitted Player & Guardian Summary */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <span className="text-[10px] font-mono uppercase text-slate-400 block">
+                  Player Details
+                </span>
+                <strong className="text-slate-900 block">
+                  {editingCandidate.playerName} ({editingCandidate.gender})
+                </strong>
+                <span className="text-slate-600">
+                  DOB: {editingCandidate.dob}{' '}
+                  {editingCandidate.age !== undefined
+                    ? `(${editingCandidate.age} yrs)`
+                    : ''}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-mono uppercase text-slate-400 block">
+                  Parent / Guardian &amp; Contact
+                </span>
+                <strong className="text-slate-900 block">
+                  {editingCandidate.parentName}
+                </strong>
+                <span className="text-slate-600 block">{editingCandidate.phone}</span>
+                {editingCandidate.email && (
+                  <span className="text-slate-500 text-[11px] block">
+                    {editingCandidate.email}
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="text-[10px] font-mono uppercase text-slate-400 block">
+                  Position, Experience &amp; Address
+                </span>
+                <strong className="text-slate-900 capitalize block">
+                  {editingCandidate.position} ({editingCandidate.experienceLevel})
+                </strong>
+                {editingCandidate.currentClubOrAcademy && (
+                  <span className="text-slate-600 block">
+                    Club: {editingCandidate.currentClubOrAcademy}
+                  </span>
+                )}
+                {editingCandidate.location && (
+                  <span className="text-slate-500 text-[11px] block">
+                    Address: {editingCandidate.location}
+                  </span>
+                )}
               </div>
 
+              {/* Uploaded Photo & Supporting Documents */}
+              {(editingCandidate.playerPhotoUrl ||
+                editingCandidate.supportingDocumentUrl ||
+                editingCandidate.supportingDocumentName) && (
+                <div className="sm:col-span-3 pt-3 border-t border-slate-200 flex flex-wrap items-center gap-4">
+                  {editingCandidate.playerPhotoUrl && (
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={editingCandidate.playerPhotoUrl}
+                        alt={editingCandidate.playerName}
+                        className="w-12 h-12 rounded-xl object-cover border border-amber-400"
+                      />
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-900 block">
+                          Player Photograph
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {editingCandidate.playerPhotoName || 'Uploaded'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {(editingCandidate.supportingDocumentUrl ||
+                    editingCandidate.supportingDocumentName) && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200">
+                      <FileText className="w-4 h-4 text-indigo-600" />
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-900 block">
+                          Supporting Document:{' '}
+                          {editingCandidate.supportingDocumentName || 'Attached'}
+                        </span>
+                        {editingCandidate.supportingDocumentUrl && (
+                          <a
+                            href={editingCandidate.supportingDocumentUrl}
+                            download={
+                              editingCandidate.supportingDocumentName ||
+                              'applicant-document'
+                            }
+                            className="text-[10px] font-bold text-indigo-700 hover:underline"
+                          >
+                            Download / Inspect Document
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveEvaluation} className="space-y-4">
+              {/* 1. Update Application Status */}
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Candidate Trial Status
+                  1. Application Workflow Status (8 Official Statuses)
                 </label>
                 <select
-                  value={editingCandidate.status || 'pending_trial'}
+                  value={normalizeApplicationStatus(editingCandidate.status)}
                   onChange={(e) =>
-                    setEditingCandidate({ ...editingCandidate, status: e.target.value as any })
+                    setEditingCandidate({
+                      ...editingCandidate,
+                      status: e.target.value as ApplicationStatus,
+                    })
                   }
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
                 >
-                  <option value="pending_trial">Pending Trial Assessment</option>
-                  <option value="confirmed">Trial Confirmed & Scheduled</option>
-                  <option value="attended">Attended On-Pitch Session</option>
-                  <option value="enrolled">Offered Academy Enrollment</option>
-                  <option value="waitlist">Waitlist for Next Intake</option>
-                  <option value="rejected">Not Selected</option>
+                  {OFFICIAL_STATUS_KEYS.map((key) => (
+                    <option key={key} value={key}>
+                      {APPLICATION_STATUS_META[key].label} —{' '}
+                      {APPLICATION_STATUS_META[key].description}
+                    </option>
+                  ))}
                 </select>
               </div>
 
+              {/* 2. Trial Session Scheduling & Reporting Instructions */}
+              <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-3">
+                <div className="text-xs font-black uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                  <span>
+                    2. Trial Session Schedule, Venue &amp; Reporting Instructions
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
+                      Trial Date
+                    </label>
+                    <input
+                      type="text"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
+                      Trial Time
+                    </label>
+                    <input
+                      type="text"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
+                      Trial Venue / Campus Ground
+                    </label>
+                    <input
+                      type="text"
+                      value={scheduleVenue}
+                      onChange={(e) => setScheduleVenue(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
+                      Evaluator Coach
+                    </label>
+                    <input
+                      type="text"
+                      value={scheduleEvaluator}
+                      onChange={(e) => setScheduleEvaluator(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
+                      Reporting Instructions for Applicant
+                    </label>
+                    <input
+                      type="text"
+                      value={reportingInstructions}
+                      onChange={(e) => setReportingInstructions(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Internal Administrative Remarks */}
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Technical Scout & Coach Assessment Notes
+                  3. Internal Administrative Remarks &amp; Evaluation Notes
                 </label>
                 <textarea
-                  rows={4}
-                  value={candidateNotes}
-                  onChange={(e) => setCandidateNotes(e.target.value)}
-                  placeholder="Record player first-touch quality, speed, tactical awareness, and enrollment recommendation..."
+                  rows={3}
+                  value={adminRemarks}
+                  onChange={(e) => setAdminRemarks(e.target.value)}
+                  placeholder="Add internal administrative remarks, document verification notes, or coach evaluation summary..."
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
                 />
+              </div>
+
+              {/* 4. Notify Applicant */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={sendApplicantNotification}
+                    onChange={(e) => setSendApplicantNotification(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-900 block">
+                      Notify Applicant of Status &amp; Schedule Update
+                    </span>
+                    <span className="text-[11px] text-slate-600">
+                      Sends status update &amp; trial reporting instructions to{' '}
+                      {editingCandidate.phone}{' '}
+                      {editingCandidate.email ? `/ ${editingCandidate.email}` : ''}
+                    </span>
+                  </div>
+                </label>
+
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={notificationChannel}
+                    onChange={(e) =>
+                      setNotificationChannel(e.target.value as 'email' | 'sms')
+                    }
+                    className="px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300 text-xs font-bold text-emerald-950"
+                  >
+                    <option value="sms">SMS / WhatsApp</option>
+                    <option value="email">Email</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingCandidate(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Save Evaluation</span>
+                  <span>Save Status, Remarks &amp; Notify</span>
                 </button>
               </div>
             </form>
@@ -772,7 +1175,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-black uppercase text-slate-900 tracking-tight">
-                Edit Intake Session
+                Edit Admission / Trial Session Schedule
               </h3>
               <button
                 onClick={() => setEditingSlot(null)}
@@ -785,12 +1188,14 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
             <form onSubmit={handleSaveSlot} className="space-y-3.5">
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Campus Title
+                  Campus / Venue Title
                 </label>
                 <input
                   type="text"
                   value={editingSlot.campusName}
-                  onChange={(e) => setEditingSlot({ ...editingSlot, campusName: e.target.value })}
+                  onChange={(e) =>
+                    setEditingSlot({ ...editingSlot, campusName: e.target.value })
+                  }
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                 />
               </div>
@@ -803,7 +1208,9 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                   <input
                     type="text"
                     value={editingSlot.date}
-                    onChange={(e) => setEditingSlot({ ...editingSlot, date: e.target.value })}
+                    onChange={(e) =>
+                      setEditingSlot({ ...editingSlot, date: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                   />
                 </div>
@@ -814,7 +1221,9 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                   <input
                     type="text"
                     value={editingSlot.time}
-                    onChange={(e) => setEditingSlot({ ...editingSlot, time: e.target.value })}
+                    onChange={(e) =>
+                      setEditingSlot({ ...editingSlot, time: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                   />
                 </div>
@@ -827,7 +1236,9 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                   </label>
                   <select
                     value={editingSlot.status}
-                    onChange={(e) => setEditingSlot({ ...editingSlot, status: e.target.value as any })}
+                    onChange={(e) =>
+                      setEditingSlot({ ...editingSlot, status: e.target.value as any })
+                    }
                     className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                   >
                     <option value="Open">Open</option>
@@ -843,7 +1254,10 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                     type="number"
                     value={editingSlot.slotsTotal}
                     onChange={(e) =>
-                      setEditingSlot({ ...editingSlot, slotsTotal: parseInt(e.target.value) || 0 })
+                      setEditingSlot({
+                        ...editingSlot,
+                        slotsTotal: parseInt(e.target.value) || 0,
+                      })
                     }
                     className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
                   />
@@ -856,7 +1270,10 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                     type="number"
                     value={editingSlot.slotsBooked}
                     onChange={(e) =>
-                      setEditingSlot({ ...editingSlot, slotsBooked: parseInt(e.target.value) || 0 })
+                      setEditingSlot({
+                        ...editingSlot,
+                        slotsBooked: parseInt(e.target.value) || 0,
+                      })
                     }
                     className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
                   />
@@ -870,19 +1287,23 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                 <input
                   type="text"
                   value={editingSlot.evaluatorCoach}
-                  onChange={(e) => setEditingSlot({ ...editingSlot, evaluatorCoach: e.target.value })}
+                  onChange={(e) =>
+                    setEditingSlot({ ...editingSlot, evaluatorCoach: e.target.value })
+                  }
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Candidate Requirements
+                  Reporting Instructions &amp; Requirements
                 </label>
                 <textarea
                   rows={2}
                   value={editingSlot.requirements}
-                  onChange={(e) => setEditingSlot({ ...editingSlot, requirements: e.target.value })}
+                  onChange={(e) =>
+                    setEditingSlot({ ...editingSlot, requirements: e.target.value })
+                  }
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                 />
               </div>
@@ -908,13 +1329,13 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
         </div>
       )}
 
-      {/* Manual Candidate Registration Modal */}
+      {/* Manual Application Creation Modal */}
       {isAddCandidateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-black uppercase text-slate-900 tracking-tight">
-                Register Candidate for Scouting Trial
+                Record Player Admission / Trial Application
               </h3>
               <button
                 onClick={() => setIsAddCandidateOpen(false)}
@@ -925,6 +1346,25 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
             </div>
 
             <form onSubmit={handleAddCandidate} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
+                  Application Pathway
+                </label>
+                <select
+                  value={newCandidateForm.applicationType}
+                  onChange={(e) =>
+                    setNewCandidateForm({
+                      ...newCandidateForm,
+                      applicationType: e.target.value as 'admission' | 'trial',
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
+                >
+                  <option value="admission">Academy Admission Application</option>
+                  <option value="trial">Trial Session Application</option>
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
@@ -935,7 +1375,10 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                     required
                     value={newCandidateForm.playerName}
                     onChange={(e) =>
-                      setNewCandidateForm({ ...newCandidateForm, playerName: e.target.value })
+                      setNewCandidateForm({
+                        ...newCandidateForm,
+                        playerName: e.target.value,
+                      })
                     }
                     placeholder="e.g. Subham Roy"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
@@ -950,7 +1393,10 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                     required
                     value={newCandidateForm.parentName}
                     onChange={(e) =>
-                      setNewCandidateForm({ ...newCandidateForm, parentName: e.target.value })
+                      setNewCandidateForm({
+                        ...newCandidateForm,
+                        parentName: e.target.value,
+                      })
                     }
                     placeholder="e.g. Pradip Roy"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
@@ -961,7 +1407,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                    Phone Number *
+                    Mobile Number *
                   </label>
                   <input
                     type="tel"
@@ -998,13 +1444,16 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                   <select
                     value={newCandidateForm.preferredCampus}
                     onChange={(e) =>
-                      setNewCandidateForm({ ...newCandidateForm, preferredCampus: e.target.value })
+                      setNewCandidateForm({
+                        ...newCandidateForm,
+                        preferredCampus: e.target.value,
+                      })
                     }
                     className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                   >
                     <option value="gayeshpur">Gayeshpur Campus</option>
-                    <option value="ichapore">Ichapore Campus</option>
-                    <option value="krishnanagar">Krishnanagar Football School</option>
+                    <option value="north24parganas">North 24 Parganas</option>
+                    <option value="krishnanagar">Krishnanagar</option>
                   </select>
                 </div>
 
@@ -1015,7 +1464,10 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                   <select
                     value={newCandidateForm.position}
                     onChange={(e) =>
-                      setNewCandidateForm({ ...newCandidateForm, position: e.target.value })
+                      setNewCandidateForm({
+                        ...newCandidateForm,
+                        position: e.target.value,
+                      })
                     }
                     className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                   >
@@ -1043,7 +1495,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
 
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Initial Notes / Coach Instructions
+                  Initial Notes / Remarks
                 </label>
                 <textarea
                   rows={2}
@@ -1069,7 +1521,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                   className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Register Candidate</span>
+                  <span>Save Application</span>
                 </button>
               </div>
             </form>
@@ -1082,16 +1534,18 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
         isOpen={Boolean(deleteTarget)}
         title={
           deleteTarget?.type === 'candidate'
-            ? 'Delete Candidate Registration'
-            : 'Delete Intake Assessment Slot'
+            ? 'Delete Application Record'
+            : 'Delete Schedule Slot'
         }
         message={
           deleteTarget?.type === 'candidate'
-            ? 'Are you sure you want to permanently remove this candidate application? It will be removed from Supabase and local storage.'
+            ? 'Are you sure you want to permanently remove this player application? It will be removed from Supabase and local storage.'
             : 'Are you sure you want to remove this trial intake session from the schedule?'
         }
         itemName={deleteTarget?.name}
-        confirmLabel={deleteTarget?.type === 'candidate' ? 'Delete Registration' : 'Delete Slot'}
+        confirmLabel={
+          deleteTarget?.type === 'candidate' ? 'Delete Application' : 'Delete Slot'
+        }
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />

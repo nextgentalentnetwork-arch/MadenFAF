@@ -1,473 +1,468 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { PublicPageShell } from '@/components/layout/PublicPageShell';
+import React, { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import {
-  getRoleDefinition,
   UserRole,
-  isValidRole,
+  getRoleDefinition,
   canUserAccessPortal,
+  isValidRole,
+  normalizePortalRoleParam,
   getPortalPathForRole,
   UNAUTHORIZED_PORTAL_ACCESS_MESSAGE,
 } from '@/lib/rbac';
-import {
-  Lock,
-  LogOut,
-  MapPin,
-  RefreshCw,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  ArrowRight,
-} from 'lucide-react';
-import Link from 'next/link';
-import { AcademyDataManager } from '@/lib/academyDataManager';
-import { DonatorsPortalService, subscribeDonatorsPortal } from '@/lib/donatorsPortalService';
-import { useSyncExternalStore } from 'react';
-
-import { PlayerDashboard } from '@/components/portal/PlayerDashboard';
-import { ParentDashboard } from '@/components/portal/ParentDashboard';
-import { CoachDashboard } from '@/components/portal/CoachDashboard';
-import { ManagerDashboard } from '@/components/portal/ManagerDashboard';
-import { Staff1Dashboard } from '@/components/portal/Staff1Dashboard';
-import { Staff2Dashboard } from '@/components/portal/Staff2Dashboard';
+import { MadenLogo } from '@/components/ui/MadenLogo';
 import { AdminDashboard } from '@/components/portal/AdminDashboard';
-import { PendingDashboard } from '@/components/portal/PendingDashboard';
 import { MemberDashboard } from '@/components/membership/MemberDashboard';
+import {
+  ArrowLeft,
+  LogOut,
+  ShieldCheck,
+  ShieldAlert,
+  Lock,
+  Sparkles,
+  CheckCircle2,
+  UserCheck,
+  HeartHandshake,
+  ArrowRight,
+  Code2,
+} from 'lucide-react';
 
-export interface PortalPageProps {
-  forcedRoleProp?: string;
-}
-
-export default function PortalPage({ forcedRoleProp }: PortalPageProps = {}) {
+function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
-    user,
     profile,
     isLoading,
+    login,
+    logout,
+    revalidateSession,
     accessDeniedReason,
     clearAccessDenied,
-    revalidateSession,
-    logout,
   } = useAuth();
 
-  const [urlRequestedRole, setUrlRequestedRole] = useState<string | null>(() => {
-    if (forcedRoleProp) return forcedRoleProp.toLowerCase().trim();
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const r = params.get('role');
-      return r ? r.toLowerCase().trim() : null;
+  const rawRoleParam = searchParams.get('role') || forcedRoleProp || null;
+  const normalizedRoleParam = normalizePortalRoleParam(rawRoleParam);
+  const requestedRoleParam: string | null = normalizedRoleParam || rawRoleParam;
+
+  const [serverCheckError, setServerCheckError] = useState<string | null>(null);
+  const [switchingAccountError, setSwitchingAccountError] = useState<string | null>(null);
+
+  const profileEmail = profile?.email || null;
+  const authoritativeRole: UserRole | null = profile?.role || null;
+  const authorizedRolesList: UserRole[] =
+    profile?.roles && profile.roles.length > 0 && profile.approvedByAdmin
+      ? profile.roles
+      : authoritativeRole
+        ? [authoritativeRole]
+        : [];
+
+  // Revalidate session with server whenever profile identity or URL role parameter changes
+  useEffect(() => {
+    let active = true;
+    if (!profileEmail || !authoritativeRole) return;
+
+    const targetToCheck: UserRole =
+      requestedRoleParam && isValidRole(requestedRoleParam)
+        ? requestedRoleParam
+        : authoritativeRole;
+
+    // If URL specifies an obsolete role name (e.g., player, coach), skip async check (handled by isRequestedRoleInvalid)
+    if (requestedRoleParam && !isValidRole(requestedRoleParam)) {
+      return;
     }
-    return null;
-  });
-  const [activeAuthorizedRole, setActiveAuthorizedRole] = useState<UserRole | null>(null);
-  const [serverDeniedMessage, setServerDeniedMessage] = useState<string | null>(null);
 
-  const donatorsTick = useSyncExternalStore(
-    subscribeDonatorsPortal,
-    () => DonatorsPortalService.getSnapshotTick(),
-    () => 'server'
-  );
-  const memberPortalConfig = React.useMemo(
-    () => DonatorsPortalService.getPaymentSettings()?.portalModuleConfig,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [donatorsTick]
-  );
+    // If the user is requesting the Member portal and has a valid member/admin role, ensure any stale access denied banner is cleared immediately
+    if (targetToCheck === 'member' && (authoritativeRole === 'member' || authoritativeRole === 'admin')) {
+      clearAccessDenied();
+    }
 
-  const effectiveRequestedRole = forcedRoleProp
-    ? forcedRoleProp.toLowerCase().trim()
-    : urlRequestedRole;
-
-  // Listen for browser popstate URL changes
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const readUrlRole = () => {
-      const params = new URLSearchParams(window.location.search);
-      const r = params.get('role');
-      setUrlRequestedRole(r ? r.toLowerCase().trim() : null);
-    };
-
-    window.addEventListener('popstate', readUrlRole);
-    return () => window.removeEventListener('popstate', readUrlRole);
-  }, []);
-
-  // Revalidate session & role authorization with server whenever portal opens or URL role changes
-  useEffect(() => {
-    if (!profile) return;
-    let isMounted = true;
-
-    const targetRoleToValidate: UserRole | null =
-      effectiveRequestedRole && isValidRole(effectiveRequestedRole)
-        ? effectiveRequestedRole
-        : profile.role;
-
-    revalidateSession(targetRoleToValidate).then((res) => {
-      if (!isMounted) return;
+    revalidateSession(targetToCheck).then((res) => {
+      if (!active) return;
       if (!res.authorized) {
-        setServerDeniedMessage(res.error || UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
+        setServerCheckError(res.error || UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
       } else {
-        setServerDeniedMessage(null);
+        setServerCheckError(null);
       }
     });
 
     return () => {
-      isMounted = false;
+      active = false;
     };
-  }, [profile, effectiveRequestedRole, revalidateSession]);
+  }, [profileEmail, authoritativeRole, requestedRoleParam, revalidateSession, clearAccessDenied]);
 
-  // 1. Loading State - prevent UI flash
+  // Determine whether the current URL requested an unauthorized or non-existent role
+  const isRequestedRoleInvalid = Boolean(
+    requestedRoleParam && !isValidRole(requestedRoleParam)
+  );
+  const isUnauthorizedRoleRequest = Boolean(
+    profile &&
+      (isRequestedRoleInvalid ||
+        (requestedRoleParam &&
+          isValidRole(requestedRoleParam) &&
+          !canUserAccessPortal(profile.role, requestedRoleParam, authorizedRolesList)))
+  );
+
+  // Active portal role is strictly the user's verified role (or requested valid role if authorized)
+  const activeRole: UserRole =
+    profile &&
+    requestedRoleParam &&
+    isValidRole(requestedRoleParam) &&
+    canUserAccessPortal(profile.role, requestedRoleParam, authorizedRolesList)
+      ? requestedRoleParam
+      : profile?.role || 'member';
+
+  const currentRoleDef = getRoleDefinition(activeRole);
+  const effectiveDeniedMessage = isUnauthorizedRoleRequest
+    ? accessDeniedReason || serverCheckError || UNAUTHORIZED_PORTAL_ACCESS_MESSAGE
+    : null;
+
+  const handlePortalSwitchAttempt = async (targetRole: UserRole) => {
+    setSwitchingAccountError(null);
+    clearAccessDenied();
+    setServerCheckError(null);
+
+    if (!profile) {
+      const emailMap: Record<UserRole, string> = {
+        member: 'member@madenfaf.com',
+        admin: 'admin@madenfaf.com',
+      };
+      const res = await login(emailMap[targetRole], 'maden2026', targetRole);
+      if (res.success && res.role) {
+        router.replace(getPortalPathForRole(res.role));
+      } else {
+        setSwitchingAccountError(res.error || UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
+      }
+      return;
+    }
+
+    // Logged-in user attempting to switch to another portal tab:
+    const allowed = canUserAccessPortal(profile.role, targetRole, authorizedRolesList);
+    if (!allowed) {
+      try {
+        await fetch('/api/auth/rbac', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'selfModifyRoleAttempt',
+            email: profile.email,
+            attemptedRole: targetRole,
+          }),
+        });
+      } catch {
+        // Non-blocking audit
+      }
+      setServerCheckError(UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
+      router.replace(`/portal?role=${targetRole}`);
+      return;
+    }
+
+    router.replace(getPortalPathForRole(targetRole));
+  };
+
   if (isLoading) {
     return (
-      <PublicPageShell
-        title="Member Digital Portal"
-        subtitle="Verifying role authorizations and academy credentials..."
-        badge="Secure Access"
-        breadcrumbs={[{ label: 'Digital Portal' }]}
-        accessLevel="public"
-        showPreFooterCta={false}
-      >
-        <div className="py-24 max-w-md mx-auto text-center space-y-4 px-4">
-          <div className="w-14 h-14 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600">
-            <RefreshCw className="w-6 h-6 animate-spin text-amber-600" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-900">
-              Verifying Academy Credentials...
-            </h3>
-            <p className="text-xs text-slate-500">
-              Checking assigned role permissions against central database records.
-            </p>
-          </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-mono uppercase tracking-wider text-slate-500">
+            Verifying Role-Based Access Permissions...
+          </p>
         </div>
-      </PublicPageShell>
+      </div>
     );
   }
-
-  // 2. Unauthenticated State - Hide all dashboards, require Login
-  if (!user || !profile) {
-    const loginHref =
-      effectiveRequestedRole && isValidRole(effectiveRequestedRole)
-        ? `/login?role=${effectiveRequestedRole}`
-        : '/login';
-
-    return (
-      <PublicPageShell
-        title="Member Digital Portal & Donators Portal"
-        subtitle="Private authenticated platform for Foundation Members, Donors, Athletes, Guardians, Coaches, and Staff."
-        badge="Protected Area"
-        breadcrumbs={[{ label: 'Digital Portal' }]}
-        accessLevel="public"
-        showPreFooterCta={false}
-      >
-        <div className="max-w-md mx-auto my-16 p-8 bg-white border border-slate-200 rounded-3xl text-center space-y-5 shadow-xl">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 shadow-inner">
-            <Lock className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-1.5">
-            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
-              Sign In Required
-            </h2>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              The MADEN FAF Donators Portal and role-based academy dashboards are strictly protected. Please sign in with your registered account role credentials to continue.
-            </p>
-          </div>
-
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href={loginHref}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-amber-200 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>Sign In / Register Account</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </PublicPageShell>
-    );
-  }
-
-  // 3. Evaluate Strict Bidirectional Portal Authorization
-  const authorizedRolesList: UserRole[] =
-    Array.isArray(profile.roles) && profile.roles.length > 0 && profile.approvedByAdmin
-      ? profile.roles
-      : [profile.role];
-
-  const targetPortalRole: UserRole =
-    effectiveRequestedRole && isValidRole(effectiveRequestedRole)
-      ? effectiveRequestedRole
-      : activeAuthorizedRole && authorizedRolesList.includes(activeAuthorizedRole)
-      ? activeAuthorizedRole
-      : profile.role;
-
-  const isTargetAuthorized =
-    (!effectiveRequestedRole || isValidRole(effectiveRequestedRole)) &&
-    canUserAccessPortal(profile.role, targetPortalRole, authorizedRolesList) &&
-    !accessDeniedReason &&
-    !serverDeniedMessage;
-
-  const assignedRoleDef = getRoleDefinition(profile.role);
-
-  // 4. UNAUTHORIZED PORTAL ATTEMPT OR STORAGE TAMPER DETECTED -> DENY ACCESS
-  if (!isTargetAuthorized) {
-    const attemptedLabel =
-      effectiveRequestedRole && isValidRole(effectiveRequestedRole)
-        ? getRoleDefinition(effectiveRequestedRole).portalTitle
-        : effectiveRequestedRole
-        ? `"${effectiveRequestedRole}" Portal`
-        : 'Restricted Portal';
-
-    return (
-      <PublicPageShell
-        title="Access Denied — Role Separation Enforced"
-        subtitle="Strict bidirectional Role-Based Access Control (RBAC) policy prevented access to this portal."
-        badge="RBAC Restricted"
-        breadcrumbs={[
-          { label: 'Digital Portal', href: getPortalPathForRole(profile.role) },
-          { label: 'Access Denied' },
-        ]}
-        accessLevel="public"
-        showPreFooterCta={false}
-      >
-        <div className="max-w-xl mx-auto my-14 p-8 bg-white border-2 border-rose-300 rounded-3xl text-center space-y-6 shadow-xl">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700">
-            <ShieldAlert className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-mono font-bold uppercase">
-              <span>HTTP 403 · Unauthorized Role Portal</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">
-              Portal Access Denied
-            </h2>
-            <p
-              role="alert"
-              className="text-sm font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-2xl p-4 leading-relaxed"
-            >
-              {UNAUTHORIZED_PORTAL_ACCESS_MESSAGE}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1.5 text-left">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-500">Signed-In Account:</span>
-              <span className="font-mono font-bold text-slate-900">{profile.email}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-500">Registered Account Role:</span>
-              <span className="font-mono font-bold uppercase text-amber-800">
-                {assignedRoleDef.label} ({profile.role})
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-500">Attempted Target:</span>
-              <span className="font-mono font-bold text-rose-700">{attemptedLabel}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                clearAccessDenied();
-                setServerDeniedMessage(null);
-                setUrlRequestedRole(profile.role);
-                setActiveAuthorizedRole(profile.role);
-                router.push(getPortalPathForRole(profile.role));
-              }}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Return to Authorized {assignedRoleDef.badge} Portal</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={async () => {
-                clearAccessDenied();
-                setServerDeniedMessage(null);
-                await logout();
-                router.push('/login');
-              }}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sign Out &amp; Use Another Account</span>
-            </button>
-          </div>
-        </div>
-      </PublicPageShell>
-    );
-  }
-
-  // 5. User is Authenticated AND Authorized for `targetPortalRole`
-  const effectiveRole: UserRole = targetPortalRole;
-  const roleDef = getRoleDefinition(effectiveRole);
-  const isMasterDev =
-    profile.role === 'admin' &&
-    (profile.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' ||
-      AcademyDataManager.isDeveloperAuthenticated());
 
   return (
-    <PublicPageShell
-      title={
-        effectiveRole === 'member'
-          ? memberPortalConfig?.portalHeadline || roleDef.portalTitle
-          : roleDef.portalTitle
-      }
-      subtitle={
-        effectiveRole === 'member'
-          ? memberPortalConfig?.portalSubheadline || roleDef.portalSubtitle
-          : roleDef.portalSubtitle
-      }
-      badge={roleDef.badge}
-      breadcrumbs={[{ label: 'Digital Portal', href: getPortalPathForRole(effectiveRole) }, { label: roleDef.label }]}
-      accessLevel="public"
-      showPreFooterCta={false}
-      ctaText={
-        effectiveRole === 'member'
-          ? memberPortalConfig?.primaryCtaLabel || 'Visit Our Academy'
-          : undefined
-      }
-      secondaryCtaText={
-        effectiveRole === 'member'
-          ? memberPortalConfig?.secondaryCtaLabel || 'See Your Digital Profile'
-          : undefined
-      }
-      secondaryCtaAction={
-        effectiveRole === 'member'
-          ? () => {
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('maden-open-member-profile'));
-              }
-            }
-          : undefined
-      }
-    >
-      <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        {/* User Identity & Strict Role Separation Bar */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 rounded-2xl bg-slate-900 text-amber-400 border border-slate-800 flex items-center justify-center font-black text-xl overflow-hidden shrink-0 shadow-md">
-              {profile.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profile.avatarUrl}
-                  alt={profile.fullName}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                profile.fullName.charAt(0) || 'U'
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
-                  {profile.fullName}
-                </h2>
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase border ${roleDef.badgeColor}`}
-                >
-                  {roleDef.badge}
-                </span>
-                <span className="text-[11px] text-slate-500 font-medium">
-                  ({roleDef.label})
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-mono font-bold uppercase">
-                  Role Verified
-                </span>
-              </div>
-              <div className="text-xs text-slate-500 flex items-center gap-2 mt-1 flex-wrap">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                <span>{profile.campus || 'Gayeshpur Flagship Campus'}</span>
-                <span>•</span>
-                <span className="font-mono text-slate-600">{profile.email}</span>
-              </div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+      {/* Top RBAC Command Header */}
+      <div className="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
+              <span>Website Home</span>
+            </Link>
+            <div className="hidden sm:block">
+              <MadenLogo size="sm" variant="horizontal" lightText={true} />
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Multi-role switcher ONLY rendered if an Administrator has explicitly authorized additional roles */}
-            {authorizedRolesList.length > 1 && (
-              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
-                {authorizedRolesList.map((authRole) => {
-                  const def = getRoleDefinition(authRole);
-                  const isCurrent = effectiveRole === authRole;
-                  return (
-                    <button
-                      key={authRole}
-                      type="button"
-                      onClick={() => {
-                        setActiveAuthorizedRole(authRole);
-                        setUrlRequestedRole(authRole);
-                        router.push(getPortalPathForRole(authRole));
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                        isCurrent
-                          ? 'bg-white text-slate-900 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {def.navLabel}
-                    </button>
-                  );
-                })}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {profile ? (
+              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-xs font-bold text-white truncate max-w-[160px]">
+                  {profile.fullName}
+                </span>
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black">
+                  {profile.role.toUpperCase()}
+                </span>
               </div>
+            ) : (
+              <Link
+                href="/login"
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-colors"
+              >
+                Sign In / Register
+              </Link>
             )}
 
-            <button
-              onClick={async () => {
-                await logout();
-                router.push('/login');
-              }}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
-            </button>
-
-            {isMasterDev && (
+            {profile?.role === 'admin' && (
               <Link
                 href="/developer"
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
               >
-                <Shield className="w-3.5 h-3.5 text-slate-950" />
-                <span>Backend Command Center</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <Code2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Backend Console</span>
               </Link>
+            )}
+
+            {profile && (
+              <button
+                onClick={async () => {
+                  await logout();
+                  router.push('/login');
+                }}
+                className="p-2 rounded-xl bg-slate-900 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-800 transition-colors cursor-pointer"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             )}
           </div>
         </div>
 
-        {/* 6. Strictly render ONLY the verified, authorized role dashboard */}
-        {effectiveRole === 'member' ? (
-          <MemberDashboard profile={profile} />
-        ) : effectiveRole === 'pending' || profile.status === 'pending' ? (
-          <PendingDashboard profile={profile} />
-        ) : effectiveRole === 'player' ? (
-          <PlayerDashboard profile={profile} />
-        ) : effectiveRole === 'parent' ? (
-          <ParentDashboard profile={profile} />
-        ) : effectiveRole === 'coach' ? (
-          <CoachDashboard profile={profile} />
-        ) : effectiveRole === 'manager' ? (
-          <ManagerDashboard profile={profile} />
-        ) : effectiveRole === 'staff1' ? (
-          <Staff1Dashboard profile={profile} />
-        ) : effectiveRole === 'staff2' ? (
-          <Staff2Dashboard profile={profile} />
-        ) : effectiveRole === 'admin' ? (
-          <AdminDashboard profile={profile} />
+        {/* Two-Role Portal Bar (Strictly Member & Admin Only) */}
+        <div className="bg-slate-900/90 border-t border-slate-800/80">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-amber-400 shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>
+                {profile
+                  ? `Authorized Role: ${profile.role.toUpperCase()} (${
+                      profile.role === 'admin'
+                        ? 'Admin Backend Management'
+                        : 'Member Donation & Support Portal'
+                    })`
+                  : 'Select Portal View (Member or Admin)'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {(['member', 'admin'] as UserRole[]).map((r) => {
+                const isSelected =
+                  (requestedRoleParam === r && isUnauthorizedRoleRequest) ||
+                  (!isUnauthorizedRoleRequest && activeRole === r);
+                const isAuthorizedForUser = profile
+                  ? canUserAccessPortal(profile.role, r, authorizedRolesList)
+                  : true;
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => handlePortalSwitchAttempt(r)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? isAuthorizedForUser
+                          ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
+                          : 'bg-rose-600 text-white shadow-xs font-black'
+                        : isAuthorizedForUser
+                          ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'
+                          : 'bg-slate-950/70 text-slate-500 border border-slate-800 hover:border-rose-800 hover:text-rose-300'
+                    }`}
+                  >
+                    {!isAuthorizedForUser && <Lock className="w-3 h-3 text-rose-400" />}
+                    <span>
+                      {r === 'member'
+                        ? 'Member — Donation & Support'
+                        : 'Admin — Backend Management'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Portal Body */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+        {switchingAccountError && (
+          <div
+            role="alert"
+            className="p-4 rounded-2xl bg-rose-50 border border-rose-300 text-rose-900 text-xs font-bold flex items-center gap-2.5"
+          >
+            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{switchingAccountError}</span>
+          </div>
+        )}
+
+        {/* Unauthenticated Prompt */}
+        {!profile ? (
+          <div className="bg-white border-2 border-slate-200 rounded-3xl p-8 text-center space-y-5 shadow-lg max-w-2xl mx-auto my-8">
+            <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700">
+              <Lock className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 text-amber-400 text-[10px] font-mono font-bold uppercase">
+                Authentication Required
+              </span>
+              <h1 className="text-xl sm:text-2xl font-black uppercase text-slate-900">
+                Sign In to Access Your Authorized Portal
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+                MADEN FAF enforces strict role-based access control across its two account roles: <strong>Member (Donation &amp; Support Portal)</strong> and <strong>Admin (Backend Management)</strong>.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <Link
+                href="/login"
+                className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider inline-flex items-center gap-2 shadow-sm"
+              >
+                <span>Go to Sign In / Register</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => handlePortalSwitchAttempt('member')}
+                className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider cursor-pointer"
+              >
+                Demo Member Sign-In
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePortalSwitchAttempt('admin')}
+                className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-xs uppercase tracking-wider cursor-pointer"
+              >
+                Demo Admin Sign-In
+              </button>
+            </div>
+          </div>
+        ) : effectiveDeniedMessage ? (
+          /* Strict Unauthorized Cross-Portal Access Denied Banner */
+          <div className="bg-white border-2 border-rose-300 rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-xl max-w-2xl mx-auto my-6">
+            <div className="w-16 h-16 mx-auto rounded-3xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-900 text-[10px] font-mono font-bold uppercase border border-rose-300">
+                Strict Role Separation Enforced
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black uppercase text-slate-900">
+                Unauthorized Portal Access Blocked
+              </h2>
+              <p
+                role="alert"
+                className="text-sm font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-2xl p-4 max-w-xl mx-auto"
+              >
+                {UNAUTHORIZED_PORTAL_ACCESS_MESSAGE}
+              </p>
+              <p className="text-xs text-slate-600 max-w-lg mx-auto pt-1">
+                Your account (<strong>{profile.email}</strong>) is registered under the{' '}
+                <strong className="uppercase text-slate-900">{profile.role}</strong> role and is only authorized to access the{' '}
+                <strong>{getRoleDefinition(profile.role).portalTitle}</strong>.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  clearAccessDenied();
+                  setServerCheckError(null);
+                  router.replace(getPortalPathForRole(profile.role));
+                }}
+                className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider inline-flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                <span>Return to My {profile.role.toUpperCase()} Portal</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await logout();
+                  router.push('/login');
+                }}
+                className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5 text-amber-400" />
+                <span>Sign Out &amp; Switch Account</span>
+              </button>
+            </div>
+          </div>
         ) : (
-          <PendingDashboard profile={profile} />
+          <>
+            {/* Role Identity Banner (Only shown for Admin; MemberDashboard renders its own complete Donators Portal header) */}
+            {activeRole === 'admin' && (
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full border ${currentRoleDef.badgeColor}`}
+                    >
+                      {currentRoleDef.badge} ROLE VERIFIED
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      {currentRoleDef.label}
+                    </span>
+                  </div>
+                  <h1 className="text-xl sm:text-2xl font-black uppercase text-slate-900 tracking-tight">
+                    {currentRoleDef.portalTitle}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl">
+                    {currentRoleDef.portalSubtitle}
+                  </p>
+                </div>
+
+                {/* Permission Matrix Pills */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 bg-emerald-50 border-emerald-200 text-emerald-800">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Admissions &amp; Trials: Authorized</span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 bg-emerald-50 border-emerald-200 text-emerald-800">
+                    <HeartHandshake className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Donations &amp; QR: Authorized</span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 bg-emerald-50 border-emerald-200 text-emerald-800">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Website CMS: Authorized</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Role Component Renderer: Strictly Member or Admin */}
+            {activeRole === 'member' && <MemberDashboard profile={profile || undefined} />}
+            {activeRole === 'admin' && <AdminDashboard />}
+          </>
         )}
       </div>
-    </PublicPageShell>
+    </div>
+  );
+}
+
+export default function PortalPage({
+  forcedRoleProp,
+}: {
+  forcedRoleProp?: string;
+} = {}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+          <div className="text-xs font-mono uppercase tracking-wider text-slate-500">
+            Loading Portal...
+          </div>
+        </div>
+      }
+    >
+      <PortalContent forcedRoleProp={forcedRoleProp} />
+    </Suspense>
   );
 }

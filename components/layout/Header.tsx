@@ -513,21 +513,31 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
               </div>
             ) : (
               <>
-                <Link
-                  href="/join"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-sm shadow-amber-200 min-h-[46px] flex items-center justify-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4 text-slate-950" />
-                  <span>{headerConfig.ctaButtonText || 'Book a Trial / Join MADEN FAF'}</span>
-                </Link>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/join?type=admission"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-3 px-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] uppercase tracking-wider shadow-sm shadow-amber-200 min-h-[44px] flex items-center justify-center gap-1.5 text-center"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+                    <span>Apply Admission</span>
+                  </Link>
+                  <Link
+                    href="/join?type=trial"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-3 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] uppercase tracking-wider shadow-sm min-h-[44px] flex items-center justify-center gap-1.5 text-center"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-white shrink-0" />
+                    <span>Apply for Trial</span>
+                  </Link>
+                </div>
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
                   className="w-full py-3 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 min-h-[44px] shadow-xs"
                 >
                   <User className="w-4 h-4 text-slate-500" />
-                  <span>Sign In</span>
+                  <span>Login / Register (Member & Admin)</span>
                 </Link>
               </>
             )}
