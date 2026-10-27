@@ -14,6 +14,7 @@ import {
   ApplicationStatus,
 } from '@/lib/supabaseClient';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { PlayerProfileDetailModal } from '@/components/portal/PlayerProfileDetailModal';
 import {
   UserCheck,
   Calendar,
@@ -36,6 +37,7 @@ import {
   Eye,
   Trophy,
   CheckCircle2,
+  Ticket,
 } from 'lucide-react';
 
 interface TrialManagerProps {
@@ -79,6 +81,9 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   const [editingCandidate, setEditingCandidate] = useState<AcademyRegistrationData | null>(
     null
   );
+  // Full Player Profile Dossier & Official Trial Pass Modal
+  const [selectedPlayerForModal, setSelectedPlayerForModal] =
+    useState<AcademyRegistrationData | null>(null);
   const [adminRemarks, setAdminRemarks] = useState<string>('');
   const [scheduleDate, setScheduleDate] = useState<string>('May 16, 2026');
   const [scheduleTime, setScheduleTime] = useState<string>('07:30 AM – 09:30 AM');
@@ -654,20 +659,36 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               {c.playerPhotoUrl && (
-                                <img
-                                  src={c.playerPhotoUrl}
-                                  alt={c.playerName}
-                                  className="w-8 h-8 rounded-full object-cover border border-amber-300 shrink-0"
-                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPlayerForModal(c)}
+                                  className="cursor-pointer focus:outline-none"
+                                  title="View full player dossier and official trial pass"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={c.playerPhotoUrl}
+                                    alt={c.playerName}
+                                    className="w-8 h-8 rounded-full object-cover border border-amber-300 shrink-0 hover:scale-105 transition-transform"
+                                  />
+                                </button>
                               )}
-                              <div>
-                                <div className="font-black text-slate-900">{c.playerName}</div>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPlayerForModal(c)}
+                                className="text-left group cursor-pointer"
+                                title="Click to view candidate complete profile, generate trial pass & send to WhatsApp"
+                              >
+                                <div className="font-black text-slate-900 group-hover:text-amber-600 group-hover:underline flex items-center gap-1.5">
+                                  <span>{c.playerName}</span>
+                                  <Ticket className="w-3.5 h-3.5 text-amber-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                </div>
                                 <div className="text-[11px] text-slate-500">
                                   DOB: {c.dob}
                                   {c.age !== undefined ? ` (${c.age} yrs)` : ''} ·{' '}
                                   <span className="capitalize">{c.gender}</span>
                                 </div>
-                              </div>
+                              </button>
                             </div>
                           </td>
 
@@ -756,6 +777,16 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
+                                type="button"
+                                onClick={() => setSelectedPlayerForModal(c)}
+                                className="px-2.5 py-1.5 text-amber-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors cursor-pointer text-[11px] font-bold inline-flex items-center gap-1 shadow-xs"
+                                title="Open Player Profile, Official Trial Pass & WhatsApp Dispatch"
+                              >
+                                <Ticket className="w-3.5 h-3.5" />
+                                <span>Trial Pass</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => openApplicationReviewModal(c)}
                                 className="px-2.5 py-1.5 text-slate-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors cursor-pointer text-[11px] font-bold inline-flex items-center gap-1"
                                 title="Review Application, Schedule Trial & Notify Applicant"
@@ -764,6 +795,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                                 <span>Review</span>
                               </button>
                               <button
+                                type="button"
                                 onClick={() =>
                                   handleDeleteCandidate(c.bookingRef, c.playerName)
                                 }
@@ -1549,6 +1581,37 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {/* Complete Player Profile Dossier & Official Trial Pass Modal */}
+      {selectedPlayerForModal && (
+        <PlayerProfileDetailModal
+          candidate={selectedPlayerForModal}
+          isOpen={Boolean(selectedPlayerForModal)}
+          onClose={() => setSelectedPlayerForModal(null)}
+          onUpdateTrialSchedule={async (details) => {
+            if (!selectedPlayerForModal) return;
+            const updated: AcademyRegistrationData = {
+              ...selectedPlayerForModal,
+              scheduledTrialDetails: {
+                date: details.date,
+                time: details.time,
+                venue: details.venue,
+                evaluator: details.evaluator,
+                reportingInstructions: details.instructions,
+              },
+            };
+            setSelectedPlayerForModal(updated);
+            setCandidates((prev) =>
+              prev.map((c) => (c.bookingRef === updated.bookingRef ? updated : c))
+            );
+            await updateRegistrationStatus(
+              updated.bookingRef,
+              updated.status || 'trial_scheduled',
+              updated
+            );
+          }}
+        />
+      )}
     </div>
   );
 };

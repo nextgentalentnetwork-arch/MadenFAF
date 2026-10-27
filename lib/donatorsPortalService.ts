@@ -353,6 +353,287 @@ const INITIAL_MEMBER_PROFILES: MemberProfileRecord[] = [
   },
 ];
 
+// Initial seed donation plans
+export const INITIAL_DONATION_PLANS: DonationPlanRecord[] = [
+  {
+    planId: 'MADEN-PLN-2026-104829',
+    uid: 'usr-member-01',
+    memberId: 'MADEN-MEM-2026-100101',
+    donorName: 'Sourav Chatterjee',
+    amount: 1000,
+    frequency: 'monthly',
+    purpose: 'Grassroots Youth Training & Player Scholarships',
+    startDate: '2026-01-15',
+    nextSuggestedPaymentDate: '2026-11-15',
+    status: 'active',
+    reminderEnabled: true,
+    createdAt: '2026-01-15T10:00:00.000Z',
+    updatedAt: '2026-01-15T10:00:00.000Z',
+  },
+];
+
+// Initial seed donations demonstrating cumulative impact across foundation initiatives
+export const INITIAL_DONATIONS: DonationRecordItem[] = [
+  {
+    donationId: 'MADEN-DON-2026-100201',
+    uid: 'usr-member-01',
+    memberId: 'MADEN-MEM-2026-100101',
+    donorName: 'Sourav Chatterjee',
+    donorEmail: 'member@madenfaf.com',
+    donorAddress: 'Plot 42, B-Block Main Road, Kalyani, Nadia, West Bengal, 741235, India',
+    donorMobile: '9830112233',
+    planId: 'MADEN-PLN-2026-104829',
+    invoiceNumber: 'MADEN-INV-2026-001001',
+    receiptNumber: 'MADEN-RCP-2026-001001',
+    amount: 5000,
+    amountInWords: 'Indian Rupees Five Thousand Only',
+    currency: 'INR',
+    frequency: 'monthly',
+    purpose: 'Grassroots Youth Training & Player Scholarships',
+    paymentMethod: 'official_qr_upi',
+    transactionReference: 'UPI-20260115-998811',
+    paymentDate: '2026-01-15',
+    paymentStatus: 'verified',
+    mobileVerificationStatus: 'verified',
+    verifiedBy: 'admin@madenfaf.com',
+    verifiedAt: '2026-01-15T14:30:00.000Z',
+    createdAt: '2026-01-15T10:00:00.000Z',
+    updatedAt: '2026-01-15T14:30:00.000Z',
+  },
+  {
+    donationId: 'MADEN-DON-2026-100202',
+    uid: 'usr-member-01',
+    memberId: 'MADEN-MEM-2026-100101',
+    donorName: 'Sourav Chatterjee',
+    donorEmail: 'member@madenfaf.com',
+    donorAddress: 'Plot 42, B-Block Main Road, Kalyani, Nadia, West Bengal, 741235, India',
+    donorMobile: '9830112233',
+    planId: 'MADEN-PLN-2026-104829',
+    invoiceNumber: 'MADEN-INV-2026-001002',
+    receiptNumber: 'MADEN-RCP-2026-001002',
+    amount: 2500,
+    amountInWords: 'Indian Rupees Two Thousand Five Hundred Only',
+    currency: 'INR',
+    frequency: 'monthly',
+    purpose: 'Underprivileged Player Scholarships (Full Merit & Need-Based)',
+    paymentMethod: 'official_qr_upi',
+    transactionReference: 'UPI-20260215-998812',
+    paymentDate: '2026-02-15',
+    paymentStatus: 'verified',
+    mobileVerificationStatus: 'verified',
+    verifiedBy: 'admin@madenfaf.com',
+    verifiedAt: '2026-02-15T12:00:00.000Z',
+    createdAt: '2026-02-15T09:30:00.000Z',
+    updatedAt: '2026-02-15T12:00:00.000Z',
+  },
+  {
+    donationId: 'MADEN-DON-2026-100203',
+    uid: 'usr-member-01',
+    memberId: 'MADEN-MEM-2026-100101',
+    donorName: 'Sourav Chatterjee',
+    donorEmail: 'member@madenfaf.com',
+    donorAddress: 'Plot 42, B-Block Main Road, Kalyani, Nadia, West Bengal, 741235, India',
+    donorMobile: '9830112233',
+    planId: 'MADEN-PLN-2026-104829',
+    invoiceNumber: 'MADEN-INV-2026-001003',
+    receiptNumber: 'MADEN-RCP-2026-001003',
+    amount: 1500,
+    amountInWords: 'Indian Rupees One Thousand Five Hundred Only',
+    currency: 'INR',
+    frequency: 'monthly',
+    purpose: 'Girls & Women Football Development Grant',
+    paymentMethod: 'official_qr_upi',
+    transactionReference: 'UPI-20260315-998813',
+    paymentDate: '2026-03-15',
+    paymentStatus: 'verified',
+    mobileVerificationStatus: 'verified',
+    verifiedBy: 'admin@madenfaf.com',
+    verifiedAt: '2026-03-15T16:00:00.000Z',
+    createdAt: '2026-03-15T11:00:00.000Z',
+    updatedAt: '2026-03-15T16:00:00.000Z',
+  },
+  {
+    donationId: 'MADEN-DON-2026-100204',
+    uid: 'usr-member-01',
+    memberId: 'MADEN-MEM-2026-100101',
+    donorName: 'Sourav Chatterjee',
+    donorEmail: 'member@madenfaf.com',
+    donorAddress: 'Plot 42, B-Block Main Road, Kalyani, Nadia, West Bengal, 741235, India',
+    donorMobile: '9830112233',
+    planId: 'MADEN-PLN-2026-104829',
+    invoiceNumber: 'MADEN-INV-2026-001004',
+    amount: 1000,
+    amountInWords: 'Indian Rupees One Thousand Only',
+    currency: 'INR',
+    frequency: 'monthly',
+    purpose: 'Sports Nutrition, Physiotherapy & Medical Welfare',
+    paymentMethod: 'official_qr_upi',
+    transactionReference: 'UPI-20260401-445566',
+    paymentDate: '2026-04-01',
+    paymentStatus: 'submitted_for_verification',
+    mobileVerificationStatus: 'verified',
+    createdAt: '2026-04-01T10:00:00.000Z',
+    updatedAt: '2026-04-01T10:15:00.000Z',
+  },
+];
+
+export interface FoundationInitiative {
+  id: string;
+  name: string;
+  shortName: string;
+  category: 'Grassroots' | 'Scholarships' | 'Inclusion' | 'Welfare' | 'Infrastructure' | 'Competition';
+  description: string;
+  impactFormula: string;
+  supporterTargetAmount: number;
+  campaignGoalAmount: number;
+  accentColor: string;
+  gradient: string;
+  textColor: string;
+  badgeBg: string;
+  badgeText: string;
+  barColor: string;
+  barBg: string;
+  unitLabel: string;
+  costPerUnit: number;
+}
+
+export const FOUNDATION_INITIATIVES: FoundationInitiative[] = [
+  {
+    id: 'grassroots_training',
+    name: 'Grassroots Youth Training & Player Scholarships',
+    shortName: 'Grassroots Youth Training',
+    category: 'Grassroots',
+    description: 'Provides structured AFC-curated curriculum coaching, certified coaches, match kits, and pitch access for young players (ages 6–14) across Kalyani and rural Nadia district.',
+    impactFormula: 'Every ₹500 sponsors 1 week of professional training & ball drills for a young talent',
+    supporterTargetAmount: 15000,
+    campaignGoalAmount: 250000,
+    accentColor: 'emerald',
+    gradient: 'from-emerald-500 to-teal-600',
+    textColor: 'text-emerald-700',
+    badgeBg: 'bg-emerald-50 border-emerald-200',
+    badgeText: 'text-emerald-800',
+    barColor: 'bg-emerald-500',
+    barBg: 'bg-emerald-100',
+    unitLabel: 'Weeks of Youth Training',
+    costPerUnit: 500,
+  },
+  {
+    id: 'player_scholarships',
+    name: 'Underprivileged Player Scholarships (Full Merit & Need-Based)',
+    shortName: 'Full Merit Scholarships',
+    category: 'Scholarships',
+    description: '100% full-ride sponsorships providing academy enrollment, branded football boots, shin guards, dietary support, and competition travel for talented youth from underprivileged families.',
+    impactFormula: 'Every ₹2,500 delivers full branded match kits, boots, and 1 month scholarship',
+    supporterTargetAmount: 12500,
+    campaignGoalAmount: 200000,
+    accentColor: 'indigo',
+    gradient: 'from-indigo-500 to-blue-600',
+    textColor: 'text-indigo-700',
+    badgeBg: 'bg-indigo-50 border-indigo-200',
+    badgeText: 'text-indigo-800',
+    barColor: 'bg-indigo-500',
+    barBg: 'bg-indigo-100',
+    unitLabel: 'Monthly Full Scholarships',
+    costPerUnit: 2500,
+  },
+  {
+    id: 'girls_football',
+    name: 'Girls & Women Football Development Grant',
+    shortName: 'Girls & Women Football',
+    category: 'Inclusion',
+    description: 'Empowers female footballers in Bengal through dedicated training batches, licensed female coaches, safe transport, specialized gear, and competitive youth league entries.',
+    impactFormula: 'Every ₹1,500 covers coaching sessions, safe match commute, and gear for 1 female athlete',
+    supporterTargetAmount: 10000,
+    campaignGoalAmount: 150000,
+    accentColor: 'rose',
+    gradient: 'from-rose-500 to-pink-600',
+    textColor: 'text-rose-700',
+    badgeBg: 'bg-rose-50 border-rose-200',
+    badgeText: 'text-rose-800',
+    barColor: 'bg-rose-500',
+    barBg: 'bg-rose-100',
+    unitLabel: 'Female Athletes Supported',
+    costPerUnit: 1500,
+  },
+  {
+    id: 'sports_nutrition',
+    name: 'Sports Nutrition, Physiotherapy & Medical Welfare',
+    shortName: 'Sports Nutrition & Welfare',
+    category: 'Welfare',
+    description: 'Fuels young players with daily protein, hydration, micronutrient supplementation, baseline health screenings, and professional sports physiotherapy for injury prevention.',
+    impactFormula: 'Every ₹800 funds 1 month of tailored sports nutrition packs and medical screening',
+    supporterTargetAmount: 8000,
+    campaignGoalAmount: 100000,
+    accentColor: 'amber',
+    gradient: 'from-amber-500 to-orange-600',
+    textColor: 'text-amber-700',
+    badgeBg: 'bg-amber-50 border-amber-200',
+    badgeText: 'text-amber-800',
+    barColor: 'bg-amber-500',
+    barBg: 'bg-amber-100',
+    unitLabel: 'Monthly Nutrition Packs',
+    costPerUnit: 800,
+  },
+  {
+    id: 'campus_infrastructure',
+    name: 'Campus Turf Infrastructure & Training Equipment',
+    shortName: 'Turf & Infrastructure',
+    category: 'Infrastructure',
+    description: 'Maintains FIFA-standard grass and artificial turf pitches, floodlights, tactical agility gear, training hurdles, goal nets, and weather-proof training facilities at Gayeshpur.',
+    impactFormula: 'Every ₹1,500 contributes to match balls, cones, and turf maintenance equipment',
+    supporterTargetAmount: 20000,
+    campaignGoalAmount: 300000,
+    accentColor: 'cyan',
+    gradient: 'from-cyan-500 to-teal-600',
+    textColor: 'text-cyan-700',
+    badgeBg: 'bg-cyan-50 border-cyan-200',
+    badgeText: 'text-cyan-800',
+    barColor: 'bg-cyan-500',
+    barBg: 'bg-cyan-100',
+    unitLabel: 'Equipment & Turf Kits',
+    costPerUnit: 1500,
+  },
+  {
+    id: 'tournament_travel',
+    name: 'Regional Youth Tournament & Exposure Travel',
+    shortName: 'Tournament & Travel',
+    category: 'Competition',
+    description: 'Finances academy youth teams to travel across West Bengal and nationwide for high-stakes youth tournaments, scouting showcases, and inter-academy leagues.',
+    impactFormula: 'Every ₹3,000 finances travel, lodging, and tournament registration for 1 player',
+    supporterTargetAmount: 12000,
+    campaignGoalAmount: 150000,
+    accentColor: 'violet',
+    gradient: 'from-violet-500 to-purple-600',
+    textColor: 'text-violet-700',
+    badgeBg: 'bg-violet-50 border-violet-200',
+    badgeText: 'text-violet-800',
+    barColor: 'bg-violet-500',
+    barBg: 'bg-violet-100',
+    unitLabel: 'Tournament Exposure Trips',
+    costPerUnit: 3000,
+  },
+];
+
+export function matchDonationToInitiative(purpose: string): FoundationInitiative {
+  const p = (purpose || '').toLowerCase();
+  if (p.includes('scholarship') || p.includes('underprivileged') || p.includes('merit')) {
+    return FOUNDATION_INITIATIVES[1];
+  }
+  if (p.includes('girl') || p.includes('women') || p.includes('female')) {
+    return FOUNDATION_INITIATIVES[2];
+  }
+  if (p.includes('nutrition') || p.includes('physio') || p.includes('medical') || p.includes('welfare')) {
+    return FOUNDATION_INITIATIVES[3];
+  }
+  if (p.includes('turf') || p.includes('infrastructure') || p.includes('equipment') || p.includes('campus')) {
+    return FOUNDATION_INITIATIVES[4];
+  }
+  if (p.includes('tournament') || p.includes('travel') || p.includes('exposure')) {
+    return FOUNDATION_INITIATIVES[5];
+  }
+  return FOUNDATION_INITIATIVES[0];
+}
+
 // Convert integer amount in INR to Indian English words
 export function numberToIndianRupeeWords(amount: number): string {
   const cleanAmount = Math.round(Math.abs(amount));
@@ -1151,11 +1432,16 @@ export const DonatorsPortalService = {
 
   // ---------------- 4. DONATION PLANS & COMMITMENTS (SECTIONS 6 & 11) ---------------- //
   getAllDonationPlans(): DonationPlanRecord[] {
-    return readStore<DonationPlanRecord[]>(STORAGE_KEYS.DONATION_PLANS, []);
+    return readStore<DonationPlanRecord[]>(STORAGE_KEYS.DONATION_PLANS, INITIAL_DONATION_PLANS);
   },
 
-  getMemberDonationPlans(uid: string): DonationPlanRecord[] {
-    return this.getAllDonationPlans().filter((p) => p.uid === uid);
+  getMemberDonationPlans(uid: string, fallbackEmail?: string): DonationPlanRecord[] {
+    const safeEmail = (fallbackEmail || '').trim().toLowerCase();
+    return this.getAllDonationPlans().filter((p) => {
+      if (p.uid === uid) return true;
+      if ((uid === 'guest-member' || safeEmail === 'member@madenfaf.com') && p.uid === 'usr-member-01') return true;
+      return false;
+    });
   },
 
   createDonationAndCommitmentPlan(params: {
@@ -1368,11 +1654,17 @@ export const DonatorsPortalService = {
 
   // ---------------- 5. DONATIONS & PAYMENT SUBMISSIONS (SECTIONS 7, 9, 10) ---------------- //
   getAllDonations(): DonationRecordItem[] {
-    return readStore<DonationRecordItem[]>(STORAGE_KEYS.DONATIONS, []);
+    return readStore<DonationRecordItem[]>(STORAGE_KEYS.DONATIONS, INITIAL_DONATIONS);
   },
 
-  getMemberDonations(uid: string): DonationRecordItem[] {
-    return this.getAllDonations().filter((d) => d.uid === uid);
+  getMemberDonations(uid: string, fallbackEmail?: string): DonationRecordItem[] {
+    const safeEmail = (fallbackEmail || '').trim().toLowerCase();
+    return this.getAllDonations().filter((d) => {
+      if (d.uid === uid) return true;
+      if (safeEmail && (d.donorEmail || '').toLowerCase() === safeEmail) return true;
+      if ((uid === 'guest-member' || safeEmail === 'member@madenfaf.com') && d.uid === 'usr-member-01') return true;
+      return false;
+    });
   },
 
   getAllPaymentSubmissions(): PaymentSubmissionRecord[] {

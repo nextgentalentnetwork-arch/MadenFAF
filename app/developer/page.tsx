@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { supabase, isSupabaseConfigured, checkSupabaseHealth } from '@/lib/supabaseClient';
+import {
+  supabase,
+  isSupabaseConfigured,
+  checkSupabaseHealth,
+  AcademyRegistrationData,
+} from '@/lib/supabaseClient';
 import { AcademyDataManager, ComponentToggles } from '@/lib/academyDataManager';
 import { Program, Campus, CoachStaffMember, MatchFixture, NewsStory } from '@/data/academyData';
 import { CoachesManager } from '@/components/developer/CoachesManager';
@@ -17,6 +22,7 @@ import { SuccessStoriesManager } from '@/components/developer/SuccessStoriesMana
 import { SponsorsManager } from '@/components/developer/SponsorsManager';
 import { DigitalPortalAccessManager } from '@/components/developer/DigitalPortalAccessManager';
 import { AdminDonationsManager } from '@/components/portal/AdminDonationsManager';
+import { PlayerProfileDetailModal } from '@/components/portal/PlayerProfileDetailModal';
 import { HeroManager } from '@/components/developer/HeroManager';
 import { HeaderFooterManager } from '@/components/developer/HeaderFooterManager';
 import { WebsiteComponentsGrid } from '@/components/developer/WebsiteComponentsGrid';
@@ -75,6 +81,7 @@ import {
   Trash,
   RotateCcw,
   Sliders,
+  Ticket,
 } from 'lucide-react';
 
 const FULL_SUPABASE_SQL = `-- Run this in your Supabase SQL Editor (Dashboard -> SQL Editor -> New Query -> Run)
@@ -303,6 +310,8 @@ export default function DeveloperPage() {
 
   // Modals State
   const [editingRow, setEditingRow] = useState<any | null>(null);
+  const [selectedPlayerForModal, setSelectedPlayerForModal] =
+    useState<AcademyRegistrationData | null>(null);
   const [isAddRowModalOpen, setIsAddRowModalOpen] = useState(false);
   const [newRowForm, setNewRowForm] = useState({
     playerName: '',
@@ -1330,71 +1339,113 @@ export default function DeveloperPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredDbRows.map((row) => (
-                        <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                            {row.booking_ref}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-bold text-slate-900 text-sm">{row.player_name}</div>
-                            <div className="text-[11px] text-slate-500">Parent: {row.parent_name}</div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-mono text-slate-800">{row.phone}</div>
-                            <div className="text-[11px] text-slate-500">{row.email}</div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-semibold text-slate-800 capitalize">
-                              {row.preferred_campus}
-                            </div>
-                            <div className="text-[11px] text-amber-700 capitalize">
-                              {row.position} · {row.program}
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <select
-                              value={row.status || 'pending_trial'}
-                              onChange={(e) => handleUpdateStatus(row.id, e.target.value)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border outline-none cursor-pointer ${
-                                row.status === 'enrolled'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : row.status === 'confirmed'
-                                  ? 'bg-sky-50 text-sky-800 border-sky-300'
-                                  : row.status === 'rejected'
-                                  ? 'bg-rose-50 text-rose-800 border-rose-300'
-                                  : 'bg-amber-50 text-amber-800 border-amber-300'
-                              }`}
-                            >
-                              <option value="pending_trial">Pending Trial</option>
-                              <option value="confirmed">Confirmed</option>
-                              <option value="attended">Attended</option>
-                              <option value="enrolled">Enrolled</option>
-                              <option value="rejected">Rejected</option>
-                            </select>
-                          </td>
-                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
-                            {new Date(row.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                      filteredDbRows.map((row) => {
+                        const candidateData: AcademyRegistrationData = {
+                          id: row.id,
+                          bookingRef: row.booking_ref,
+                          playerName: row.player_name,
+                          parentName: row.parent_name,
+                          phone: row.phone,
+                          email: row.email,
+                          dob: row.dob || '2010-01-01',
+                          gender: row.gender || 'male',
+                          preferredCampus: row.preferred_campus || 'gayeshpur',
+                          preferredVenue: row.preferred_venue || row.preferred_campus || 'Gayeshpur Central Ground',
+                          position: row.position || 'midfielder',
+                          experienceLevel: row.experience_level || 'grassroots',
+                          program: row.program || 'development',
+                          message: row.message,
+                          status: row.status || 'pending_trial',
+                          createdAt: row.created_at,
+                        };
+
+                        return (
+                          <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
+                              {row.booking_ref}
+                            </td>
+                            <td className="py-3.5 px-4">
                               <button
-                                onClick={() => setEditingRow({ ...row })}
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                                title="Edit Candidate"
+                                type="button"
+                                onClick={() => setSelectedPlayerForModal(candidateData)}
+                                className="text-left group cursor-pointer"
+                                title="Click to view candidate complete profile, generate trial pass & send to WhatsApp"
                               >
-                                <Edit3 className="w-3.5 h-3.5" />
+                                <div className="font-bold text-slate-900 text-sm group-hover:text-amber-600 group-hover:underline flex items-center gap-1.5">
+                                  <span>{row.player_name}</span>
+                                  <Ticket className="w-3.5 h-3.5 text-amber-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <div className="text-[11px] text-slate-500">Parent: {row.parent_name}</div>
                               </button>
-                              <button
-                                onClick={() => handleDeleteRow(row.id, row.booking_ref)}
-                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
-                                title="Delete Registration"
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="font-mono text-slate-800">{row.phone}</div>
+                              <div className="text-[11px] text-slate-500">{row.email}</div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="font-semibold text-slate-800 capitalize">
+                                {row.preferred_campus}
+                              </div>
+                              <div className="text-[11px] text-amber-700 capitalize">
+                                {row.position} · {row.program}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <select
+                                value={row.status || 'pending_trial'}
+                                onChange={(e) => handleUpdateStatus(row.id, e.target.value)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border outline-none cursor-pointer ${
+                                  row.status === 'enrolled'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : row.status === 'confirmed'
+                                    ? 'bg-sky-50 text-sky-800 border-sky-300'
+                                    : row.status === 'rejected'
+                                    ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                    : 'bg-amber-50 text-amber-800 border-amber-300'
+                                }`}
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                                <option value="pending_trial">Pending Trial</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="attended">Attended</option>
+                                <option value="enrolled">Enrolled</option>
+                                <option value="rejected">Rejected</option>
+                              </select>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
+                              {new Date(row.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPlayerForModal(candidateData)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                                  title="Open Player Profile, Official Trial Pass & WhatsApp Dispatch"
+                                >
+                                  <Ticket className="w-3.5 h-3.5" />
+                                  <span>Trial Pass</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingRow({ ...row })}
+                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                  title="Edit Candidate"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRow(row.id, row.booking_ref)}
+                                  className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
+                                  title="Delete Registration"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -2072,6 +2123,29 @@ WHERE booking_ref = 'MADEN-EXAMPLE-REF';`}
         onConfirm={handleConfirmDevDelete}
         onCancel={() => setDeleteDevModal(null)}
       />
+
+      {/* Complete Player Profile Dossier & Official Trial Pass Modal */}
+      {selectedPlayerForModal && (
+        <PlayerProfileDetailModal
+          candidate={selectedPlayerForModal}
+          isOpen={Boolean(selectedPlayerForModal)}
+          onClose={() => setSelectedPlayerForModal(null)}
+          onUpdateTrialSchedule={async (details) => {
+            if (!selectedPlayerForModal) return;
+            const updated: AcademyRegistrationData = {
+              ...selectedPlayerForModal,
+              scheduledTrialDetails: {
+                date: details.date,
+                time: details.time,
+                venue: details.venue,
+                evaluator: details.evaluator,
+                reportingInstructions: details.instructions,
+              },
+            };
+            setSelectedPlayerForModal(updated);
+          }}
+        />
+      )}
 
       {/* Closing Container */}
     </div>

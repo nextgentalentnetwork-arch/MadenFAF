@@ -17,12 +17,17 @@ import {
   DEFAULT_ORG_PAYMENT_SETTINGS,
 } from '@/lib/donatorsPortalService';
 import { DonationDocumentViewer, DocumentViewMode } from './DonationDocumentViewer';
+import { MyContributionsView } from './MyContributionsView';
 import {
   downloadDonationPdf,
   downloadAnnualVerifiedStatementPdf,
 } from '@/lib/pdfDocumentGenerator';
 import {
   LayoutDashboard,
+  Target,
+  TrendingUp,
+  Award,
+  Sparkles,
   User,
   Edit3,
   HeartHandshake,
@@ -55,6 +60,7 @@ import {
 
 export type MemberDashboardSection =
   | 'overview'
+  | 'my_contributions'
   | 'my_profile'
   | 'edit_profile'
   | 'make_donation'
@@ -130,15 +136,15 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
   );
 
   const myDonations = React.useMemo(
-    () => DonatorsPortalService.getMemberDonations(profile.id),
+    () => DonatorsPortalService.getMemberDonations(profile.id, profile.email),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [portalTick, profile.id]
+    [portalTick, profile.id, profile.email]
   );
 
   const myPlans = React.useMemo(
-    () => DonatorsPortalService.getMemberDonationPlans(profile.id),
+    () => DonatorsPortalService.getMemberDonationPlans(profile.id, profile.email),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [portalTick, profile.id]
+    [portalTick, profile.id, profile.email]
   );
 
   const mySubmissions = React.useMemo(
@@ -715,6 +721,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
     badgeCount?: number;
   }[] = [
     { id: 'overview', label: 'Dashboard Overview', icon: LayoutDashboard },
+    { id: 'my_contributions', label: 'My Contributions', icon: Target },
     { id: 'my_profile', label: 'My Profile', icon: User },
     { id: 'edit_profile', label: 'Edit Profile', icon: Edit3 },
     { id: 'make_donation', label: 'Make a Donation', icon: HeartHandshake },
@@ -769,6 +776,14 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveSection('my_contributions')}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap shrink-0 shadow-sm"
+          >
+            <Target className="w-4 h-4 text-amber-300" />
+            <span>My Contributions</span>
+          </button>
           <button
             type="button"
             onClick={() => setActiveSection('make_donation')}
@@ -1013,6 +1028,30 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
                 </div>
               </div>
 
+              {/* Cumulative Impact & Initiative Progress Teaser Card */}
+              <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                <div className="space-y-1.5 max-w-xl">
+                  <div className="inline-flex items-center gap-1.5 text-xs text-amber-400 font-semibold">
+                    <Target className="w-4 h-4" />
+                    <span>My Contributions &amp; Initiative Progress Bars</span>
+                  </div>
+                  <div className="text-lg sm:text-xl font-bold text-white">
+                    Cumulative Impact: ₹{totalVerifiedAmount.toLocaleString('en-IN')} Verified
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Visualise your cumulative donations towards grassroots youth training, merit scholarships, girls football, and sports nutrition initiatives with interactive progress bars.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('my_contributions')}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 text-xs font-bold flex items-center gap-2 cursor-pointer whitespace-nowrap self-start md:self-auto shadow-md transition-all"
+                >
+                  <span>Explore My Contributions View</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {/* Recent Donations Table */}
               <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
@@ -1142,6 +1181,27 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
                 )}
               </div>
             </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* NEW: MY CONTRIBUTIONS (CUMULATIVE IMPACT & INITIATIVE PROGRESS) */}
+          {/* ============================================================== */}
+          {activeSection === 'my_contributions' && (
+            <MyContributionsView
+              memberRecord={memberRecord}
+              myDonations={myDonations}
+              settings={settings}
+              onNavigateToDonation={(initiativePurpose) => {
+                if (initiativePurpose) {
+                  setDonationPurpose(initiativePurpose);
+                }
+                setActiveSection('make_donation');
+              }}
+              onViewDocument={(donation, mode) => {
+                setDocModalState({ donation, mode });
+              }}
+              onNavigateToSection={(section) => setActiveSection(section)}
+            />
           )}
 
           {/* ============================================================== */}

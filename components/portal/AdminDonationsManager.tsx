@@ -16,6 +16,7 @@ import {
   DonationDocumentViewer,
   DocumentViewMode,
 } from '@/components/membership/DonationDocumentViewer';
+import { MemberProfileDetailModal } from './MemberProfileDetailModal';
 import { downloadDonationPdf } from '@/lib/pdfDocumentGenerator';
 import {
   QrCode,
@@ -41,6 +42,8 @@ import {
   X,
   Check,
   HeartHandshake,
+  CreditCard,
+  Eye,
 } from 'lucide-react';
 
 interface AdminDonationsManagerProps {
@@ -156,6 +159,10 @@ export const AdminDonationsManager: React.FC<AdminDonationsManagerProps> = ({
     donation: DonationRecordItem;
     mode: DocumentViewMode;
   } | null>(null);
+
+  // Member Complete Profile & ID Card Viewer Modal State
+  const [selectedMemberForModal, setSelectedMemberForModal] =
+    useState<MemberProfileRecord | null>(null);
 
   // Member Profile Add/Edit Modal State
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
@@ -1099,10 +1106,45 @@ export const AdminDonationsManager: React.FC<AdminDonationsManagerProps> = ({
                           </div>
                         </td>
                         <td className="py-3 px-3">
-                          <div className="font-semibold text-slate-900">{d.donorName}</div>
-                          <div className="text-[11px] font-mono text-slate-500 tabular-nums">
-                            {d.memberId}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const found = allMembers.find(
+                                (m) => m.uid === d.uid || m.memberId === d.memberId
+                              );
+                              if (found) {
+                                setSelectedMemberForModal(found);
+                              } else {
+                                // Synthetic member profile from donation record if not in full ledger
+                                setSelectedMemberForModal({
+                                  uid: d.uid,
+                                  memberId: d.memberId,
+                                  fullName: d.donorName,
+                                  email: d.donorEmail,
+                                  primaryMobile: d.donorMobile || '',
+                                  memberCategory: 'donor_member',
+                                  villageTownCity: 'Kalyani',
+                                  district: 'Nadia',
+                                  state: 'West Bengal',
+                                  pinCode: '741235',
+                                  profileCompletionStatus: 'completed',
+                                  completionPercentage: 100,
+                                  createdAt: d.createdAt,
+                                  updatedAt: d.createdAt,
+                                });
+                              }
+                            }}
+                            className="text-left group cursor-pointer"
+                            title="Click to view Member Complete Profile and Print ID Card"
+                          >
+                            <div className="font-semibold text-slate-900 group-hover:text-amber-600 group-hover:underline flex items-center gap-1">
+                              <span>{d.donorName}</span>
+                              <CreditCard className="w-3 h-3 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <div className="text-[11px] font-mono text-slate-500 tabular-nums">
+                              {d.memberId}
+                            </div>
+                          </button>
                         </td>
                         <td className="py-3 px-3 text-right font-mono font-bold tabular-nums text-slate-900">
                           ₹{d.amount.toLocaleString('en-IN')}
@@ -1307,8 +1349,18 @@ export const AdminDonationsManager: React.FC<AdminDonationsManagerProps> = ({
                       {m.memberId}
                     </td>
                     <td className="py-3 px-3">
-                      <div className="font-semibold text-slate-900">{m.fullName}</div>
-                      <div className="text-[11px] text-slate-500">{m.email}</div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMemberForModal(m)}
+                        className="text-left group cursor-pointer"
+                        title="Click to view Member Complete Profile and Print ID Card"
+                      >
+                        <div className="font-semibold text-slate-900 group-hover:text-amber-600 group-hover:underline flex items-center gap-1.5">
+                          <span>{m.fullName}</span>
+                          <CreditCard className="w-3.5 h-3.5 text-amber-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <div className="text-[11px] text-slate-500">{m.email}</div>
+                      </button>
                     </td>
                     <td className="py-3 px-3 text-slate-600">
                       <div className="font-semibold uppercase text-[10px] text-amber-800">
@@ -1340,6 +1392,15 @@ export const AdminDonationsManager: React.FC<AdminDonationsManagerProps> = ({
                       </div>
                     </td>
                     <td className="py-3 px-3 text-right space-x-1.5 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMemberForModal(m)}
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs cursor-pointer inline-flex items-center gap-1 shadow-xs"
+                        title="View Complete Profile & Print Official Member ID Card (PDF)"
+                      >
+                        <CreditCard className="w-3.5 h-3.5 text-amber-700" />
+                        <span>ID Card</span>
+                      </button>
                       {!m.verifiedContactMetadata?.isVerified && m.primaryMobile && (
                         <button
                           type="button"
@@ -2651,6 +2712,20 @@ export const AdminDonationsManager: React.FC<AdminDonationsManagerProps> = ({
           settings={settings}
           mode={docModalState.mode}
           onClose={() => setDocModalState(null)}
+        />
+      )}
+
+      {selectedMemberForModal && (
+        <MemberProfileDetailModal
+          member={selectedMemberForModal}
+          isOpen={Boolean(selectedMemberForModal)}
+          onClose={() => setSelectedMemberForModal(null)}
+          onEdit={(m) => {
+            setSelectedMemberForModal(null);
+            handleOpenEditMember(m);
+          }}
+          settings={settings}
+          donations={allDonations}
         />
       )}
     </div>
