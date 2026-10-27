@@ -15,6 +15,7 @@ import {
 } from '@/lib/supabaseClient';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { PlayerProfileDetailModal } from '@/components/portal/PlayerProfileDetailModal';
+import { BulkSendTrialPassesModal } from './BulkSendTrialPassesModal';
 import {
   UserCheck,
   Calendar,
@@ -38,6 +39,7 @@ import {
   Trophy,
   CheckCircle2,
   Ticket,
+  MessageSquare,
 } from 'lucide-react';
 
 interface TrialManagerProps {
@@ -84,6 +86,8 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   // Full Player Profile Dossier & Official Trial Pass Modal
   const [selectedPlayerForModal, setSelectedPlayerForModal] =
     useState<AcademyRegistrationData | null>(null);
+  // Bulk WhatsApp Trial Passes Modal
+  const [isBulkWhatsAppOpen, setIsBulkWhatsAppOpen] = useState<boolean>(false);
   const [adminRemarks, setAdminRemarks] = useState<string>('');
   const [scheduleDate, setScheduleDate] = useState<string>('May 16, 2026');
   const [scheduleTime, setScheduleTime] = useState<string>('07:30 AM – 09:30 AM');
@@ -493,6 +497,27 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
             </button>
           </div>
 
+          {activeSubTab === 'candidates' && (
+            <button
+              type="button"
+              onClick={() => {
+                if (filteredCandidates.length === 0) {
+                  onNotify({
+                    type: 'error',
+                    text: 'No candidates match the current filter criteria.',
+                  });
+                  return;
+                }
+                setIsBulkWhatsAppOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title={`Bulk send official trial passes to ${filteredCandidates.length} filtered candidate(s) via WhatsApp`}
+            >
+              <MessageSquare className="w-4 h-4 text-emerald-100" />
+              <span>Bulk Send Trial Passes ({filteredCandidates.length})</span>
+            </button>
+          )}
+
           <button
             onClick={() => setIsAddCandidateOpen(true)}
             className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -562,9 +587,29 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
               </button>
             </div>
 
-            <span className="text-[11px] font-mono text-slate-500">
-              Admin-Only Access · Minor Data Protected
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (filteredCandidates.length === 0) {
+                    onNotify({
+                      type: 'error',
+                      text: 'No candidates match the current filter criteria.',
+                    });
+                    return;
+                  }
+                  setIsBulkWhatsAppOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                title={`Open bulk WhatsApp trial pass automation for ${filteredCandidates.length} candidate(s)`}
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Bulk WhatsApp Passes ({filteredCandidates.length})</span>
+              </button>
+              <span className="text-[11px] font-mono text-slate-500 hidden sm:inline">
+                Admin-Only Access · Minor Data Protected
+              </span>
+            </div>
           </div>
 
           {/* Search & Status Filter Bar */}
@@ -1581,6 +1626,37 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {/* Bulk Send Trial Passes via WhatsApp Automation Modal */}
+      {isBulkWhatsAppOpen && (
+        <BulkSendTrialPassesModal
+          isOpen={isBulkWhatsAppOpen}
+          onClose={() => setIsBulkWhatsAppOpen(false)}
+          candidates={filteredCandidates}
+          onPassSent={(bookingRef) => {
+            setCandidates((prev) =>
+              prev.map((c) =>
+                c.bookingRef === bookingRef
+                  ? {
+                      ...c,
+                      notificationLog: [
+                        ...(c.notificationLog || []),
+                        {
+                          id: `wa-bulk-${Date.now()}`,
+                          sentAt: new Date().toISOString(),
+                          channel: 'sms',
+                          status: 'delivered',
+                          message: 'Automated WhatsApp Trial Pass sent',
+                        },
+                      ],
+                    }
+                  : c
+              )
+            );
+          }}
+          onNotify={onNotify}
+        />
+      )}
 
       {/* Complete Player Profile Dossier & Official Trial Pass Modal */}
       {selectedPlayerForModal && (
