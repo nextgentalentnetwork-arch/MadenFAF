@@ -1115,22 +1115,15 @@ export const AdminDonationsManager: React.FC<AdminDonationsManagerProps> = ({
                               if (found) {
                                 setSelectedMemberForModal(found);
                               } else {
-                                // Synthetic member profile from donation record if not in full ledger
+                                const synthetic = DonatorsPortalService.getMemberProfileByUid(
+                                  d.uid,
+                                  d.donorEmail,
+                                  d.donorName
+                                );
                                 setSelectedMemberForModal({
-                                  uid: d.uid,
-                                  memberId: d.memberId,
-                                  fullName: d.donorName,
-                                  email: d.donorEmail,
-                                  primaryMobile: d.donorMobile || '',
-                                  memberCategory: 'donor_member',
-                                  villageTownCity: 'Kalyani',
-                                  district: 'Nadia',
-                                  state: 'West Bengal',
-                                  pinCode: '741235',
-                                  profileCompletionStatus: 'completed',
-                                  completionPercentage: 100,
-                                  createdAt: d.createdAt,
-                                  updatedAt: d.createdAt,
+                                  ...synthetic,
+                                  memberId: d.memberId || synthetic.memberId,
+                                  primaryMobile: d.donorMobile || synthetic.primaryMobile,
                                 });
                               }
                             }}

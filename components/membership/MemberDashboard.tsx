@@ -95,7 +95,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
     role: 'member',
     roles: ['member'],
     campus: 'gayeshpur',
-    approvedByAdmin: true,
+    approvedByAdmin: 'system',
   };
 
   // Hydrate cloud state once on mount

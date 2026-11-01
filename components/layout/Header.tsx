@@ -65,6 +65,13 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
       return;
     }
 
+    if (href === '/' || href === '') {
+      if (typeof window !== 'undefined' && window.location.pathname === '/') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    }
+
     if (href.startsWith('#')) {
       const target = document.querySelector(href);
       if (target) {
@@ -92,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           {/* Logo with clean dark text for light background & admin-customizable branding */}
-          <Link href="/" className="group focus:outline-none shrink-0">
+          <Link href="/" prefetch={false} className="group focus:outline-none shrink-0">
             <div className="block sm:hidden">
               <MadenLogo
                 size="sm"

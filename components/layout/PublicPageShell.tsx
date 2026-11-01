@@ -54,7 +54,7 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
   secondaryCtaText,
   secondaryCtaAction,
   accessLevel = 'public',
-  allowedRoles = ['player', 'parent', 'coach', 'admin', 'manager', 'staff1', 'staff2'],
+  allowedRoles = ['admin', 'member'],
 }) => {
   const { user, profile } = useAuth();
   const isDonatorMemberLoggedIn = Boolean(user && profile && profile.role === 'member');

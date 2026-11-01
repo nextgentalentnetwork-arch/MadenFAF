@@ -1148,18 +1148,11 @@ export const DonatorsPortalService = {
       cleanActorEmail === 'pravakarghosh.2025@gmail.com';
 
     // Verify ownership:
-    // If not admin, check if the caller is attempting to overwrite another member's profile
-    if (!isAdmin && profileInput.uid && actorUid !== profileInput.uid && profileInput.uid !== 'guest-member') {
-      const targetOwner = all.find((p) => p.uid === profileInput.uid);
-      const isSameEmail =
-        targetOwner &&
-        cleanActorEmail &&
-        ((targetOwner.authEmail || '').trim().toLowerCase() === cleanActorEmail ||
-          (targetOwner.email || '').trim().toLowerCase() === cleanActorEmail);
-
-      // If the target profile belongs to an entirely different person, forbid the edit
-      if (targetOwner && !isSameEmail) {
-        return { success: false, error: 'Unauthorized: You can only edit your own Member profile.' };
+    // If not admin, ensure the profile is strictly scoped to the actor's authoritative UID and authenticated email
+    if (!isAdmin) {
+      profileInput.uid = actorUid;
+      if (cleanActorEmail) {
+        profileInput.authEmail = cleanActorEmail;
       }
     }
 

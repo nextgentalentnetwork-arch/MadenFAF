@@ -2070,9 +2070,12 @@ export const DEFAULT_HEADER_CONFIG: HeaderConfig = {
       href: '/about',
       visible: true,
       sublinks: [
-        { id: 'sub-about-1', title: 'Who We Are & Philosophy', href: '/about', desc: 'Our vision, mission, and youth football ethos' },
+        { id: 'sub-about-1', title: 'Who We Are & Philosophy', href: '/philosophy', desc: 'Our vision, mission, and youth football ethos', badge: 'PHILOSOPHY' },
         { id: 'sub-about-2', title: 'The MADEN Pathway', href: '/pathway', desc: '5-stage player development roadmap', badge: 'CORE' },
         { id: 'sub-about-3', title: 'Coaching Staff & Mentors', href: '/coaches', desc: 'Meet our AFC & AIFF certified technical panel' },
+        { id: 'sub-about-impact', title: 'Impact & Milestones', href: '/impact', desc: 'Pathway progression stats & player placements', badge: 'STATS' },
+        { id: 'sub-about-analytics', title: 'Growth & Visualizations', href: '/analytics', desc: '3-Year player trends & scholarship charts' },
+        { id: 'sub-about-global', title: 'Global Tours & Exposure', href: '/global-tours', desc: 'International coaching exchanges & European camps' },
         { id: 'sub-about-4', title: 'Parent Experience & Reviews', href: '/parent-experience', desc: 'Weekly metrics, WhatsApp reports & reviews' },
         { id: 'sub-about-5', title: 'Success Stories & Alumni', href: '/success-stories', desc: 'Alumni signings and collegiate awards' },
       ],
@@ -2100,7 +2103,7 @@ export const DEFAULT_HEADER_CONFIG: HeaderConfig = {
     {
       id: 'menu-trial',
       label: 'APPLY FOR TRIAL',
-      href: '/join?type=trial',
+      href: '/trials',
       visible: true,
       badge: 'TRIAL',
     },
@@ -2110,6 +2113,8 @@ export const DEFAULT_HEADER_CONFIG: HeaderConfig = {
       href: '/events',
       visible: true,
       sublinks: [
+        { id: 'sub-ev-trials', title: 'Trial Assessment Schedule', href: '/trials', desc: 'View active assessment slots across Bengal pitches', badge: 'INTAKE' },
+        { id: 'sub-ev-sponsors', title: 'Official Brand Partners', href: '/sponsors', desc: 'Kit suppliers, corporate CSR sponsors & nutrition' },
         { id: 'sub-ev-1', title: 'Trial Events & Camps', href: '/events', desc: 'Official trial schedules, camps & announcements' },
         { id: 'sub-ev-2', title: 'News & Announcements', href: '/news', desc: 'Academy updates, match reports & stories' },
         { id: 'sub-ev-3', title: 'Match Centre & Fixtures', href: '/fixtures', desc: 'Upcoming fixtures and youth league results', badge: 'LIVE' },

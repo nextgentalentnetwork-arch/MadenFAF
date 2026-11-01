@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AcademyDataManager } from '@/lib/academyDataManager';
 import { TrialSlot } from '@/data/academyData';
 import {
@@ -16,6 +16,7 @@ import {
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { PlayerProfileDetailModal } from '@/components/portal/PlayerProfileDetailModal';
 import { BulkSendTrialPassesModal } from './BulkSendTrialPassesModal';
+import { WhatsAppTemplateModal } from './WhatsAppTemplateModal';
 import {
   UserCheck,
   Calendar,
@@ -74,10 +75,17 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   );
   const [editingSlot, setEditingSlot] = useState<TrialSlot | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: 'candidate' | 'slot';
+    type: 'candidate' | 'slot' | 'bulk_candidates';
     id: string;
     name: string;
+    count?: number;
   } | null>(null);
+
+  // Candidate Bulk Actions & Selection State
+  const [selectedCandidateRefs, setSelectedCandidateRefs] = useState<string[]>([]);
+  const [isBulkUpdating, setIsBulkUpdating] = useState<boolean>(false);
+  const [bulkWhatsAppTargetCandidates, setBulkWhatsAppTargetCandidates] =
+    useState<AcademyRegistrationData[] | null>(null);
 
   // Application Review, Remarks, Trial Scheduling & Applicant Notification Modal
   const [editingCandidate, setEditingCandidate] = useState<AcademyRegistrationData | null>(
@@ -88,6 +96,20 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
     useState<AcademyRegistrationData | null>(null);
   // Bulk WhatsApp Trial Passes Modal
   const [isBulkWhatsAppOpen, setIsBulkWhatsAppOpen] = useState<boolean>(false);
+
+  // Reusable WhatsApp Message Templates Library Modal
+  const [isWhatsAppTemplatesOpen, setIsWhatsAppTemplatesOpen] = useState<boolean>(false);
+  const [whatsAppCandidateContext, setWhatsAppCandidateContext] = useState<AcademyRegistrationData | null>(null);
+  const [whatsAppDefaultTemplateId, setWhatsAppDefaultTemplateId] = useState<string>('evaluation_scheduled');
+
+  const openWhatsAppTemplates = (
+    candidateItem?: AcademyRegistrationData | null,
+    templateId: string = 'evaluation_scheduled'
+  ) => {
+    setWhatsAppCandidateContext(candidateItem || null);
+    setWhatsAppDefaultTemplateId(templateId);
+    setIsWhatsAppTemplatesOpen(true);
+  };
   const [adminRemarks, setAdminRemarks] = useState<string>('');
   const [scheduleDate, setScheduleDate] = useState<string>('May 16, 2026');
   const [scheduleTime, setScheduleTime] = useState<string>('07:30 AM – 09:30 AM');
@@ -214,9 +236,25 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     try {
-      if (deleteTarget.type === 'candidate') {
+      if (deleteTarget.type === 'bulk_candidates') {
+        const count = selectedCandidateRefs.length;
+        for (const ref of selectedCandidateRefs) {
+          await deleteRegistration(ref);
+        }
+        setCandidates((prev) =>
+          prev.filter((c) => !selectedCandidateRefs.includes(c.bookingRef))
+        );
+        setSelectedCandidateRefs([]);
+        onNotify({
+          type: 'success',
+          text: `Successfully deleted ${count} application records.`,
+        });
+      } else if (deleteTarget.type === 'candidate') {
         await deleteRegistration(deleteTarget.id);
         setCandidates((prev) => prev.filter((c) => c.bookingRef !== deleteTarget.id));
+        setSelectedCandidateRefs((prev) =>
+          prev.filter((ref) => ref !== deleteTarget.id)
+        );
         onNotify({
           type: 'success',
           text: `Application for ${deleteTarget.name} removed.`,
@@ -232,6 +270,8 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
       setDeleteTarget(null);
     }
   };
+
+
 
   // Save Application Review, Remarks, Trial Schedule & Optional Applicant Notification
   const handleSaveEvaluation = async (e: React.FormEvent) => {
@@ -432,25 +472,151 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
   const trialCount = candidates.filter((c) => c.applicationType === 'trial').length;
 
   // Filtering applications
-  const filteredCandidates = candidates.filter((c) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      (c.playerName || '').toLowerCase().includes(q) ||
-      (c.parentName || '').toLowerCase().includes(q) ||
-      (c.bookingRef || '').toLowerCase().includes(q) ||
-      (c.phone || '').includes(q) ||
-      (c.email || '').toLowerCase().includes(q);
+  const filteredCandidates = useMemo(() => {
+    return candidates.filter((c) => {
+      const q = search.toLowerCase();
+      const matchesSearch =
+        (c.playerName || '').toLowerCase().includes(q) ||
+        (c.parentName || '').toLowerCase().includes(q) ||
+        (c.bookingRef || '').toLowerCase().includes(q) ||
+        (c.phone || '').includes(q) ||
+        (c.email || '').toLowerCase().includes(q);
 
-    const normStatus = normalizeApplicationStatus(c.status);
-    const matchesStatus = statusFilter === 'all' || normStatus === statusFilter;
-    const matchesCampus =
-      campusFilter === 'all' ||
-      (c.preferredCampus || '').toLowerCase().includes(campusFilter.toLowerCase());
-    const matchesPathway =
-      pathwayFilter === 'all' || (c.applicationType || 'admission') === pathwayFilter;
+      const normStatus = normalizeApplicationStatus(c.status);
+      const matchesStatus = statusFilter === 'all' || normStatus === statusFilter;
+      const matchesCampus =
+        campusFilter === 'all' ||
+        (c.preferredCampus || '').toLowerCase().includes(campusFilter.toLowerCase());
+      const matchesPathway =
+        pathwayFilter === 'all' || (c.applicationType || 'admission') === pathwayFilter;
 
-    return matchesSearch && matchesStatus && matchesCampus && matchesPathway;
-  });
+      return matchesSearch && matchesStatus && matchesCampus && matchesPathway;
+    });
+  }, [candidates, search, statusFilter, campusFilter, pathwayFilter]);
+
+  // Candidates Selection & Bulk Action Helpers
+  const selectedCandidates = useMemo(
+    () => candidates.filter((c) => selectedCandidateRefs.includes(c.bookingRef)),
+    [candidates, selectedCandidateRefs]
+  );
+
+  const allFilteredSelected = useMemo(
+    () =>
+      filteredCandidates.length > 0 &&
+      filteredCandidates.every((c) => selectedCandidateRefs.includes(c.bookingRef)),
+    [filteredCandidates, selectedCandidateRefs]
+  );
+
+  const someFilteredSelected = useMemo(
+    () =>
+      filteredCandidates.some((c) => selectedCandidateRefs.includes(c.bookingRef)) &&
+      !allFilteredSelected,
+    [filteredCandidates, selectedCandidateRefs, allFilteredSelected]
+  );
+
+  const toggleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      const visibleRefs = new Set(filteredCandidates.map((c) => c.bookingRef));
+      setSelectedCandidateRefs((prev) => prev.filter((ref) => !visibleRefs.has(ref)));
+    } else {
+      const newRefs = new Set([
+        ...selectedCandidateRefs,
+        ...filteredCandidates.map((c) => c.bookingRef),
+      ]);
+      setSelectedCandidateRefs(Array.from(newRefs));
+    }
+  };
+
+  const toggleSelectCandidate = (bookingRef: string) => {
+    setSelectedCandidateRefs((prev) =>
+      prev.includes(bookingRef)
+        ? prev.filter((r) => r !== bookingRef)
+        : [...prev, bookingRef]
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedCandidateRefs([]);
+  };
+
+  // Bulk status update for all selected candidates (e.g., mark as 'Attended', 'Approved', etc.)
+  const handleBulkStatusChange = async (
+    newStatus: ApplicationStatus,
+    actionLabel?: string
+  ) => {
+    if (selectedCandidateRefs.length === 0) return;
+    setIsBulkUpdating(true);
+    const normalized = normalizeApplicationStatus(newStatus);
+    const count = selectedCandidateRefs.length;
+
+    try {
+      const updatePromises = selectedCandidateRefs.map(async (bookingRef) => {
+        const existing = candidates.find((c) => c.bookingRef === bookingRef);
+        const isAttended = actionLabel === 'Attended';
+        const dateStr = new Date().toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        });
+        const updatedRemarks = isAttended
+          ? existing?.adminRemarks
+            ? `${existing.adminRemarks} | [${dateStr}] Marked Attended: Trial pitch evaluation completed.`
+            : `[${dateStr}] Marked Attended: Trial pitch evaluation completed.`
+          : existing?.adminRemarks;
+
+        await updateRegistrationStatus(bookingRef, normalized, {
+          adminRemarks: updatedRemarks,
+          scheduledTrialDetails: existing?.scheduledTrialDetails,
+          notificationLog: existing?.notificationLog,
+          message: existing?.message,
+        });
+      });
+
+      await Promise.all(updatePromises);
+
+      const dateStr = new Date().toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+
+      setCandidates((prev) =>
+        prev.map((c) => {
+          if (selectedCandidateRefs.includes(c.bookingRef)) {
+            const isAttended = actionLabel === 'Attended';
+            return {
+              ...c,
+              status: normalized,
+              ...(isAttended
+                ? {
+                    adminRemarks: c.adminRemarks
+                      ? `${c.adminRemarks} | [${dateStr}] Marked Attended: Trial pitch evaluation completed.`
+                      : `[${dateStr}] Marked Attended: Trial pitch evaluation completed.`,
+                  }
+                : {}),
+            };
+          }
+          return c;
+        })
+      );
+
+      onNotify({
+        type: 'success',
+        text:
+          actionLabel === 'Attended'
+            ? `Successfully marked ${count} candidate(s) as "Attended" on pitch.`
+            : `Successfully updated ${count} candidate(s) to "${APPLICATION_STATUS_META[normalized].label}".`,
+      });
+      setSelectedCandidateRefs([]);
+    } catch (err: any) {
+      onNotify({
+        type: 'error',
+        text: err?.message || 'Failed to update candidates in bulk.',
+      });
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -498,24 +664,36 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
           </div>
 
           {activeSubTab === 'candidates' && (
-            <button
-              type="button"
-              onClick={() => {
-                if (filteredCandidates.length === 0) {
-                  onNotify({
-                    type: 'error',
-                    text: 'No candidates match the current filter criteria.',
-                  });
-                  return;
-                }
-                setIsBulkWhatsAppOpen(true);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
-              title={`Bulk send official trial passes to ${filteredCandidates.length} filtered candidate(s) via WhatsApp`}
-            >
-              <MessageSquare className="w-4 h-4 text-emerald-100" />
-              <span>Bulk Send Trial Passes ({filteredCandidates.length})</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => openWhatsAppTemplates(null, 'evaluation_scheduled')}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs cursor-pointer border border-slate-700 hover:border-emerald-500/50"
+                title="Browse pre-configured WhatsApp notification templates library (Evaluation Scheduled, Selection Successful, Trial Postponed, etc.)"
+              >
+                <MessageSquare className="w-4 h-4 text-emerald-400" />
+                <span>WhatsApp Templates</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (filteredCandidates.length === 0) {
+                    onNotify({
+                      type: 'error',
+                      text: 'No candidates match the current filter criteria.',
+                    });
+                    return;
+                  }
+                  setIsBulkWhatsAppOpen(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title={`Bulk send official trial passes to ${filteredCandidates.length} filtered candidate(s) via WhatsApp`}
+              >
+                <Send className="w-3.5 h-3.5 text-emerald-100" />
+                <span>Bulk Trial Passes ({filteredCandidates.length})</span>
+              </button>
+            </>
           )}
 
           <button
@@ -652,12 +830,123 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
             </div>
           </div>
 
+          {/* Active Bulk Selection Notice / Quick Actions Bar */}
+          {selectedCandidateRefs.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/40 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-xs">
+                  {selectedCandidateRefs.length}
+                </span>
+                <div>
+                  <div className="text-xs font-bold text-slate-900">
+                    {selectedCandidateRefs.length} Candidate{selectedCandidateRefs.length > 1 ? 's' : ''} Selected
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    of {filteredCandidates.length} visible candidates ·{' '}
+                    <button
+                      type="button"
+                      onClick={clearSelection}
+                      className="text-amber-800 hover:text-amber-950 underline font-semibold cursor-pointer"
+                    >
+                      Deselect all
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isBulkUpdating}
+                  onClick={() => handleBulkStatusChange('completed', 'Attended')}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors active:scale-95"
+                  title="Mark all selected candidates as Attended on-pitch"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Mark Attended ({selectedCandidateRefs.length})</span>
+                </button>
+
+                <select
+                  disabled={isBulkUpdating}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkStatusChange(e.target.value as ApplicationStatus);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs cursor-pointer shadow-xs focus:outline-none focus:border-amber-500"
+                >
+                  <option value="" disabled>
+                    Change Status To...
+                  </option>
+                  <option value="completed">Completed / Attended</option>
+                  <option value="approved">Approved</option>
+                  <option value="trial_scheduled">Trial Scheduled</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="waitlisted">Waitlisted</option>
+                  <option value="additional_info_required">Additional Info Required</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="pending_review">Pending Review</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkWhatsAppTargetCandidates(selectedCandidates);
+                    setIsBulkWhatsAppOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                  title="Launch WhatsApp trial pass dispatch for selected candidates"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>WhatsApp Passes ({selectedCandidateRefs.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isBulkUpdating}
+                  onClick={() => {
+                    setDeleteTarget({
+                      type: 'bulk_candidates',
+                      id: 'bulk',
+                      name: `${selectedCandidateRefs.length} selected candidates`,
+                      count: selectedCandidateRefs.length,
+                    });
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Delete selected candidates"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Applications Table */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-3 px-3.5 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all visible candidates"
+                        checked={allFilteredSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someFilteredSelected;
+                        }}
+                        onChange={toggleSelectAllFiltered}
+                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer accent-amber-500"
+                        title={
+                          allFilteredSelected
+                            ? 'Deselect all visible candidates'
+                            : 'Select all visible candidates'
+                        }
+                      />
+                    </th>
                     <th className="py-3 px-4">Reference &amp; Pathway</th>
                     <th className="py-3 px-4">Player, DOB &amp; Age</th>
                     <th className="py-3 px-4">Guardian &amp; Contact</th>
@@ -670,7 +959,7 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                 <tbody className="divide-y divide-slate-100">
                   {filteredCandidates.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400">
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
                         {isLoading
                           ? 'Loading admission and trial applications...'
                           : 'No admission or trial applications match your current filter.'}
@@ -681,11 +970,28 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                       const normStatus = normalizeApplicationStatus(c.status);
                       const statusMeta = APPLICATION_STATUS_META[normStatus];
                       const isTrial = c.applicationType === 'trial';
+                      const isSelected = selectedCandidateRefs.includes(c.bookingRef);
                       return (
                         <tr
                           key={c.id || c.bookingRef}
-                          className="hover:bg-slate-50/80 transition-colors"
+                          className={`transition-colors ${
+                            isSelected
+                              ? 'bg-amber-500/10 hover:bg-amber-500/15 border-l-4 border-l-amber-500'
+                              : 'hover:bg-slate-50/80'
+                          }`}
                         >
+                          <td
+                            className="py-3 px-3.5 text-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              aria-label={`Select candidate ${c.playerName}`}
+                              checked={isSelected}
+                              onChange={() => toggleSelectCandidate(c.bookingRef)}
+                              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer accent-amber-500"
+                            />
+                          </td>
                           <td className="py-3 px-4">
                             <div className="font-mono font-bold text-slate-900">
                               {c.bookingRef}
@@ -823,6 +1129,24 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
+                                onClick={() =>
+                                  openWhatsAppTemplates(
+                                    c,
+                                    c.status === 'approved'
+                                      ? 'selection_successful'
+                                      : c.status === 'additional_info_required'
+                                      ? 'additional_info_required'
+                                      : 'evaluation_scheduled'
+                                  )
+                                }
+                                className="px-2 py-1.5 text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors cursor-pointer text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs"
+                                title="Send WhatsApp Notification from Template Library (Evaluation Scheduled, Selection, Postponed, etc.)"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>WhatsApp</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => setSelectedPlayerForModal(c)}
                                 className="px-2.5 py-1.5 text-amber-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors cursor-pointer text-[11px] font-bold inline-flex items-center gap-1 shadow-xs"
                                 title="Open Player Profile, Official Trial Pass & WhatsApp Dispatch"
@@ -859,6 +1183,115 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
               </table>
             </div>
           </div>
+
+          {/* Floating Sticky Bulk Actions Toolbar */}
+          {selectedCandidateRefs.length > 0 && (
+            <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-4xl bg-slate-950/95 backdrop-blur-md text-white border-2 border-amber-500/60 rounded-2xl p-3 sm:p-4 shadow-2xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-5 duration-200">
+              {/* Left: Count and Deselect */}
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center text-sm shadow-sm shrink-0">
+                  {selectedCandidateRefs.length}
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                    <span>
+                      {selectedCandidateRefs.length} Candidate{selectedCandidateRefs.length > 1 ? 's' : ''} Selected
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="text-[11px] text-amber-400 hover:text-amber-300 underline font-semibold cursor-pointer"
+                  >
+                    Deselect all candidates
+                  </button>
+                </div>
+              </div>
+
+              {/* Right: Quick Bulk Actions */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* 1. Quick "Mark Attended" button */}
+                <button
+                  type="button"
+                  disabled={isBulkUpdating}
+                  onClick={() => handleBulkStatusChange('completed', 'Attended')}
+                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
+                  title="Mark all selected candidates as Attended on pitch (evaluation completed)"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                  <span>Mark Attended ({selectedCandidateRefs.length})</span>
+                </button>
+
+                {/* 2. Bulk Status Change Dropdown */}
+                <select
+                  disabled={isBulkUpdating}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkStatusChange(e.target.value as ApplicationStatus);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-amber-300 font-semibold text-xs border border-slate-700 focus:outline-none focus:border-amber-400 cursor-pointer transition-colors"
+                >
+                  <option value="" disabled>
+                    Change Status To...
+                  </option>
+                  <option value="completed">Completed / Attended</option>
+                  <option value="approved">Approved / Selected</option>
+                  <option value="trial_scheduled">Trial Scheduled</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="waitlisted">Waitlisted</option>
+                  <option value="additional_info_required">Additional Info Required</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="pending_review">Pending Review</option>
+                </select>
+
+                {/* 3. Bulk WhatsApp Passes */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkWhatsAppTargetCandidates(selectedCandidates);
+                    setIsBulkWhatsAppOpen(true);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition-colors cursor-pointer"
+                  title="Send bulk WhatsApp trial passes to selected candidates"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">WhatsApp Passes</span>
+                </button>
+
+                {/* 4. Bulk Delete */}
+                <button
+                  type="button"
+                  disabled={isBulkUpdating}
+                  onClick={() => {
+                    setDeleteTarget({
+                      type: 'bulk_candidates',
+                      id: 'bulk',
+                      name: `${selectedCandidateRefs.length} selected candidates`,
+                      count: selectedCandidateRefs.length,
+                    });
+                  }}
+                  className="px-2.5 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-300 font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Delete all selected applications"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Delete</span>
+                </button>
+
+                {/* 5. Close Toolbar Button */}
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Close toolbar and clear selection"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* Intake Sessions / Slots Sub-Tab */
@@ -1222,6 +1655,71 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
                     <option value="sms">SMS / WhatsApp</option>
                     <option value="email">Email</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Reusable WhatsApp Notification Templates Quick-Launch Strip */}
+              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-white space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-slate-100">
+                      Reusable WhatsApp Notification Templates
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-emerald-300 font-mono">
+                    Pre-populated with {editingCandidate.playerName}&apos;s data
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openWhatsAppTemplates(editingCandidate, 'evaluation_scheduled')
+                    }
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-left border border-slate-700 hover:border-emerald-500/50 transition-all cursor-pointer group"
+                  >
+                    <div className="text-[10px] font-mono text-indigo-400 font-bold uppercase">
+                      Call Letter
+                    </div>
+                    <div className="text-xs font-bold text-slate-100 group-hover:text-emerald-300 flex items-center justify-between">
+                      <span>Evaluation Scheduled</span>
+                      <Send className="w-3 h-3 opacity-60 group-hover:opacity-100 text-emerald-400" />
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openWhatsAppTemplates(editingCandidate, 'selection_successful')
+                    }
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-left border border-slate-700 hover:border-emerald-500/50 transition-all cursor-pointer group"
+                  >
+                    <div className="text-[10px] font-mono text-emerald-400 font-bold uppercase">
+                      Squad Offer
+                    </div>
+                    <div className="text-xs font-bold text-slate-100 group-hover:text-emerald-300 flex items-center justify-between">
+                      <span>Selection Successful</span>
+                      <Trophy className="w-3 h-3 opacity-60 group-hover:opacity-100 text-amber-400" />
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openWhatsAppTemplates(editingCandidate, 'trial_postponed')
+                    }
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-left border border-slate-700 hover:border-amber-500/50 transition-all cursor-pointer group"
+                  >
+                    <div className="text-[10px] font-mono text-amber-400 font-bold uppercase">
+                      Weather / Delay
+                    </div>
+                    <div className="text-xs font-bold text-slate-100 group-hover:text-amber-300 flex items-center justify-between">
+                      <span>Trial Postponed</span>
+                      <Calendar className="w-3 h-3 opacity-60 group-hover:opacity-100 text-amber-400" />
+                    </div>
+                  </button>
                 </div>
               </div>
 
@@ -1610,18 +2108,26 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
       <DeleteConfirmModal
         isOpen={Boolean(deleteTarget)}
         title={
-          deleteTarget?.type === 'candidate'
-            ? 'Delete Application Record'
-            : 'Delete Schedule Slot'
+          deleteTarget?.type === 'bulk_candidates'
+            ? `Delete ${deleteTarget.count || 'Multiple'} Applications`
+            : deleteTarget?.type === 'candidate'
+              ? 'Delete Application Record'
+              : 'Delete Schedule Slot'
         }
         message={
-          deleteTarget?.type === 'candidate'
-            ? 'Are you sure you want to permanently remove this player application? It will be removed from Supabase and local storage.'
-            : 'Are you sure you want to remove this trial intake session from the schedule?'
+          deleteTarget?.type === 'bulk_candidates'
+            ? `Are you sure you want to permanently delete these ${deleteTarget.count} selected application records? They will be removed from Supabase and local storage.`
+            : deleteTarget?.type === 'candidate'
+              ? 'Are you sure you want to permanently remove this player application? It will be removed from Supabase and local storage.'
+              : 'Are you sure you want to remove this trial intake session from the schedule?'
         }
         itemName={deleteTarget?.name}
         confirmLabel={
-          deleteTarget?.type === 'candidate' ? 'Delete Application' : 'Delete Slot'
+          deleteTarget?.type === 'bulk_candidates'
+            ? `Delete ${deleteTarget.count} Applications`
+            : deleteTarget?.type === 'candidate'
+              ? 'Delete Application'
+              : 'Delete Slot'
         }
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -1631,8 +2137,11 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
       {isBulkWhatsAppOpen && (
         <BulkSendTrialPassesModal
           isOpen={isBulkWhatsAppOpen}
-          onClose={() => setIsBulkWhatsAppOpen(false)}
-          candidates={filteredCandidates}
+          onClose={() => {
+            setIsBulkWhatsAppOpen(false);
+            setBulkWhatsAppTargetCandidates(null);
+          }}
+          candidates={bulkWhatsAppTargetCandidates || filteredCandidates}
           onPassSent={(bookingRef) => {
             setCandidates((prev) =>
               prev.map((c) =>
@@ -1686,6 +2195,38 @@ export const TrialManager: React.FC<TrialManagerProps> = ({ onNotify }) => {
               updated
             );
           }}
+          onOpenTemplateLibrary={(c, templateId) => openWhatsAppTemplates(c, templateId)}
+        />
+      )}
+
+      {/* Reusable WhatsApp Message Templates Library Modal */}
+      {isWhatsAppTemplatesOpen && (
+        <WhatsAppTemplateModal
+          key={`${whatsAppCandidateContext?.bookingRef || 'general'}-${whatsAppDefaultTemplateId}`}
+          isOpen={isWhatsAppTemplatesOpen}
+          onClose={() => setIsWhatsAppTemplatesOpen(false)}
+          candidate={whatsAppCandidateContext}
+          allCandidates={candidates}
+          defaultTemplateId={whatsAppDefaultTemplateId}
+          onDispatched={(bookingRef, templateId, message) => {
+            setCandidates((prev) =>
+              prev.map((c) => {
+                if (c.bookingRef !== bookingRef) return c;
+                const newLog = {
+                  id: `wa-tpl-${Date.now()}`,
+                  sentAt: new Date().toISOString(),
+                  channel: 'sms' as const,
+                  status: `WhatsApp: ${templateId}`,
+                  message: message.slice(0, 100) + '...',
+                };
+                return {
+                  ...c,
+                  notificationLog: [newLog, ...(c.notificationLog || [])],
+                };
+              })
+            );
+          }}
+          onNotify={onNotify}
         />
       )}
     </div>

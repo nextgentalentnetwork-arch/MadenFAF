@@ -1,3 +1,4 @@
+import fs from 'fs';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -234,8 +235,6 @@ const LOCAL_RBAC_CACHE_FILE = '/tmp/maden_faf_rbac_accounts.json';
 
 function readLocalRbacFile(): Record<string, AuthoritativeAccountRecord> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('fs');
     if (fs.existsSync(LOCAL_RBAC_CACHE_FILE)) {
       const raw = fs.readFileSync(LOCAL_RBAC_CACHE_FILE, 'utf8');
       const parsed = JSON.parse(raw);
@@ -251,8 +250,6 @@ function readLocalRbacFile(): Record<string, AuthoritativeAccountRecord> {
 
 function writeLocalRbacFile(map: Record<string, AuthoritativeAccountRecord>): void {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('fs');
     fs.writeFileSync(LOCAL_RBAC_CACHE_FILE, JSON.stringify(map), 'utf8');
   } catch {
     // Ignore file write errors

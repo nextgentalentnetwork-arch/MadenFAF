@@ -28,6 +28,8 @@ import { MemberDashboard } from '@/components/membership/MemberDashboard';
 interface DigitalPortalModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialRole?: string;
+  onBookTrialClick?: () => void;
 }
 
 const ROLE_TABS: { id: UserRole; label: string }[] = [
@@ -35,7 +37,12 @@ const ROLE_TABS: { id: UserRole; label: string }[] = [
   { id: 'admin', label: 'Admin — Backend Management' },
 ];
 
-export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({ isOpen, onClose }) => {
+export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
+  isOpen,
+  onClose,
+  initialRole,
+  onBookTrialClick,
+}) => {
   const { profile, login, logout } = useAuth();
   const isAdmin =
     profile?.role === 'admin' ||

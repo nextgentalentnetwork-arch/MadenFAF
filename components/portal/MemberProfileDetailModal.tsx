@@ -295,7 +295,9 @@ export const MemberProfileDetailModal: React.FC<MemberProfileDetailModalProps> =
                     <span className="col-span-2 font-mono font-bold text-slate-900 flex items-center gap-1.5">
                       <span>{member.primaryMobile ? `+91 ${member.primaryMobile}` : '—'}</span>
                       {member.verifiedContactMetadata?.isVerified && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" title="Verified by Administration" />
+                        <span title="Verified by Administration" className="inline-flex">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        </span>
                       )}
                     </span>
 

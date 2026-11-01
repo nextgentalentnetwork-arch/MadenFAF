@@ -426,7 +426,7 @@ export async function POST(req: NextRequest) {
 
       // If account is not yet in accountsMap, check if the client holds a valid server-signed HMAC rbacToken
       const tokenCheck = rbacToken ? verifyRbacToken(rbacToken) : { valid: false };
-      if (!account && tokenCheck.valid && tokenCheck.payload?.email === email) {
+      if (!account && tokenCheck.valid && tokenCheck.payload && tokenCheck.payload.email === email) {
         const verifiedRole: UserRole = isProtectedAdminEmail(email)
           ? 'admin'
           : normalizeToTwoRoles(tokenCheck.payload.role);

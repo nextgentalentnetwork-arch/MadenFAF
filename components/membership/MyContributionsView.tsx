@@ -123,7 +123,7 @@ export const MyContributionsView: React.FC<MyContributionsViewProps> = ({
       const progressPercent = Math.min(100, Math.round((verifiedTotal / milestoneTarget) * 100));
       const rawPercent = Math.round((verifiedTotal / milestoneTarget) * 100);
 
-      const tangibleUnits = Math.floor(verifiedTotal / initiative.metrics.costPerUnit);
+      const tangibleUnits = Math.floor(verifiedTotal / (initiative.costPerUnit || 1));
 
       return {
         ...initiative,
@@ -201,8 +201,7 @@ export const MyContributionsView: React.FC<MyContributionsViewProps> = ({
     downloadAnnualVerifiedStatementPdf(
       memberRecord,
       myDonations,
-      settings,
-      new Date().getFullYear().toString()
+      settings
     );
   };
 
@@ -776,7 +775,7 @@ export const MyContributionsView: React.FC<MyContributionsViewProps> = ({
                               </button>
                               <button
                                 type="button"
-                                onClick={() => downloadDonationPdf(don, memberRecord, settings, 'receipt')}
+                                onClick={() => downloadDonationPdf(don, settings, 'receipt')}
                                 className="p-1 rounded bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 cursor-pointer"
                                 title="Download PDF"
                               >

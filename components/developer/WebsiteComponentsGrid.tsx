@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { AcademyDataManager, ComponentToggles } from '@/lib/academyDataManager';
 import { DonatorsPortalService } from '@/lib/donatorsPortalService';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
@@ -37,7 +38,29 @@ import {
   Check,
   X,
   Plus,
+  ExternalLink,
 } from 'lucide-react';
+
+export const COMPONENT_PAGE_MAP: Record<string, string> = {
+  hero: '/',
+  storytelling: '/philosophy',
+  impactStats: '/impact',
+  growthCharts: '/analytics',
+  pathway: '/pathway',
+  programs: '/programs',
+  coachingStaff: '/coaches',
+  globalPositioning: '/global-tours',
+  campusNetwork: '/campuses',
+  matchCentre: '/fixtures',
+  campsAndEvents: '/events',
+  newsAndStories: '/news',
+  scholarships: '/scholarships',
+  parentExperience: '/parent-experience',
+  successStories: '/success-stories',
+  sponsors: '/sponsors',
+  trials: '/trials',
+  memberPortal: '/developer/donations',
+};
 
 export interface ComponentMeta {
   id: string;
@@ -731,6 +754,18 @@ export const WebsiteComponentsGrid: React.FC<WebsiteComponentsGridProps> = ({
                     </button>
                   )}
                 </div>
+
+                {/* Standalone Page Link */}
+                {COMPONENT_PAGE_MAP[comp.id] && (
+                  <Link
+                    href={COMPONENT_PAGE_MAP[comp.id]}
+                    target="_blank"
+                    className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
+                    title={`Open standalone page for ${comp.name} (${COMPONENT_PAGE_MAP[comp.id]})`}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                )}
 
                 {/* Functional Delete / Remove Button */}
                 <button

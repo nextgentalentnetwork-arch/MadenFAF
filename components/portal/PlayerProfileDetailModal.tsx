@@ -43,6 +43,7 @@ interface PlayerProfileDetailModalProps {
     evaluator: string;
     instructions: string;
   }) => void;
+  onOpenTemplateLibrary?: (candidate: AcademyRegistrationData, defaultTemplateId?: string) => void;
 }
 
 export const PlayerProfileDetailModal: React.FC<PlayerProfileDetailModalProps> = ({
@@ -50,6 +51,7 @@ export const PlayerProfileDetailModal: React.FC<PlayerProfileDetailModalProps> =
   isOpen,
   onClose,
   onUpdateTrialSchedule,
+  onOpenTemplateLibrary,
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'trial_pass'>('profile');
   const [copied, setCopied] = useState<boolean>(false);
@@ -551,6 +553,18 @@ Please present this message or your printed Trial Pass at the entry checkpoint. 
                     {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copied ? 'Copied Invitation!' : 'Copy Text'}</span>
                   </button>
+
+                  {onOpenTemplateLibrary && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenTemplateLibrary(candidate, 'evaluation_scheduled')}
+                      className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                      title="Open full WhatsApp Templates Library (Evaluation Scheduled, Selection, Postponed, etc.)"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>Templates Library</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
