@@ -35,8 +35,8 @@ const nextConfig: NextConfig = {
 
   transpilePackages: ['motion'],
   onDemandEntries: {
-    maxInactiveAge: 60 * 60 * 1000,
-    pagesBufferLength: 25,
+    maxInactiveAge: 120 * 1000,
+    pagesBufferLength: 4,
   },
   async headers() {
     return [
