@@ -72,7 +72,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-amber-500 selection:text-slate-950 overflow-x-clip">
       {/* Sticky Header */}
       {toggles.header !== false && (
         <Header

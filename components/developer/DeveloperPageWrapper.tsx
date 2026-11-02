@@ -257,7 +257,7 @@ export const DeveloperPageWrapper: React.FC<DeveloperPageWrapperProps> = ({
       {/* Page Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Module Header Strip */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-white border border-slate-200 hover:border-slate-300/80 rounded-3xl p-6 shadow-xs hover:shadow-md transition-all duration-300 ease-out transform-gpu hover:scale-[1.004] flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 text-xs font-mono font-bold uppercase">

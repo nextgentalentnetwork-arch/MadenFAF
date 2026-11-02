@@ -26,6 +26,10 @@ export interface SectionBackgroundConfig {
   borderTop?: boolean;
   borderBottom?: boolean;
   borderColor?: string;
+  // Interactivity & transition options
+  interactiveHover?: boolean;
+  hoverScale?: boolean;
+  hoverBorderOpacity?: boolean;
   // Custom classes
   customClass?: string;
 }

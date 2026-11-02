@@ -396,6 +396,59 @@ export const FloatingBackgroundCustomizer: React.FC = () => {
               </div>
             )}
 
+            {/* Hover Transition & Interactivity */}
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-slate-400 uppercase">
+                  Hover Interactivity:
+                </span>
+                <span className="text-[9px] font-mono text-amber-400">Scale & Border Opacity</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleUpdateCurrentSection({
+                      hoverScale: !(currentConfig.hoverScale ?? true),
+                    })
+                  }
+                  className={`py-1.5 px-2 rounded-xl text-[10px] font-bold uppercase border cursor-pointer flex items-center justify-between ${
+                    (currentConfig.hoverScale ?? true)
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-slate-900 border-slate-800 text-slate-500'
+                  }`}
+                >
+                  <span>Hover Scale</span>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      (currentConfig.hoverScale ?? true) ? 'bg-amber-400' : 'bg-slate-700'
+                    }`}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleUpdateCurrentSection({
+                      hoverBorderOpacity: !(currentConfig.hoverBorderOpacity ?? true),
+                    })
+                  }
+                  className={`py-1.5 px-2 rounded-xl text-[10px] font-bold uppercase border cursor-pointer flex items-center justify-between ${
+                    (currentConfig.hoverBorderOpacity ?? true)
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-slate-900 border-slate-800 text-slate-500'
+                  }`}
+                >
+                  <span>Border Opacity</span>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      (currentConfig.hoverBorderOpacity ?? true) ? 'bg-amber-400' : 'bg-slate-700'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
             {/* Section Actions */}
             <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
               <button
