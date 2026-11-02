@@ -23,6 +23,9 @@ import { Footer } from '@/components/layout/Footer';
 import { DigitalPortalModal } from '@/components/modals/DigitalPortalModal';
 import { JoinModal } from '@/components/modals/JoinModal';
 import { VideoModal, ActiveVideoData } from '@/components/modals/VideoModal';
+import { SectionBackgroundWrapper } from '@/components/common/SectionBackgroundWrapper';
+import { FloatingBackgroundCustomizer } from '@/components/customizer/FloatingBackgroundCustomizer';
+import { DEFAULT_SECTION_BACKGROUNDS } from '@/data/sectionBackgroundsData';
 import { AcademyDataManager, DEFAULT_TOGGLES, subscribeAcademyData } from '@/lib/academyDataManager';
 import { ArrowRight, Sparkles, Shield, Trophy } from 'lucide-react';
 
@@ -31,6 +34,11 @@ export default function Home() {
     subscribeAcademyData,
     () => AcademyDataManager.getComponentToggles(),
     () => DEFAULT_TOGGLES
+  );
+  const backgrounds = useSyncExternalStore(
+    subscribeAcademyData,
+    () => AcademyDataManager.getSectionBackgrounds(),
+    () => DEFAULT_SECTION_BACKGROUNDS
   );
   const [portalOpen, setPortalOpen] = useState(false);
   const [portalInitialRole, setPortalInitialRole] = useState<'player' | 'parent' | 'coach' | 'admin'>('player');
@@ -75,183 +83,305 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1">
-        {/* Section 5: Premium Hero Experience */}
+        {/* Section 1: Premium Hero Experience */}
         {toggles.hero && (
-          <Hero
-            onJoinClick={() => handleOpenJoin()}
-            onExploreProgramsClick={() => scrollToSection('programs')}
-            onWatchFilmClick={() => handlePlayVideo()}
-          />
+          <SectionBackgroundWrapper
+            sectionId="hero"
+            id="hero"
+            config={backgrounds.hero}
+            defaultTextMode="light"
+          >
+            <Hero
+              onJoinClick={() => handleOpenJoin()}
+              onExploreProgramsClick={() => scrollToSection('programs')}
+              onWatchFilmClick={() => handlePlayVideo()}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 6: Storytelling — More Than a Football Academy */}
+        {/* Section 2: Storytelling — More Than a Football Academy */}
         {toggles.storytelling && (
-          <Storytelling
-            onLearnMoreClick={(tab) => {
-              if (tab === 'pathway') scrollToSection('pathway');
-              else scrollToSection('about');
-            }}
-            onWatchVideo={handlePlayVideo}
-          />
+          <SectionBackgroundWrapper
+            sectionId="storytelling"
+            id="about"
+            config={backgrounds.storytelling}
+            defaultTextMode="dark"
+          >
+            <Storytelling
+              onLearnMoreClick={(tab) => {
+                if (tab === 'pathway') scrollToSection('pathway');
+                else scrollToSection('about');
+              }}
+              onWatchVideo={handlePlayVideo}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Dynamic Impact Statistics with Count-Up Animations */}
+        {/* Section 3: Dynamic Impact Statistics with Count-Up Animations */}
         {toggles.impactStats && (
-          <ImpactStatistics
-            onJoinClick={() => handleOpenJoin()}
-            onScholarshipClick={() => scrollToSection('scholarships')}
-          />
+          <SectionBackgroundWrapper
+            sectionId="impactStats"
+            id="impact"
+            config={backgrounds.impactStats}
+            defaultTextMode="light"
+          >
+            <ImpactStatistics
+              onJoinClick={() => handleOpenJoin()}
+              onScholarshipClick={() => scrollToSection('scholarships')}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section: 3-Year Academy Growth & Scholarship Visualizations (Recharts) */}
+        {/* Section 4: 3-Year Academy Growth & Scholarship Visualizations (Recharts) */}
         {toggles.growthCharts && (
-          <AcademyGrowthCharts
-            onJoinClick={() => handleOpenJoin()}
-            onScholarshipClick={() => scrollToSection('scholarships')}
-          />
+          <SectionBackgroundWrapper
+            sectionId="growthCharts"
+            id="growth"
+            config={backgrounds.growthCharts}
+            defaultTextMode="dark"
+          >
+            <AcademyGrowthCharts
+              onJoinClick={() => handleOpenJoin()}
+              onScholarshipClick={() => scrollToSection('scholarships')}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 7: The MADEN Pathway */}
+        {/* Section 5: The MADEN Pathway */}
         {toggles.pathway && (
-          <MadenPathway
-            onJoinClick={() => handleOpenJoin()}
-          />
+          <SectionBackgroundWrapper
+            sectionId="pathway"
+            id="pathway"
+            config={backgrounds.pathway}
+            defaultTextMode="dark"
+          >
+            <MadenPathway
+              onJoinClick={() => handleOpenJoin()}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 8: Football Programs */}
+        {/* Section 6: Football Programs */}
         {toggles.programs && (
-          <ProgramsSection
-            onSelectProgram={(programId) => handleOpenJoin('gayeshpur', programId)}
-            onWatchVideo={handlePlayVideo}
-          />
+          <SectionBackgroundWrapper
+            sectionId="programs"
+            id="programs"
+            config={backgrounds.programs}
+            defaultTextMode="dark"
+          >
+            <ProgramsSection
+              onSelectProgram={(programId) => handleOpenJoin('gayeshpur', programId)}
+              onWatchVideo={handlePlayVideo}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section: Coaching Staff & Mentors */}
+        {/* Section 7: Coaching Staff & Mentors */}
         {toggles.coachingStaff && (
-          <CoachingStaff
-            onBookTrialWithCoach={(coachName, campus) => handleOpenJoin(campus, 'development')}
-          />
+          <SectionBackgroundWrapper
+            sectionId="coachingStaff"
+            id="coaches"
+            config={backgrounds.coachingStaff}
+            defaultTextMode="dark"
+          >
+            <CoachingStaff
+              onBookTrialWithCoach={(coachName, campus) => handleOpenJoin(campus, 'development')}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 11: Global / International Positioning */}
+        {/* Section 8: Global / International Positioning */}
         {toggles.globalPositioning && (
-          <GlobalPositioning
-            onExplorePrograms={() => scrollToSection('programs')}
-            onJoinClick={() => handleOpenJoin()}
-          />
+          <SectionBackgroundWrapper
+            sectionId="globalPositioning"
+            id="global-tours"
+            config={backgrounds.globalPositioning}
+            defaultTextMode="light"
+          >
+            <GlobalPositioning
+              onExplorePrograms={() => scrollToSection('programs')}
+              onJoinClick={() => handleOpenJoin()}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 12: Campus Network */}
+        {/* Section 9: Campus Network */}
         {toggles.campusNetwork && (
-          <CampusNetwork
-            onBookCampusTrial={(campusId) => handleOpenJoin(campusId)}
-          />
+          <SectionBackgroundWrapper
+            sectionId="campusNetwork"
+            id="campuses"
+            config={backgrounds.campusNetwork}
+            defaultTextMode="dark"
+          >
+            <CampusNetwork
+              onBookCampusTrial={(campusId) => handleOpenJoin(campusId)}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 13: Match Centre */}
+        {/* Section 10: Match Centre */}
         {toggles.matchCentre && (
-          <MatchCentre
-            onJoinClick={() => handleOpenJoin()}
-          />
+          <SectionBackgroundWrapper
+            sectionId="matchCentre"
+            id="match-centre"
+            config={backgrounds.matchCentre}
+            defaultTextMode="light"
+          >
+            <MatchCentre
+              onJoinClick={() => handleOpenJoin()}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 14: Camps & Events */}
+        {/* Section 11: Camps & Events */}
         {toggles.campsAndEvents && (
-          <CampsAndEvents
-            onRegisterEvent={(title) => handleOpenJoin('gayeshpur', 'holiday-camps')}
-            onWatchVideo={handlePlayVideo}
-          />
+          <SectionBackgroundWrapper
+            sectionId="campsAndEvents"
+            id="events"
+            config={backgrounds.campsAndEvents}
+            defaultTextMode="dark"
+          >
+            <CampsAndEvents
+              onRegisterEvent={(title) => handleOpenJoin('gayeshpur', 'holiday-camps')}
+              onWatchVideo={handlePlayVideo}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 16: News & Stories */}
+        {/* Section 12: News & Stories */}
         {toggles.newsAndStories && (
-          <NewsAndStories
-            onWatchVideo={handlePlayVideo}
-          />
+          <SectionBackgroundWrapper
+            sectionId="newsAndStories"
+            id="news"
+            config={backgrounds.newsAndStories}
+            defaultTextMode="dark"
+          >
+            <NewsAndStories
+              onWatchVideo={handlePlayVideo}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 16: Scholarship Section */}
+        {/* Section 13: Scholarship Section */}
         {toggles.scholarships && (
-          <ScholarshipSection
-            onApplyScholarship={() => handleOpenJoin()}
-          />
+          <SectionBackgroundWrapper
+            sectionId="scholarships"
+            id="scholarships"
+            config={backgrounds.scholarships}
+            defaultTextMode="dark"
+          >
+            <ScholarshipSection
+              onApplyScholarship={() => handleOpenJoin()}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section 17: Parent Experience */}
+        {/* Section 14: Parent Experience */}
         {toggles.parentExperience && (
-          <ParentExperience
-            onOpenParentPortal={() => handleOpenPortal('parent')}
-          />
+          <SectionBackgroundWrapper
+            sectionId="parentExperience"
+            id="parent-experience"
+            config={backgrounds.parentExperience}
+            defaultTextMode="dark"
+          >
+            <ParentExperience
+              onOpenParentPortal={() => handleOpenPortal('parent')}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Section: Success Stories & Testimonials Slider */}
+        {/* Section 15: Success Stories & Testimonials Slider */}
         {toggles.successStories && (
-          <SuccessStories
-            onJoinClick={() => handleOpenJoin()}
-            onWatchVideo={handlePlayVideo}
-          />
+          <SectionBackgroundWrapper
+            sectionId="successStories"
+            id="success-stories"
+            config={backgrounds.successStories}
+            defaultTextMode="dark"
+          >
+            <SuccessStories
+              onJoinClick={() => handleOpenJoin()}
+              onWatchVideo={handlePlayVideo}
+            />
+          </SectionBackgroundWrapper>
         )}
 
-        {/* High Conversion Pre-Footer CTA Banner — Clean, Professional Light Theme */}
+        {/* Section 16: High Conversion Pre-Footer CTA Banner */}
         {toggles.preFooterCta !== false && (
-          <section className="py-16 sm:py-24 bg-gradient-to-b from-slate-50 to-white border-t border-slate-200 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px]" />
+          <SectionBackgroundWrapper
+            sectionId="preFooterCta"
+            id="pre-footer-cta"
+            config={backgrounds.preFooterCta}
+            defaultTextMode="dark"
+          >
+            <section className="py-16 sm:py-24 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px]" />
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 space-y-4 sm:space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-bold uppercase tracking-widest text-amber-800 shadow-xs">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Official Intake 2026/27</span>
-              </div>
-
-              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-slate-900 leading-tight">
-                YOUR FOOTBALL JOURNEY <br />
-                <span className="text-amber-600">STARTS HERE</span>
-              </h2>
-
-              <p className="text-sm sm:text-base md:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-                Take the first step toward structured player development. Book a comprehensive on-pitch evaluation session at your nearest campus today.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2">
-                <button
-                  onClick={() => handleOpenJoin()}
-                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md shadow-amber-200 hover:shadow-lg flex items-center justify-center gap-2.5 cursor-pointer min-h-[48px]"
-                >
-                  <span>BOOK AN EVALUATION SESSION</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => handleOpenPortal('player')}
-                  className="w-full sm:w-auto px-6 py-4 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-300 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer min-h-[48px] shadow-xs text-center"
-                >
-                  EXPLORE DIGITAL PORTAL
-                </button>
-              </div>
-
-              {/* Reassurance points */}
-              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-500 pt-4 border-t border-slate-200/80">
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-amber-600" />
-                  <span>AFC & AIFF Certified Coaching</span>
+              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 space-y-4 sm:space-y-6">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-bold uppercase tracking-widest text-amber-800 shadow-xs">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Official Intake 2026/27</span>
                 </div>
-                <span className="hidden sm:inline text-slate-300 select-none">•</span>
-                <div className="flex items-center gap-1.5">
-                  <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                  <span>3 Floodlit Campuses in Bengal</span>
+
+                <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-slate-900 leading-tight">
+                  YOUR FOOTBALL JOURNEY <br />
+                  <span className="text-amber-600">STARTS HERE</span>
+                </h2>
+
+                <p className="text-sm sm:text-base md:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                  Take the first step toward structured player development. Book a comprehensive on-pitch evaluation session at your nearest campus today.
+                </p>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2">
+                  <button
+                    onClick={() => handleOpenJoin()}
+                    className="w-full sm:w-auto px-8 py-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md shadow-amber-200 hover:shadow-lg flex items-center justify-center gap-2.5 cursor-pointer min-h-[48px]"
+                  >
+                    <span>BOOK AN EVALUATION SESSION</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => handleOpenPortal('player')}
+                    className="w-full sm:w-auto px-6 py-4 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-300 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer min-h-[48px] shadow-xs text-center"
+                  >
+                    EXPLORE DIGITAL PORTAL
+                  </button>
                 </div>
-                <span className="hidden sm:inline text-slate-300 select-none">•</span>
-                <span>Need-Based Scholarships Available</span>
+
+                {/* Reassurance points */}
+                <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-500 pt-4 border-t border-slate-200/80">
+                  <div className="flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-amber-600" />
+                    <span>AFC & AIFF Certified Coaching</span>
+                  </div>
+                  <span className="hidden sm:inline text-slate-300 select-none">•</span>
+                  <div className="flex items-center gap-1.5">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                    <span>3 Floodlit Campuses in Bengal</span>
+                  </div>
+                  <span className="hidden sm:inline text-slate-300 select-none">•</span>
+                  <span>Need-Based Scholarships Available</span>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          </SectionBackgroundWrapper>
         )}
 
-        {/* Sponsor & Brand Partners Carousel */}
+        {/* Section 17: Sponsor & Brand Partners Carousel */}
         {toggles.sponsors && (
-          <SponsorBrandsCarousel />
+          <SectionBackgroundWrapper
+            sectionId="sponsors"
+            id="sponsors"
+            config={backgrounds.sponsors}
+            defaultTextMode="dark"
+          >
+            <SponsorBrandsCarousel />
+          </SectionBackgroundWrapper>
         )}
       </main>
+
+      {/* On-Page Real-Time Background Customizer */}
+      <FloatingBackgroundCustomizer />
 
       {/* Footer */}
       {toggles.footer !== false && (

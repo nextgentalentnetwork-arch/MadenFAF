@@ -39,6 +39,7 @@ import {
   X,
   Plus,
   ExternalLink,
+  Palette,
 } from 'lucide-react';
 
 export const COMPONENT_PAGE_MAP: Record<string, string> = {
@@ -514,6 +515,14 @@ export const WebsiteComponentsGrid: React.FC<WebsiteComponentsGridProps> = ({
             </button>
 
             <button
+              onClick={() => onSelectTab('sectionBackgrounds')}
+              className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all flex items-center gap-1.5 border border-amber-300 cursor-pointer"
+            >
+              <Palette className="w-4 h-4 text-amber-700" />
+              <span>Section Backgrounds Studio</span>
+            </button>
+
+            <button
               onClick={async () => {
                 const res = await AcademyDataManager.syncAllToSupabase();
                 if (res.success) {
@@ -766,6 +775,16 @@ export const WebsiteComponentsGrid: React.FC<WebsiteComponentsGridProps> = ({
                     <ExternalLink className="w-4 h-4" />
                   </Link>
                 )}
+
+                {/* Section Background Quick Config */}
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('sectionBackgrounds')}
+                  className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors cursor-pointer border border-amber-200"
+                  title={`Customize background for ${comp.name}`}
+                >
+                  <Palette className="w-4 h-4" />
+                </button>
 
                 {/* Functional Delete / Remove Button */}
                 <button

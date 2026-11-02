@@ -41,6 +41,13 @@ import {
   FooterMenuItem,
   FooterSocialLink,
 } from '@/data/academyData';
+import {
+  SectionBackgroundConfig,
+  SectionBackgroundsMap,
+  DEFAULT_SECTION_BACKGROUNDS,
+  HOMEPAGE_SECTIONS,
+  BackgroundType,
+} from '@/data/sectionBackgroundsData';
 import { UnifiedApiService } from '@/lib/unifiedApiService';
 
 export type {
@@ -51,10 +58,20 @@ export type {
   FooterColumn,
   FooterMenuItem,
   FooterSocialLink,
+  SectionBackgroundConfig,
+  SectionBackgroundsMap,
+  BackgroundType,
 };
-export { DEFAULT_HERO_CONFIG, DEFAULT_HEADER_CONFIG, DEFAULT_FOOTER_CONFIG };
+export {
+  DEFAULT_HERO_CONFIG,
+  DEFAULT_HEADER_CONFIG,
+  DEFAULT_FOOTER_CONFIG,
+  DEFAULT_SECTION_BACKGROUNDS,
+  HOMEPAGE_SECTIONS,
+};
 
 const STORAGE_KEYS = {
+  SECTION_BACKGROUNDS: 'maden_dev_section_backgrounds_v1',
   HERO_CONFIG: 'maden_dev_hero_config',
   HEADER_CONFIG: 'maden_dev_header_config_v2',
   FOOTER_CONFIG: 'maden_dev_footer_config_v2',
@@ -173,6 +190,7 @@ export const subscribeAcademyData = (callback: () => void) => {
 };
 
 export const AcademyDataManager = {
+  subscribeAcademyData,
   dispatchDataChange: () => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('maden_data_updated'));
@@ -842,6 +860,57 @@ export const AcademyDataManager = {
     AcademyDataManager.saveStorytellingMedia(updated);
   },
 
+  // 15. Homepage Section Backgrounds Customization
+  getSectionBackgrounds: (): SectionBackgroundsMap =>
+    getStored<SectionBackgroundsMap>(
+      STORAGE_KEYS.SECTION_BACKGROUNDS,
+      DEFAULT_SECTION_BACKGROUNDS
+    ),
+
+  saveSectionBackgrounds: (backgrounds: SectionBackgroundsMap) => {
+    setStored(STORAGE_KEYS.SECTION_BACKGROUNDS, backgrounds);
+    UnifiedApiService.persistChange({
+      section: 'sectionBackgrounds',
+      action: 'syncAll',
+      data: backgrounds,
+    }).catch(console.warn);
+  },
+
+  updateSectionBackground: (
+    sectionId: string,
+    partial: Partial<SectionBackgroundConfig>
+  ) => {
+    const current = AcademyDataManager.getSectionBackgrounds();
+    const existing = current[sectionId] || { type: 'default' };
+    const updated: SectionBackgroundsMap = {
+      ...current,
+      [sectionId]: { ...existing, ...partial },
+    };
+    AcademyDataManager.saveSectionBackgrounds(updated);
+  },
+
+  resetSectionBackground: (sectionId: string) => {
+    const current = AcademyDataManager.getSectionBackgrounds();
+    const def = DEFAULT_SECTION_BACKGROUNDS[sectionId] || { type: 'default' };
+    const updated: SectionBackgroundsMap = {
+      ...current,
+      [sectionId]: { ...def },
+    };
+    AcademyDataManager.saveSectionBackgrounds(updated);
+  },
+
+  resetAllSectionBackgrounds: () => {
+    AcademyDataManager.saveSectionBackgrounds({ ...DEFAULT_SECTION_BACKGROUNDS });
+  },
+
+  applyBackgroundToAllSections: (config: SectionBackgroundConfig) => {
+    const updated: SectionBackgroundsMap = {};
+    HOMEPAGE_SECTIONS.forEach((sec) => {
+      updated[sec.id] = { ...config };
+    });
+    AcademyDataManager.saveSectionBackgrounds(updated);
+  },
+
   // Developer Session Management
   isDeveloperAuthenticated: (): boolean => {
     if (typeof window === 'undefined') return false;
@@ -1017,6 +1086,7 @@ export const AcademyDataManager = {
     localStorage.removeItem(STORAGE_KEYS.COMPONENT_TOGGLES);
     localStorage.removeItem(STORAGE_KEYS.MEDIA_LIBRARY);
     localStorage.removeItem(STORAGE_KEYS.STORYTELLING_MEDIA);
+    localStorage.removeItem(STORAGE_KEYS.SECTION_BACKGROUNDS);
     window.dispatchEvent(new Event('maden_data_updated'));
   },
 };

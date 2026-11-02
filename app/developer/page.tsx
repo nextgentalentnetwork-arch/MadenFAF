@@ -26,10 +26,12 @@ import { PlayerProfileDetailModal } from '@/components/portal/PlayerProfileDetai
 import { HeroManager } from '@/components/developer/HeroManager';
 import { HeaderFooterManager } from '@/components/developer/HeaderFooterManager';
 import { WebsiteComponentsGrid } from '@/components/developer/WebsiteComponentsGrid';
+import { SectionBackgroundsManager } from '@/components/developer/SectionBackgroundsManager';
 import { DeleteConfirmModal } from '@/components/developer/DeleteConfirmModal';
 import { UnifiedApiService, SyncStatus } from '@/lib/unifiedApiService';
 import { useAuth } from '@/lib/AuthContext';
 import {
+  Palette,
   ShieldAlert,
   Database,
   Users,
@@ -274,6 +276,7 @@ export default function DeveloperPage() {
   // Active Management Tab
   const [activeTab, setActiveTab] = useState<
     | 'componentsGrid'
+    | 'sectionBackgrounds'
     | 'hero'
     | 'headerFooter'
     | 'database'
@@ -997,6 +1000,18 @@ export default function DeveloperPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('sectionBackgrounds')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              activeTab === 'sectionBackgrounds'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-xs ring-2 ring-amber-500/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Palette className="w-4 h-4" />
+            <span>Section Backgrounds (17)</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('hero')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
               activeTab === 'hero'
@@ -1245,6 +1260,11 @@ export default function DeveloperPage() {
             onSelectTab={(tabId) => setActiveTab(tabId as any)}
             onNotify={(msg) => setDbMessage(msg)}
           />
+        )}
+
+        {/* ---------------- SECTION BACKGROUNDS STUDIO TAB ---------------- */}
+        {activeTab === 'sectionBackgrounds' && (
+          <SectionBackgroundsManager onNotify={(msg) => setDbMessage(msg)} />
         )}
 
         {/* ---------------- HERO SHOWCASE & VIDEO EXPERIENCE TAB ---------------- */}
