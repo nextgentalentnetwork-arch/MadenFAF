@@ -1,6 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
+import { useAuth } from '@/lib/AuthContext';
+import { AcademyDataManager, subscribeAcademyData } from '@/lib/academyDataManager';
 import {
   SectionBackgroundConfig,
   GRADIENT_PRESETS,
@@ -46,6 +48,21 @@ export const SectionBackgroundWrapper: React.FC<SectionBackgroundWrapperProps> =
     if (overlay === 'white') effectiveTextMode = 'dark';
     else if ((config?.overlayOpacity ?? 50) >= 30) effectiveTextMode = 'light';
   }
+
+  // Auth check: Background editing is strictly reserved for Admin or Developer users
+  const { user, profile } = useAuth();
+  const isDevSession = useSyncExternalStore(
+    subscribeAcademyData,
+    () => AcademyDataManager.isDeveloperAuthenticated(),
+    () => false
+  );
+  const isAuthorized = Boolean(
+    profile?.role === 'admin' ||
+      profile?.roles?.includes('admin') ||
+      profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' ||
+      user?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' ||
+      isDevSession
+  );
 
   // Determine custom style for wrapper
   const wrapperStyle: React.CSSProperties = {};
@@ -226,8 +243,8 @@ export const SectionBackgroundWrapper: React.FC<SectionBackgroundWrapperProps> =
         />
       )}
 
-      {/* Admin Quick Edit Hover Button (If trigger provided) */}
-      {onEditBackground && (
+      {/* Admin Quick Edit Hover Button (Strictly Admin / Developer only, never for public) */}
+      {onEditBackground && isAuthorized && (
         <button
           type="button"
           onClick={() => onEditBackground(sectionId)}

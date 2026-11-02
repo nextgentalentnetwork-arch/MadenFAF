@@ -14,6 +14,7 @@ import {
   GRADIENT_PRESETS,
   DEFAULT_SECTION_BACKGROUNDS,
 } from '@/data/sectionBackgroundsData';
+import { useAuth } from '@/lib/AuthContext';
 import {
   Palette,
   X,
@@ -25,9 +26,29 @@ import {
   Layers,
   Check,
   Brush,
+  Shield,
+  Lock,
 } from 'lucide-react';
 
 export const FloatingBackgroundCustomizer: React.FC = () => {
+  const { user, profile } = useAuth();
+
+  const isDevSession = useSyncExternalStore(
+    subscribeAcademyData,
+    () => AcademyDataManager.isDeveloperAuthenticated(),
+    () => false
+  );
+
+  // Strict RBAC: Background Customizer is ONLY available for Admin or Developer user, NOT for public
+  const isAdmin = Boolean(
+    profile?.role === 'admin' ||
+      profile?.roles?.includes('admin') ||
+      profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com' ||
+      user?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com'
+  );
+  const isDeveloper = isDevSession;
+  const isAuthorized = isAdmin || isDeveloper;
+
   const [isOpen, setIsOpen] = useState(false);
   const [selectedSectionId, setSelectedSectionId] = useState<string>('hero');
 
@@ -37,6 +58,11 @@ export const FloatingBackgroundCustomizer: React.FC = () => {
     () => DEFAULT_SECTION_BACKGROUNDS
   );
   const currentConfig = backgrounds[selectedSectionId] || { type: 'default' };
+
+  // If public / unauthenticated visitor or regular member, do not render at all
+  if (!isAuthorized) {
+    return null;
+  }
 
   const handleUpdateCurrentSection = (partial: Partial<SectionBackgroundConfig>) => {
     AcademyDataManager.updateSectionBackground(selectedSectionId, partial);
@@ -71,7 +97,7 @@ export const FloatingBackgroundCustomizer: React.FC = () => {
 
   return (
     <>
-      {/* Floating Trigger Pill */}
+      {/* Floating Trigger Pill (Admin & Developer Only) */}
       {!isOpen && (
         <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <button
@@ -82,10 +108,16 @@ export const FloatingBackgroundCustomizer: React.FC = () => {
             <div className="w-6 h-6 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:rotate-45 transition-transform">
               <Palette className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-black uppercase tracking-wider text-white">
-              Customize Backgrounds
-            </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="flex flex-col text-left">
+              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                <Shield className="w-2.5 h-2.5 inline" />
+                {isAdmin ? 'Admin Console' : 'Dev Studio'}
+              </span>
+              <span className="text-xs font-black uppercase tracking-wider text-white">
+                Customize Backgrounds
+              </span>
+            </div>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-1" />
           </button>
         </div>
       )}
@@ -100,10 +132,19 @@ export const FloatingBackgroundCustomizer: React.FC = () => {
                 <Palette className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-white">
-                  Live Backgrounds Customizer
-                </h4>
-                <p className="text-[10px] text-slate-400 font-mono">Real-time homepage editor</p>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                    Backgrounds Customizer
+                  </h4>
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    {isAdmin ? 'Admin Only' : 'Dev Only'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  {isAdmin
+                    ? `Admin: ${profile?.fullName || profile?.email || 'Administrator'}`
+                    : 'Authenticated Developer Session'}
+                </p>
               </div>
             </div>
 
