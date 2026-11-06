@@ -59,21 +59,8 @@ export interface RbacSecurityAuditEntry {
 }
 
 // Simplified Role Structure: Strictly TWO Account Roles ('member' and 'admin')
+// Only authoritative administrative accounts are pre-seeded. No demo member profiles exist.
 export const AUTHORITATIVE_SEED_ACCOUNTS: Record<string, AuthoritativeAccountRecord> = {
-  'member@madenfaf.com': {
-    id: 'usr-member-01',
-    email: 'member@madenfaf.com',
-    fullName: 'Sourav Chatterjee',
-    role: 'member',
-    roles: ['member'],
-    campus: 'Kalyani & Nadia District',
-    status: 'active',
-    migrationStatus: 'verified',
-    migrationNotes:
-      'Verified Foundation Member & Donor account (exclusively authorized for Member Donation & Support Portal).',
-    createdAt: '2026-01-10T09:00:00Z',
-    updatedAt: '2026-01-10T09:00:00Z',
-  },
   'admin@madenfaf.com': {
     id: 'usr-admin-01',
     email: 'admin@madenfaf.com',

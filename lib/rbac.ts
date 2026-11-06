@@ -85,7 +85,10 @@ export function normalizePortalRoleParam(role: any): UserRole | null {
     cleaned === 'donor' ||
     cleaned === 'supporter' ||
     cleaned === 'donator_member' ||
-    cleaned === 'donators'
+    cleaned === 'donators' ||
+    cleaned === 'player' ||
+    cleaned === 'parent' ||
+    cleaned === 'coach'
   ) {
     return 'member';
   }

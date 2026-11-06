@@ -2,6 +2,7 @@
 
 import React, { use, Suspense } from 'react';
 import { PortalContent } from '@/components/portal/PortalContent';
+import { normalizePortalRoleParam } from '@/lib/rbac';
 
 export default function RoleSpecificPortalPage({
   params,
@@ -9,6 +10,8 @@ export default function RoleSpecificPortalPage({
   params: Promise<{ role: string }>;
 }) {
   const resolved = use(params);
+  const normalizedRole = normalizePortalRoleParam(resolved.role) || 'member';
+
   return (
     <Suspense
       fallback={
@@ -19,7 +22,7 @@ export default function RoleSpecificPortalPage({
         </div>
       }
     >
-      <PortalContent forcedRoleProp={resolved.role} />
+      <PortalContent forcedRoleProp={normalizedRole} />
     </Suspense>
   );
 }

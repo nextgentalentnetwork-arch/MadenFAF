@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   X,
   UserCheck,
@@ -43,7 +44,8 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
   initialRole,
   onBookTrialClick,
 }) => {
-  const { profile, login, logout } = useAuth();
+  const router = useRouter();
+  const { profile, logout } = useAuth();
   const isAdmin =
     profile?.role === 'admin' ||
     profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com';
@@ -54,7 +56,14 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
   } | null>(null);
   const [deniedBanner, setDeniedBanner] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen && !profile) {
+      onClose();
+      router.push('/login');
+    }
+  }, [isOpen, profile, onClose, router]);
+
+  if (!isOpen || !profile) return null;
 
   const currentEmail = profile?.email || null;
   const selectedRoleTab: UserRole =
@@ -84,8 +93,8 @@ export const DigitalPortalModal: React.FC<DigitalPortalModalProps> = ({
     if (!isAdmin && role === 'admin') return;
     setManualTabSelection({ email: currentEmail, tab: role });
     if (!profile) {
-      setDeniedBanner(null);
-      await login('member@madenfaf.com', 'maden2026', 'member');
+      onClose();
+      router.push('/login');
       return;
     }
 

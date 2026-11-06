@@ -38,6 +38,80 @@ const nextConfig: NextConfig = {
     maxInactiveAge: 120 * 1000,
     pagesBufferLength: 4,
   },
+  async redirects() {
+    return [
+      {
+        source: '/portal/player',
+        destination: '/trials',
+        permanent: false,
+      },
+      {
+        source: '/portal/parent',
+        destination: '/parent-experience',
+        permanent: false,
+      },
+      {
+        source: '/portal/coach',
+        destination: '/coaches',
+        permanent: false,
+      },
+      {
+        source: '/portal/donator',
+        destination: '/portal?role=member',
+        permanent: false,
+      },
+      {
+        source: '/portal/donor',
+        destination: '/portal?role=member',
+        permanent: false,
+      },
+      {
+        source: '/portal/supporter',
+        destination: '/portal?role=member',
+        permanent: false,
+      },
+      {
+        source: '/developer/backgrounds',
+        destination: '/developer/sections',
+        permanent: false,
+      },
+      {
+        source: '/developer/background',
+        destination: '/developer/sections',
+        permanent: false,
+      },
+      {
+        source: '/admission',
+        destination: '/join?type=admission',
+        permanent: false,
+      },
+      {
+        source: '/trial',
+        destination: '/trials',
+        permanent: false,
+      },
+      {
+        source: '/trial-registration',
+        destination: '/join?type=trial',
+        permanent: false,
+      },
+      {
+        source: '/membership',
+        destination: '/portal?role=member',
+        permanent: false,
+      },
+      {
+        source: '/donation',
+        destination: '/portal?role=member',
+        permanent: false,
+      },
+      {
+        source: '/donations',
+        destination: '/portal?role=member',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

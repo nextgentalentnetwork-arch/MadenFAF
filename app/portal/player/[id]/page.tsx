@@ -28,6 +28,8 @@ import {
   Check,
   Trophy,
 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { AcademyDataManager } from '@/lib/academyDataManager';
 
 const FALLBACK_CANDIDATE: AcademyRegistrationData = {
   id: 'reg-demo-001',
@@ -63,6 +65,12 @@ export default function PlayerStandaloneDossierPage({
 }) {
   const resolvedParams = use(params);
   const playerId = decodeURIComponent(resolvedParams.id);
+  const { profile } = useAuth();
+  const isPrivileged =
+    profile?.role === 'admin' ||
+    (typeof window !== 'undefined' && AcademyDataManager.isDeveloperAuthenticated());
+  const returnHref = isPrivileged ? '/developer/trials' : '/trials';
+  const returnLabel = isPrivileged ? 'Return to Trial Database' : 'Return to Academy Trials';
 
   const [candidate, setCandidate] = useState<AcademyRegistrationData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,9 +169,9 @@ Digital Pass Link: ${typeof window !== 'undefined' ? window.location.href : ''}`
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
-              href="/developer/trials"
+              href={returnHref}
               className="p-1.5 rounded-lg bg-amber-500 text-slate-950 font-black hover:bg-amber-400 transition-colors"
-              title="Return to Trial Database"
+              title={returnLabel}
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -369,10 +377,10 @@ Digital Pass Link: ${typeof window !== 'undefined' ? window.location.href : ''}`
 
           <div className="flex items-center gap-2">
             <Link
-              href="/developer/trials"
+              href={returnHref}
               className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs"
             >
-              Manage in Trial Database
+              {isPrivileged ? 'Manage in Trial Database' : 'Explore Academy Trials'}
             </Link>
           </div>
         </div>

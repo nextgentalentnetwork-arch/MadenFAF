@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Hero } from '@/components/home/Hero';
@@ -30,6 +32,8 @@ import { AcademyDataManager, DEFAULT_TOGGLES, subscribeAcademyData } from '@/lib
 import { ArrowRight, Sparkles, Shield, Trophy } from 'lucide-react';
 
 export default function Home() {
+  const router = useRouter();
+  const { profile } = useAuth();
   const toggles = useSyncExternalStore(
     subscribeAcademyData,
     () => AcademyDataManager.getComponentToggles(),
@@ -60,8 +64,11 @@ export default function Home() {
   };
 
   const handleOpenPortal = (role: 'player' | 'parent' | 'coach' | 'admin' = 'player') => {
-    setPortalInitialRole(role);
-    setPortalOpen(true);
+    if (profile) {
+      router.push('/portal');
+    } else {
+      router.push('/login');
+    }
   };
 
   const scrollToSection = (id: string) => {
@@ -70,6 +77,26 @@ export default function Home() {
       el.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  useEffect(() => {
+    const handleHashScroll = () => {
+      if (typeof window === 'undefined') return;
+      const hash = window.location.hash;
+      if (hash) {
+        const id = hash.replace(/^#/, '');
+        const el = document.getElementById(id);
+        if (el) {
+          setTimeout(() => {
+            el.scrollIntoView({ behavior: 'smooth' });
+          }, 150);
+        }
+      }
+    };
+
+    handleHashScroll();
+    window.addEventListener('hashchange', handleHashScroll);
+    return () => window.removeEventListener('hashchange', handleHashScroll);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-amber-500 selection:text-slate-950 overflow-x-clip">

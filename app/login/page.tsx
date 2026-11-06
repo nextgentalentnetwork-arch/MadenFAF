@@ -147,11 +147,27 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
 
+    const getSafeRedirectUrl = () => {
+      if (typeof window === 'undefined') return null;
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect') || params.get('returnUrl') || params.get('next');
+      if (redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/login')) {
+        return redirect;
+      }
+      return null;
+    };
+
     if (mode === 'signin') {
       const res = await login(email, password, targetPortalRole);
       setIsSubmitting(false);
       if (res.success && res.role) {
         clearAccessDenied();
+        const safeRedirect = getSafeRedirectUrl();
+        if (safeRedirect) {
+          setSuccessMsg('Authenticated! Redirecting to requested page...');
+          router.replace(safeRedirect);
+          return;
+        }
         if (res.role === 'admin' && targetPortalRole !== 'member') {
           setSuccessMsg('Admin Authenticated! Redirecting to the Admin Dashboard...');
           router.replace('/portal?role=admin');
@@ -172,6 +188,12 @@ export default function LoginPage() {
       if (res.success) {
         clearAccessDenied();
         setErrorMsg('');
+        const safeRedirect = getSafeRedirectUrl();
+        if (safeRedirect) {
+          setSuccessMsg('Member Account Registered! Redirecting to requested page...');
+          router.replace(safeRedirect);
+          return;
+        }
         const destPortal = getPortalPathForRole('member');
         setSuccessMsg(
           'Member Account Registered! Redirecting to the Member Donation & Support Portal...'

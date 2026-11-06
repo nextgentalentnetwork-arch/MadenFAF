@@ -59,6 +59,13 @@ export function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string } = 
         ? [authoritativeRole]
         : [];
 
+  // Direct authentication enforcement: Unauthenticated visitors are immediately redirected to login
+  useEffect(() => {
+    if (!isLoading && !profile) {
+      router.replace('/login?redirect=/portal');
+    }
+  }, [isLoading, profile, router]);
+
   // Revalidate session with server whenever profile identity or URL role parameter changes
   useEffect(() => {
     let active = true;
@@ -125,16 +132,7 @@ export function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string } = 
     setServerCheckError(null);
 
     if (!profile) {
-      if (targetRole === 'admin') {
-        router.replace('/admin');
-        return;
-      }
-      const res = await login('member@madenfaf.com', 'maden2026', 'member');
-      if (res.success && res.role) {
-        router.replace(getPortalPathForRole(res.role));
-      } else {
-        setSwitchingAccountError(res.error || UNAUTHORIZED_PORTAL_ACCESS_MESSAGE);
-      }
+      router.replace(targetRole === 'admin' ? '/login?secret=admin' : '/login');
       return;
     }
 
@@ -162,13 +160,13 @@ export function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string } = 
     router.replace(getPortalPathForRole(targetRole));
   };
 
-  if (isLoading) {
+  if (isLoading || !profile) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs font-mono uppercase tracking-wider text-slate-500">
-            Verifying Role-Based Access Permissions...
+            {isLoading ? 'Verifying Role-Based Access Permissions...' : 'Redirecting to Login / Registration...'}
           </p>
         </div>
       </div>
@@ -230,7 +228,6 @@ export function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string } = 
               <button
                 onClick={async () => {
                   await logout();
-                  router.push('/login');
                 }}
                 className="p-2 rounded-xl bg-slate-900 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-800 transition-colors cursor-pointer"
                 title="Sign Out"
@@ -307,41 +304,7 @@ export function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string } = 
           </div>
         )}
 
-        {/* Unauthenticated Prompt */}
-        {!profile ? (
-          <div className="bg-white border-2 border-slate-200 rounded-3xl p-8 text-center space-y-5 shadow-lg max-w-2xl mx-auto my-8">
-            <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700">
-              <Lock className="w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 text-amber-400 text-[10px] font-mono font-bold uppercase">
-                Authentication Required
-              </span>
-              <h1 className="text-xl sm:text-2xl font-black uppercase text-slate-900">
-                Sign In to Access Member Portal
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
-                Sign in with your verified Member credentials to manage donation records, view verified tax receipts, and access foundation benefits.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Link
-                href="/login"
-                className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider inline-flex items-center gap-2 shadow-sm"
-              >
-                <span>Sign In to Member Portal</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <button
-                type="button"
-                onClick={() => handlePortalSwitchAttempt('member')}
-                className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider cursor-pointer"
-              >
-                Demo Member Sign-In
-              </button>
-            </div>
-          </div>
-        ) : effectiveDeniedMessage ? (
+        {effectiveDeniedMessage ? (
           /* Strict Unauthorized Cross-Portal Access Denied Banner */
           <div className="bg-white border-2 border-rose-300 rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-xl max-w-2xl mx-auto my-6">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700">
@@ -383,12 +346,11 @@ export function PortalContent({ forcedRoleProp }: { forcedRoleProp?: string } = 
                 type="button"
                 onClick={async () => {
                   await logout();
-                  router.push('/login');
                 }}
                 className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5 text-amber-400" />
-                <span>Sign Out &amp; Switch Account</span>
+                <span>Sign Out &amp; Return to Home</span>
               </button>
             </div>
           </div>

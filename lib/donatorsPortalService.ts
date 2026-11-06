@@ -303,179 +303,14 @@ export const DEFAULT_ORG_PAYMENT_SETTINGS: OrganizationPaymentSettings = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
-// Initial seed profile for existing test member 'member@madenfaf.com' (usr-member-01)
-const INITIAL_MEMBER_PROFILES: MemberProfileRecord[] = [
-  {
-    uid: 'usr-member-01',
-    memberId: 'MADEN-MEM-2026-100101',
-    authEmail: 'member@madenfaf.com',
-    fullName: 'Sourav Chatterjee',
-    profilePhotograph: '',
-    dob: '1990-08-14',
-    gender: 'male',
-    occupation: 'Civil Engineer & Grassroots Football Supporter',
-    email: 'member@madenfaf.com',
-    primaryMobile: '9830112233',
-    alternateMobile: '9830112234',
-    houseAndStreet: 'Plot 42, B-Block Main Road',
-    villageTownCity: 'Kalyani',
-    postOffice: 'Kalyani Head Post Office',
-    policeStation: 'Kalyani PS',
-    district: 'Nadia',
-    state: 'West Bengal',
-    pinCode: '741235',
-    country: 'India',
-    membershipRegistrationDate: '2026-01-10',
-    memberCategory: 'individual',
-    areasOfInterest: ['Grassroots Youth Training', 'Underprivileged Player Scholarships', 'Girls Football Development'],
-    preferredCommunicationMethod: 'email',
-    emergencyContact: {
-      name: 'Rina Chatterjee',
-      relationship: 'Spouse',
-      phone: '9830112299',
-    },
-    accuracyConfirmed: true,
-    dataProcessingConsent: true,
-    promotionalUpdatesConsent: true,
-    profileCompletionStatus: 'complete',
-    completionPercentage: 100,
-    currentWizardStep: 4,
-    verifiedContactMetadata: {
-      mobileNumber: '9830112233',
-      isVerified: true,
-      verificationStatus: 'verified',
-      verifiedAt: '2026-01-10T10:15:00.000Z',
-      verifiedBy: 'admin@madenfaf.com',
-      verificationMethod: 'admin_verified',
-    },
-    createdAt: '2026-01-10T09:00:00.000Z',
-    updatedAt: '2026-01-10T10:15:00.000Z',
-  },
-];
+// Initial member profiles: Empty by default. No demo profiles or dummy user data.
+const INITIAL_MEMBER_PROFILES: MemberProfileRecord[] = [];
 
-// Initial seed donation plans
-export const INITIAL_DONATION_PLANS: DonationPlanRecord[] = [
-  {
-    planId: 'MADEN-PLN-2026-104829',
-    uid: 'usr-member-01',
-    memberId: 'MADEN-MEM-2026-100101',
-    donorName: 'Sourav Chatterjee',
-    amount: 1000,
-    frequency: 'monthly',
-    purpose: 'Grassroots Youth Training & Player Scholarships',
-    startDate: '2026-01-15',
-    nextSuggestedPaymentDate: '2026-11-15',
-    status: 'active',
-    reminderEnabled: true,
-    createdAt: '2026-01-15T10:00:00.000Z',
-    updatedAt: '2026-01-15T10:00:00.000Z',
-  },
-];
+// Initial donation plans: Empty by default.
+export const INITIAL_DONATION_PLANS: DonationPlanRecord[] = [];
 
-// Initial seed donations demonstrating cumulative impact across foundation initiatives
-export const INITIAL_DONATIONS: DonationRecordItem[] = [
-  {
-    donationId: 'MADEN-DON-2026-100201',
-    uid: 'usr-member-01',
-    memberId: 'MADEN-MEM-2026-100101',
-    donorName: 'Sourav Chatterjee',
-    donorEmail: 'member@madenfaf.com',
-    donorAddress: 'Plot 42, B-Block Main Road, Kalyani, Nadia, West Bengal, 741235, India',
-    donorMobile: '9830112233',
-    planId: 'MADEN-PLN-2026-104829',
-    invoiceNumber: 'MADEN-INV-2026-001001',
-    receiptNumber: 'MADEN-RCP-2026-001001',
-    amount: 5000,
-    amountInWords: 'Indian Rupees Five Thousand Only',
-    currency: 'INR',
-    frequency: 'monthly',
-    purpose: 'Grassroots Youth Training & Player Scholarships',
-    paymentMethod: 'official_qr_upi',
-    transactionReference: 'UPI-20260115-998811',
-    paymentDate: '2026-01-15',
-    paymentStatus: 'verified',
-    mobileVerificationStatus: 'verified',
-    verifiedBy: 'admin@madenfaf.com',
-    verifiedAt: '2026-01-15T14:30:00.000Z',
-    createdAt: '2026-01-15T10:00:00.000Z',
-    updatedAt: '2026-01-15T14:30:00.000Z',
-  },
-  {
-    donationId: 'MADEN-DON-2026-100202',
-    uid: 'usr-member-01',
-    memberId: 'MADEN-MEM-2026-100101',
-    donorName: 'Sourav Chatterjee',
-    donorEmail: 'member@madenfaf.com',
-    donorAddress: 'Plot 42, B-Block Main Road, Kalyani, Nadia, West Bengal, 741235, India',
-    donorMobile: '9830112233',
-    planId: 'MADEN-PLN-2026-104829',
-    invoiceNumber: 'MADEN-INV-2026-001002',
-    receiptNumber: 'MADEN-RCP-2026-001002',
-    amount: 2500,
-    amountInWords: 'Indian Rupees Two Thousand Five Hundred Only',
-    currency: 'INR',
-    frequency: 'monthly',
-    purpose: 'Underprivileged Player Scholarships (Full Merit & Need-Based)',
-    paymentMethod: 'official_qr_upi',
-    transactionReference: 'UPI-20260215-998812',
-    paymentDate: '2026-02-15',
-    paymentStatus: 'verified',
-    mobileVerificationStatus: 'verified',
-    verifiedBy: 'admin@madenfaf.com',
-    verifiedAt: '2026-02-15T12:00:00.000Z',
-    createdAt: '2026-02-15T09:30:00.000Z',
-    updatedAt: '2026-02-15T12:00:00.000Z',
-  },
-  {
-    donationId: 'MADEN-DON-2026-100203',
-    uid: 'usr-member-01',
-    memberId: 'MADEN-MEM-2026-100101',
-    donorName: 'Sourav Chatterjee',
-    donorEmail: 'member@madenfaf.com',
-    donorAddress: 'Plot 42, B-Block Main Road, Kalyani, Nadia, West Bengal, 741235, India',
-    donorMobile: '9830112233',
-    planId: 'MADEN-PLN-2026-104829',
-    invoiceNumber: 'MADEN-INV-2026-001003',
-    receiptNumber: 'MADEN-RCP-2026-001003',
-    amount: 1500,
-    amountInWords: 'Indian Rupees One Thousand Five Hundred Only',
-    currency: 'INR',
-    frequency: 'monthly',
-    purpose: 'Girls & Women Football Development Grant',
-    paymentMethod: 'official_qr_upi',
-    transactionReference: 'UPI-20260315-998813',
-    paymentDate: '2026-03-15',
-    paymentStatus: 'verified',
-    mobileVerificationStatus: 'verified',
-    verifiedBy: 'admin@madenfaf.com',
-    verifiedAt: '2026-03-15T16:00:00.000Z',
-    createdAt: '2026-03-15T11:00:00.000Z',
-    updatedAt: '2026-03-15T16:00:00.000Z',
-  },
-  {
-    donationId: 'MADEN-DON-2026-100204',
-    uid: 'usr-member-01',
-    memberId: 'MADEN-MEM-2026-100101',
-    donorName: 'Sourav Chatterjee',
-    donorEmail: 'member@madenfaf.com',
-    donorAddress: 'Plot 42, B-Block Main Road, Kalyani, Nadia, West Bengal, 741235, India',
-    donorMobile: '9830112233',
-    planId: 'MADEN-PLN-2026-104829',
-    invoiceNumber: 'MADEN-INV-2026-001004',
-    amount: 1000,
-    amountInWords: 'Indian Rupees One Thousand Only',
-    currency: 'INR',
-    frequency: 'monthly',
-    purpose: 'Sports Nutrition, Physiotherapy & Medical Welfare',
-    paymentMethod: 'official_qr_upi',
-    transactionReference: 'UPI-20260401-445566',
-    paymentDate: '2026-04-01',
-    paymentStatus: 'submitted_for_verification',
-    mobileVerificationStatus: 'verified',
-    createdAt: '2026-04-01T10:00:00.000Z',
-    updatedAt: '2026-04-01T10:15:00.000Z',
-  },
-];
+// Initial donations: Empty by default. Only genuine registered member donations will be stored.
+export const INITIAL_DONATIONS: DonationRecordItem[] = [];
 
 export interface FoundationInitiative {
   id: string;
@@ -780,6 +615,19 @@ export function calculateProfileCompletion(profile: Partial<MemberProfileRecord>
 // Memory cache for useSyncExternalStore referential stability
 const cacheStore: Record<string, { raw: string | null; parsed: any }> = {};
 
+function isDemoItem(item: any): boolean {
+  if (!item || typeof item !== 'object') return false;
+  const uid = String(item.uid || '').toLowerCase();
+  const email = String(item.authEmail || item.email || item.donorEmail || '').toLowerCase();
+  const memberId = String(item.memberId || '').toUpperCase();
+  const name = String(item.fullName || item.donorName || '').toLowerCase();
+  if (uid === 'usr-member-01' || uid === 'mem-demo-001' || uid === 'guest-member') return true;
+  if (email === 'member@madenfaf.com' || email === 'debashis.roy@gmail.com') return true;
+  if (memberId === 'MADEN-MEM-2026-100101' || memberId === 'FAF-MEM-2026-089') return true;
+  if (name.includes('sourav chatterjee') || name.includes('debashis roy')) return true;
+  return false;
+}
+
 function readStore<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
   try {
@@ -787,7 +635,14 @@ function readStore<T>(key: string, defaultValue: T): T {
     if (raw === null) return defaultValue;
     const hit = cacheStore[key];
     if (hit && hit.raw === raw) return hit.parsed as T;
-    const parsed = JSON.parse(raw);
+    let parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && (key === STORAGE_KEYS.MEMBER_PROFILES || key === STORAGE_KEYS.DONATION_PLANS || key === STORAGE_KEYS.DONATIONS)) {
+      const sanitized = parsed.filter((item: any) => !isDemoItem(item));
+      if (sanitized.length !== parsed.length) {
+        localStorage.setItem(key, JSON.stringify(sanitized));
+        parsed = sanitized;
+      }
+    }
     cacheStore[key] = { raw, parsed };
     return parsed as T;
   } catch {
@@ -1430,9 +1285,10 @@ export const DonatorsPortalService = {
 
   getMemberDonationPlans(uid: string, fallbackEmail?: string): DonationPlanRecord[] {
     const safeEmail = (fallbackEmail || '').trim().toLowerCase();
+    if (!uid && !safeEmail) return [];
     return this.getAllDonationPlans().filter((p) => {
-      if (p.uid === uid) return true;
-      if ((uid === 'guest-member' || safeEmail === 'member@madenfaf.com') && p.uid === 'usr-member-01') return true;
+      if (uid && p.uid === uid) return true;
+      if (safeEmail && (p as any).donorEmail && (p as any).donorEmail.toLowerCase() === safeEmail) return true;
       return false;
     });
   },
@@ -1652,10 +1508,10 @@ export const DonatorsPortalService = {
 
   getMemberDonations(uid: string, fallbackEmail?: string): DonationRecordItem[] {
     const safeEmail = (fallbackEmail || '').trim().toLowerCase();
+    if (!uid && !safeEmail) return [];
     return this.getAllDonations().filter((d) => {
-      if (d.uid === uid) return true;
+      if (uid && d.uid === uid) return true;
       if (safeEmail && (d.donorEmail || '').toLowerCase() === safeEmail) return true;
-      if ((uid === 'guest-member' || safeEmail === 'member@madenfaf.com') && d.uid === 'usr-member-01') return true;
       return false;
     });
   },

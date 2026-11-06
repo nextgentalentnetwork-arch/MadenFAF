@@ -60,18 +60,8 @@ interface AuthContextType {
 }
 
 // Simplified Role Structure: Strictly TWO Account Roles ('member' and 'admin')
+// Only authoritative administrative accounts are pre-seeded. No demo member profiles exist.
 const SEED_ROLE_PROFILES: Record<string, UserProfile> = {
-  'member@madenfaf.com': {
-    id: 'usr-member-01',
-    email: 'member@madenfaf.com',
-    fullName: 'Sourav Chatterjee',
-    role: 'member',
-    roles: ['member'],
-    campus: 'Kalyani & Nadia District',
-    status: 'active',
-    migrationStatus: 'verified',
-    createdAt: '2026-01-10T09:00:00Z',
-  },
   'admin@madenfaf.com': {
     id: 'usr-admin-01',
     email: 'admin@madenfaf.com',
@@ -115,6 +105,8 @@ function getRegisteredUsersRegistry(): Record<string, UserProfile> {
     for (const [k, v] of Object.entries(parsed as Record<string, any>)) {
       if (v && typeof v === 'object') {
         const key = k.toLowerCase().trim();
+        // Discard any legacy demo member profile
+        if (key === 'member@madenfaf.com' || v.id === 'usr-member-01') continue;
         const isProtectedAdmin =
           key === 'admin@madenfaf.com' || key === 'pravakarghosh.2025@gmail.com';
         const role: UserRole = isProtectedAdmin ? 'admin' : normalizeToTwoRoles(v.role);
@@ -767,6 +759,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('maden_faf_active_user');
       localStorage.removeItem('maden_faf_rbac_token');
       localStorage.removeItem('maden_dev_auth_session');
+      sessionStorage.clear();
+      // Directly redirect to main website homepage and replace history so back button cannot expose dashboard
+      window.location.replace('/');
     }
   };
 

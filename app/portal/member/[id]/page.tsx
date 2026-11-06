@@ -25,64 +25,44 @@ import {
   Building,
   Sparkles,
 } from 'lucide-react';
-
-const FALLBACK_MEMBER: MemberProfileRecord = {
-  uid: 'mem-demo-001',
-  memberId: 'FAF-MEM-2026-089',
-  authEmail: 'debashis.roy@gmail.com',
-  fullName: 'Debashis Roy',
-  profilePhotograph: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-  dob: '1984-08-22',
-  gender: 'male',
-  occupation: 'Senior Software Architect & Grassroots Patron',
-  email: 'debashis.roy@gmail.com',
-  primaryMobile: '+91 98310 99887',
-  houseAndStreet: 'Flat 4B, Greenfield Residency',
-  villageTownCity: 'Salt Lake Sector V, Kolkata',
-  postOffice: 'Bidhan Nagar',
-  district: 'North 24 Parganas',
-  state: 'West Bengal',
-  pinCode: '700091',
-  country: 'India',
-  memberCategory: 'patron',
-  membershipRegistrationDate: '2025-01-15',
-  areasOfInterest: ['Grassroots Youth Training & Player Scholarships'],
-  preferredCommunicationMethod: 'email',
-  emergencyContact: {
-    name: 'Mousumi Roy',
-    relationship: 'Spouse',
-    phone: '+91 98310 99888',
-  },
-  accuracyConfirmed: true,
-  dataProcessingConsent: true,
-  promotionalUpdatesConsent: true,
-  profileCompletionStatus: 'complete',
-  completionPercentage: 100,
-  currentWizardStep: 4,
-  verifiedContactMetadata: {
-    mobileNumber: '+91 98310 99887',
-    isVerified: true,
-    verificationStatus: 'verified',
-  },
-  createdAt: '2025-01-15T09:00:00Z',
-  updatedAt: '2026-10-15T12:00:00Z',
-};
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/AuthContext';
+import { AcademyDataManager } from '@/lib/academyDataManager';
 
 export default function MemberStandaloneIdCardPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const router = useRouter();
   const resolvedParams = use(params);
   const memberIdParam = decodeURIComponent(resolvedParams.id);
+  const { profile, isLoading: isAuthLoading } = useAuth();
+
+  const isPrivileged =
+    profile?.role === 'admin' ||
+    (typeof window !== 'undefined' && AcademyDataManager.isDeveloperAuthenticated()) ||
+    profile?.email?.toLowerCase() === 'pravakarghosh.2025@gmail.com';
+  const returnHref = isPrivileged ? '/developer/donations' : '/portal?role=member';
+  const returnLabel = isPrivileged ? 'Return to Member Database' : 'Return to Member Portal';
 
   const [member, setMember] = useState<MemberProfileRecord | null>(null);
   const [donations, setDonations] = useState<DonationRecordItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+
+  // Authentication check: unauthenticated visitors must be redirected directly to login
+  useEffect(() => {
+    if (!isAuthLoading && !profile) {
+      router.replace(`/login?redirect=${encodeURIComponent('/portal/member/' + memberIdParam)}`);
+    }
+  }, [isAuthLoading, profile, memberIdParam, router]);
 
   useEffect(() => {
     let isMounted = true;
+    if (!profile) return;
+
     const loadProfileData = async () => {
       try {
         await DonatorsPortalService.hydrateFromCloud();
@@ -98,18 +78,40 @@ export default function MemberStandaloneIdCardPage({
         );
 
         if (found) {
+          // Profile Security: Verify that the authenticated user owns this profile or is an admin
+          const isOwner =
+            found.uid === profile.id ||
+            found.authEmail?.toLowerCase() === profile.email.toLowerCase() ||
+            found.email?.toLowerCase() === profile.email.toLowerCase();
+
+          if (!isOwner && !isPrivileged) {
+            // Block access to another member's profile and redirect to own dashboard
+            setAccessDenied(true);
+            router.replace('/portal?role=member');
+            return;
+          }
+
           setMember(found);
           setDonations(allDonations.filter((d) => d.uid === found.uid));
-        } else if (allMembers.length > 0 && memberIdParam === 'sample') {
-          setMember(allMembers[0]);
-          setDonations(allDonations.filter((d) => d.uid === allMembers[0].uid));
         } else {
-          setMember({ ...FALLBACK_MEMBER, memberId: memberIdParam.toUpperCase() });
-          setDonations([]);
+          // If searching for own profile but id was generic, try loading own registered profile
+          const ownProfile = allMembers.find(
+            (m) =>
+              m.uid === profile.id ||
+              m.authEmail?.toLowerCase() === profile.email.toLowerCase() ||
+              m.email?.toLowerCase() === profile.email.toLowerCase()
+          );
+          if (ownProfile) {
+            setMember(ownProfile);
+            setDonations(allDonations.filter((d) => d.uid === ownProfile.uid));
+          } else {
+            setMember(null);
+            setDonations([]);
+          }
         }
       } catch {
         if (isMounted) {
-          setMember(FALLBACK_MEMBER);
+          setMember(null);
         }
       } finally {
         if (isMounted) {
@@ -123,14 +125,55 @@ export default function MemberStandaloneIdCardPage({
     return () => {
       isMounted = false;
     };
-  }, [memberIdParam]);
+  }, [memberIdParam, profile, isPrivileged, router]);
+
+  if (isAuthLoading || (!profile && loading)) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-slate-400 font-mono">Verifying Member Authentication & Security Access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
+        <div className="text-center space-y-3 max-w-md">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-black uppercase text-white">Security Access Restricted</h2>
+          <p className="text-xs text-slate-400">
+            You are only authorized to view your own registered Member Profile. Redirecting to your dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !member) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-slate-400 font-mono">Loading Foundation Member Profile & ID Card...</p>
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <HeartHandshake className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-black uppercase tracking-tight text-white">Member Profile Not Found</h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            No registered Foundation Member was found matching identifier &ldquo;{memberIdParam}&rdquo;.
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/portal?role=member"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-colors shadow-lg shadow-amber-500/20"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Return to My Member Dashboard</span>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -158,9 +201,9 @@ export default function MemberStandaloneIdCardPage({
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
-              href="/developer/donations"
+              href={returnHref}
               className="p-1.5 rounded-lg bg-amber-500 text-slate-950 font-black hover:bg-amber-400 transition-colors"
-              title="Return to Member Database"
+              title={returnLabel}
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -331,10 +374,10 @@ export default function MemberStandaloneIdCardPage({
           </button>
 
           <Link
-            href="/developer/donations"
+            href={returnHref}
             className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs"
           >
-            Manage in Member Database
+            {isPrivileged ? 'Manage in Member Database' : 'Return to Member Portal'}
           </Link>
         </div>
       </main>

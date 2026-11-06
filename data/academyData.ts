@@ -1176,38 +1176,7 @@ export const DEFAULT_PORTAL_CONFIG: DigitalPortalConfig = {
   coachPortalEnabled: true,
   adminPortalEnabled: true,
   memberPortalEnabled: true,
-  demoStudents: [
-    {
-      id: 'student-subham',
-      name: 'Subham Roy',
-      role: '#8 Midfielder (U15)',
-      campus: 'Gayeshpur Campus',
-      avatar: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?auto=format&fit=crop&w=200&q=80',
-      attendance: '94% (Last 90 days)',
-      rating: '86% Score',
-      analysisCount: '3 videos ready for review'
-    },
-    {
-      id: 'student-aniket',
-      name: 'Aniket Mukherjee',
-      role: 'Goalkeeper (U12)',
-      campus: 'Ichapore Campus',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-      attendance: '98% (Clean Sheet Leader)',
-      rating: '91% Score',
-      analysisCount: '5 match tapes'
-    },
-    {
-      id: 'student-priya',
-      name: 'Priya Sen',
-      role: '#11 Forward (U14 Girls)',
-      campus: 'Gayeshpur Campus',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
-      attendance: '96% (Team Captain)',
-      rating: '89% Score',
-      analysisCount: '4 session clips'
-    }
-  ]
+  demoStudents: []
 };
 
 export const DIGITAL_PORTAL_ROLES = {

@@ -89,13 +89,13 @@ const FOOTBALL_INTEREST_AREAS = [
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propProfile }) => {
   const { profile: authProfile, logout } = useAuth();
   const profile: UserProfile = propProfile || authProfile || {
-    id: 'guest-member',
-    email: 'member@madenfaf.com',
-    fullName: 'Foundation Member',
+    id: '',
+    email: '',
+    fullName: '',
     role: 'member',
     roles: ['member'],
-    campus: 'gayeshpur',
-    approvedByAdmin: 'system',
+    campus: 'Kalyani & Nadia District',
+    approvedByAdmin: 'pending',
   };
 
   // Hydrate cloud state once on mount
@@ -176,17 +176,15 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ profile: propP
 
   // Keep wizardForm synchronized when member profile or auth resolves
   const [prevProfileId, setPrevProfileId] = useState(profile.id);
-  if (profile.id !== prevProfileId) {
+  if (profile.id && profile.id !== prevProfileId) {
     setPrevProfileId(profile.id);
-    if (profile.id !== 'guest-member') {
-      setWizardForm({
-        ...memberRecord,
-        uid: profile.id,
-        authEmail: profile.email,
-        email: wizardForm?.email && wizardForm.email !== 'member@madenfaf.com' ? wizardForm.email : (memberRecord.email || profile.email),
-        fullName: wizardForm?.fullName && wizardForm.fullName !== 'Foundation Member' ? wizardForm.fullName : (memberRecord.fullName || profile.fullName),
-      });
-    }
+    setWizardForm({
+      ...memberRecord,
+      uid: profile.id,
+      authEmail: profile.email,
+      email: wizardForm?.email || memberRecord.email || profile.email,
+      fullName: wizardForm?.fullName || memberRecord.fullName || profile.fullName,
+    });
   }
 
   // Listen for "See Your Digital Profile" CTA click from portal header

@@ -73,12 +73,15 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, onJoinClick }) => 
     }
 
     if (href.startsWith('#')) {
-      const target = document.querySelector(href);
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
-      } else {
-        router.push(`/${href}`);
+      if (typeof window !== 'undefined' && window.location.pathname === '/') {
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
       }
+      router.push(`/${href}`);
+      return;
     } else {
       router.push(href);
     }

@@ -27,6 +27,7 @@ import {
   HeartHandshake,
   Sliders,
   Sparkles,
+  Palette,
 } from 'lucide-react';
 
 export interface DeveloperPageWrapperProps {
@@ -42,6 +43,7 @@ export const DEVELOPER_MODULE_LINKS = [
   { id: 'trials', name: 'Trials & Players', href: '/developer/trials', icon: UserCheck, count: () => `${AcademyDataManager.getTrialSlots().length} Slots` },
   { id: 'coaches', name: 'Coaching Staff', href: '/developer/coaches', icon: Users, count: () => `${AcademyDataManager.getCoaches().length} Coaches` },
   { id: 'programs', name: 'Programs & Pathway', href: '/developer/programs', icon: Trophy, count: () => `${AcademyDataManager.getPrograms().length} Curriculums` },
+  { id: 'sections', name: 'Section Backgrounds', href: '/developer/sections', icon: Palette, count: () => '17 Sections' },
   { id: 'donations', name: 'Donations & Members', href: '/developer/donations', icon: HeartHandshake, count: () => 'Donor Studio' },
   { id: 'campuses', name: 'Campus Facilities', href: '/developer/campuses', icon: Building, count: () => `${AcademyDataManager.getCampuses().length} Centers` },
   { id: 'fixtures', name: 'Match Fixtures', href: '/developer/fixtures', icon: Trophy, count: () => `${AcademyDataManager.getFixtures().length} Fixtures` },
@@ -119,8 +121,8 @@ export const DeveloperPageWrapper: React.FC<DeveloperPageWrapperProps> = ({
           </div>
           <div className="pt-2 flex flex-col gap-2">
             <Link
-              href="/login"
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all text-center"
+              href={`/login?secret=admin&redirect=${encodeURIComponent('/developer/' + moduleId)}`}
+              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all text-center shadow-lg shadow-amber-500/20"
             >
               Log In as Developer / Admin
             </Link>

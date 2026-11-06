@@ -2,6 +2,7 @@
 
 import React, { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -56,6 +57,7 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
   accessLevel = 'public',
   allowedRoles = ['admin', 'member'],
 }) => {
+  const router = useRouter();
   const { user, profile } = useAuth();
   const isDonatorMemberLoggedIn = Boolean(user && profile && profile.role === 'member');
   const toggles = useSyncExternalStore(
@@ -82,8 +84,11 @@ export const PublicPageShell: React.FC<PublicPageShellProps> = ({
   };
 
   const handleOpenPortal = (role: 'player' | 'parent' | 'coach' | 'admin' = 'player') => {
-    setPortalInitialRole(role);
-    setPortalOpen(true);
+    if (profile) {
+      router.push('/portal');
+    } else {
+      router.push('/login');
+    }
   };
 
   const handlePlayVideo = (video?: ActiveVideoData) => {
